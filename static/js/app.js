@@ -59,20 +59,25 @@ let userExtensions = [];
 
 async function loadUserExtensions() {
     if (!currentUser) return;
-    const [extSnap, settingsSnap] = await Promise.all([
-        dbGet(`user_extensions/${currentUser.uid}`),
-        dbGet('site_content/extensions_enabled')
-    ]);
-    extensionsEnabled = settingsSnap !== false;
-    userExtensions = extSnap ? Object.keys(extSnap).filter(k => extSnap[k]) : [];
-    const extDataSnap = await dbGet('extensions');
-    if (extDataSnap && userExtensions.length > 0) {
-        for (const extId of userExtensions) {
-            const ext = extDataSnap[extId];
-            if (ext && !PAGES.find(p => p.id === extId)) {
-                PAGES.splice(PAGES.length - 1, 0, { id: extId, icon: ext.icon, label: ext.label, extPage: true });
+    try {
+        const [extSnap, settingsSnap] = await Promise.all([
+            dbGet(`user_extensions/${currentUser.uid}`),
+            dbGet('site_content/extensions_enabled')
+        ]);
+        extensionsEnabled = settingsSnap !== false;
+        userExtensions = extSnap ? Object.keys(extSnap).filter(k => extSnap[k]) : [];
+        const extDataSnap = await dbGet('extensions');
+        if (extDataSnap && userExtensions.length > 0) {
+            for (const extId of userExtensions) {
+                const ext = extDataSnap[extId];
+                if (ext && !PAGES.find(p => p.id === extId)) {
+                    PAGES.splice(PAGES.length - 1, 0, { id: extId, icon: ext.icon, label: ext.label, extPage: true });
+                }
             }
         }
+    } catch(e) {
+        console.warn('Erro ao carregar extensões:', e);
+        extensionsEnabled = true;
     }
     if (extensionsEnabled && !PAGES.find(p => p.id === 'loja')) {
         PAGES.splice(PAGES.length - 1, 0, { id: 'loja', icon: '🛒', label: 'Loja' });

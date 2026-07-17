@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block topbar_title %}Corrigir Prova{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>📋 Corrigir: {{ prova.titulo }}</h2>
+    <p>{{ prova.disciplina }} · {{ respostas|length }} submissões</p>
+</div>
+
+{% if respostas|length > 0 %}
+{% for r in respostas %}
+<div class="card animate-in" style="border-left:3px solid {{ '#10B981' if r.corrigida else '#F59E0B' }};">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <div>
+            <h3 style="font-size:16px;">Aluno: {{ r.aluno_id[:12] }}...</h3>
+            <small style="color:var(--text-light);">Submetido: {{ r.data_submissao.strftime('%d/%m/%Y %H:%M') if r.data_submissao else '—' }}</small>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+            {% if r.corrigida %}
+            <span class="exam-status corrigida">Nota: {{ r.nota }}/20</span>
+            {% else %}
+            <span class="exam-status pendente">Por corrigir</span>
+            {% endif %}
+        </div>
+    </div>
+
+    {% set respostas_dict = r.respostas|from_json if r.respostas else {} %}
+    <div class="table-wrap" style="margin-bottom:16px;">
+        <table class="sheet-table">
+            <tr><th>Questão</th><th>Resposta do Aluno</th><th>Resposta Correta</th><th>Estado</th></tr>
+            {% for q in perguntas %}
+            <tr>
+                <td><strong>{{ loop.index }}.</strong> {{ q.texto[:80] }}{% if q.texto|length > 80 %}...{% endif %}</td>
+                <td>{{ respostas_dict.get('q_' ~ loop.index0, '—') }}</td>
+                <td style="color:var(--success);font-weight:600;">{{ q.correta or '—' }}</td>
+                <td>
+                    {% if respostas_dict.get('q_' ~ loop.index0, '')|lower == q.correta|lower %}
+                        <span style="color:var(--success);">✓ Correto</span>
+                    {% else %}
+                        <span style="color:var(--danger);">✕ Errado</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+
+    <form method="POST" action="/provas/nota/{{ r.id }}" style="display:flex;gap:10px;align-items:end;">
+        <div class="form-group" style="flex:1;"><label>Nota (0-20)</label>
+            <input type="number" name="nota" class="form-input" min="0" max="20" step="0.5" value="{{ r.nota if r.nota is not none else '' }}" required>
+        </div>
+        <button type="submit" class="btn btn-success">💾 Guardar Nota</button>
+    </form>
+</div>
+{% endfor %}
+{% else %}
+<div class="empty-state">
+    <div class="icon">📋</div>
+    <h3>Sem submissões ainda</h3>
+    <p>Os alunos ainda não submeteram esta prova.</p>
+</div>
+{% endif %}
+{% endblock %}

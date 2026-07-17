@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block topbar_title %}Perfil{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>⚙️ Perfil</h2>
+    <p>Gerencia as tuas informações pessoais</p>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+    <div class="card animate-in stagger-1">
+        <div class="card-title">👤 Informações Pessoais</div>
+        <form method="POST" action="/perfil">
+            <div class="form-group"><label>Nome</label><input type="text" name="nome" class="form-input" value="{{ current_user.nome }}" required></div>
+            <div class="form-group"><label>Email</label><input type="email" class="form-input" value="{{ current_user.email }}" disabled style="opacity:0.6;"></div>
+            <div class="form-group"><label>Turma</label><input type="text" name="turma" class="form-input" value="{{ current_user.turma or '' }}"></div>
+            <div class="form-group"><label>Função</label><input type="text" class="form-input" value="{{ current_user.role|capitalize }}" disabled style="opacity:0.6;"></div>
+            <button type="submit" class="btn btn-primary" style="width:100%;">💾 Guardar Alterações</button>
+        </form>
+    </div>
+
+    <div class="card animate-in stagger-2">
+        <div class="card-title">🔒 Segurança</div>
+        <form method="POST" action="/perfil">
+            <div class="form-group"><label>Nova Palavra-passe</label><input type="password" name="nova_pw" class="form-input" placeholder="Deixa vazio para não alterar"></div>
+            <div class="form-group"><label>Confirmar Nova Palavra-passe</label><input type="password" name="confirm_pw" class="form-input" placeholder="Repete a palavra-passe"></div>
+            <button type="submit" class="btn btn-outline" style="width:100%;">🔒 Alterar Palavra-passe</button>
+        </form>
+
+        <div style="margin-top:30px;padding-top:20px;border-top:1px solid var(--border);">
+            <div class="card-title">ℹ️ Conta</div>
+            <div style="font-size:13px;color:var(--text-light);line-height:1.8;">
+                <div><strong>ID:</strong> {{ current_user.id[:12] }}...</div>
+                <div><strong>Membro desde:</strong> {{ current_user.created_at.strftime('%d/%m/%Y') if current_user.created_at else '—' }}</div>
+            </div>
+        </div>
+
+        <div style="margin-top:20px;">
+            <a href="/logout" class="btn btn-danger" style="width:100%;text-align:center;">🚪 Terminar Sessão</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

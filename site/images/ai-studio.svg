@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg3" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#09090b"/>
+      <stop offset="100%" style="stop-color:#18181b"/>
+    </linearGradient>
+    <linearGradient id="ai-glow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6366f1"/>
+      <stop offset="100%" style="stop-color:#a78bfa"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg3)"/>
+  <!-- Top bar -->
+  <rect width="1200" height="48" fill="#12121a" opacity="0.8"/>
+  <circle cx="24" cy="24" r="6" fill="#ef4444"/>
+  <circle cx="44" cy="24" r="6" fill="#eab308"/>
+  <circle cx="64" cy="24" r="6" fill="#22c55e"/>
+  <!-- Sidebar -->
+  <rect x="0" y="48" width="220" height="582" fill="#12121a"/>
+  <text x="110" y="90" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" font-weight="600" fill="#a78bfa">🤖 Estúdio IA</text>
+  <rect x="16" y="108" width="188" height="32" rx="8" fill="rgba(99,102,241,0.15)"/>
+  <text x="48" y="128" font-family="Inter, sans-serif" font-size="11" font-weight="600" fill="#a78bfa">💬 Chat IA</text>
+  <rect x="16" y="144" width="188" height="32" rx="8" fill="transparent"/>
+  <text x="48" y="164" font-family="Inter, sans-serif" font-size="11" fill="#71717a">🖼️ Imagem</text>
+  <rect x="16" y="180" width="188" height="32" rx="8" fill="transparent"/>
+  <text x="48" y="200" font-family="Inter, sans-serif" font-size="11" fill="#71717a">✍️ Escrita</text>
+  <rect x="16" y="216" width="188" height="32" rx="8" fill="transparent"/>
+  <text x="48" y="236" font-family="Inter, sans-serif" font-size="11" fill="#71717a">📸 Análise Foto</text>
+  <rect x="16" y="252" width="188" height="32" rx="8" fill="transparent"/>
+  <text x="48" y="272" font-family="Inter, sans-serif" font-size="11" fill="#71717a">📄 Análise Ficheiro</text>
+  <rect x="16" y="288" width="188" height="32" rx="8" fill="transparent"/>
+  <text x="48" y="308" font-family="Inter, sans-serif" font-size="11" fill="#71717a">📊 Resumo</text>
+  <rect x="16" y="324" width="188" height="32" rx="8" fill="transparent"/>
+  <text x="48" y="344" font-family="Inter, sans-serif" font-size="11" fill="#71717a">🌐 Tradutor</text>
+  <rect x="16" y="360" width="188" height="32" rx="8" fill="transparent"/>
+  <text x="48" y="380" font-family="Inter, sans-serif" font-size="11" fill="#71717a">💻 Código IA</text>
+  <!-- Chat area -->
+  <rect x="240" y="68" width="940" height="540" rx="12" fill="#1e1e24"/>
+  <text x="260" y="100" font-family="Inter, sans-serif" font-size="16" font-weight="600" fill="#e2e8f0">💬 Chat com IA</text>
+  <!-- AI message -->
+  <rect x="270" y="120" width="600" height="80" rx="10" fill="#12121a"/>
+  <circle cx="290" cy="140" r="12" fill="url(#ai-glow)"/>
+  <text x="290" y="145" text-anchor="middle" font-family="Inter, sans-serif" font-size="10" font-weight="700" fill="#fff">AI</text>
+  <text x="314" y="144" font-family="Inter, sans-serif" font-size="12" fill="#a78bfa">Assistente IA</text>
+  <text x="314" y="168" font-family="Inter, sans-serif" font-size="12" fill="#a1a1aa">Olá! Sou o teu assistente educativo. Posso ajudar-te com</text>
+  <text x="314" y="184" font-family="Inter, sans-serif" font-size="12" fill="#a1a1aa">matérias, explicações, código e muito mais. O que precisas?</text>
+  <!-- User message -->
+  <rect x="500" y="215" width="650" height="50" rx="10" fill="#6366f1"/>
+  <text x="520" y="245" font-family="Inter, sans-serif" font-size="12" fill="#fff">Explica-me a equação de segundo grau com exemplos</text>
+  <!-- AI response -->
+  <rect x="270" y="280" width="870" height="120" rx="10" fill="#12121a"/>
+  <circle cx="290" cy="300" r="12" fill="url(#ai-glow)"/>
+  <text x="290" y="305" text-anchor="middle" font-family="Inter, sans-serif" font-size="10" font-weight="700" fill="#fff">AI</text>
+  <text x="314" y="304" font-family="Inter, sans-serif" font-size="12" fill="#a78bfa">Assistente IA</text>
+  <text x="314" y="328" font-family="Inter, sans-serif" font-size="12" fill="#a1a1aa">A equação de segundo grau tem a forma: ax² + bx + c = 0</text>
+  <text x="314" y="348" font-family="monospace" font-size="12" fill="#e2e8f0">x = (-b ± √(b²-4ac)) / 2a</text>
+  <text x="314" y="372" font-family="Inter, sans-serif" font-size="12" fill="#a1a1aa">Exemplo: x² - 5x + 6 = 0 → x = 2 ou x = 3</text>
+  <text x="314" y="392" font-family="Inter, sans-serif" font-size="11" fill="#64748b">Discriminante: Δ = b² - 4ac = 25 - 24 = 1 > 0 → duas raízes reais</text>
+  <!-- Second user message -->
+  <rect x="600" y="415" width="550" height="40" rx="10" fill="#6366f1"/>
+  <text x="620" y="440" font-family="Inter, sans-serif" font-size="12" fill="#fff">E se o discriminante for negativo?</text>
+  <!-- Another AI response -->
+  <rect x="270" y="470" width="700" height="70" rx="10" fill="#12121a"/>
+  <circle cx="290" cy="490" r="12" fill="url(#ai-glow)"/>
+  <text x="290" y="495" text-anchor="middle" font-family="Inter, sans-serif" font-size="10" font-weight="700" fill="#fff">AI</text>
+  <text x="314" y="494" font-family="Inter, sans-serif" font-size="12" fill="#a78bfa">Assistente IA</text>
+  <text x="314" y="518" font-family="Inter, sans-serif" font-size="12" fill="#a1a1aa">Se Δ &lt; 0, não existem raízes reais — apenas complexas.</text>
+  <text x="314" y="534" font-family="Inter, sans-serif" font-size="11" fill="#64748b">Ex: x² + 1 = 0 → Δ = -4 → x = ±i (raízes imaginárias)</text>
+  <!-- Input bar -->
+  <rect x="260" y="560" width="780" height="44" rx="10" fill="#09090b" stroke="#333" stroke-width="1"/>
+  <text x="280" y="586" font-family="Inter, sans-serif" font-size="12" fill="#52525b">Escreve a tua mensagem...</text>
+  <circle cx="1020" cy="582" r="16" fill="url(#ai-glow)"/>
+  <text x="1020" y="587" text-anchor="middle" font-family="Inter, sans-serif" font-size="14" fill="#fff">↑</text>
+</svg>

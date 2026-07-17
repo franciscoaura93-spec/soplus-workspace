@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>S&O+ Ultra Workspace</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <meta property="og:title" content="S&O+ Ultra Workspace">
+    <meta property="og:description" content="O Workspace Escolar definitivo — Notas, Chat, IA, IDE, Videochamadas e muito mais.">
+    <meta property="og:image" content="/images/og-banner.svg">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="S&O+ Ultra Workspace">
+    <meta name="twitter:description" content="O Workspace Escolar definitivo.">
+    <meta name="twitter:image" content="/images/og-banner.svg">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg: #0a0a0f; --surface: #12121a; --border: rgba(255,255,255,0.06);
+            --text: #e2e8f0; --text-light: #64748b; --primary: #6366f1;
+            --primary-glow: rgba(99,102,241,0.15); --accent: #8b5cf6;
+        }
+        body { font-family: 'Inter', -apple-system, sans-serif; background: var(--bg); color: var(--text); overflow-x: hidden; }
+
+        nav {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+            padding: 16px 40px; display: flex; justify-content: space-between; align-items: center;
+            background: rgba(10,10,15,0.8); backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+        }
+        .logo { font-size: 20px; font-weight: 800; background: linear-gradient(135deg, #6366f1, #8b5cf6, #a78bfa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .nav-links { display: flex; gap: 28px; }
+        .nav-links a { color: var(--text-light); text-decoration: none; font-size: 14px; font-weight: 500; transition: color 0.2s; }
+        .nav-links a:hover { color: var(--text); }
+
+        .hero {
+            min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            text-align: center; padding: 120px 20px 80px; position: relative;
+        }
+        .hero::before {
+            content: ''; position: absolute; top: 20%; left: 50%; transform: translateX(-50%);
+            width: 600px; height: 600px;
+            background: radial-gradient(circle, rgba(99,102,241,0.12) 0%, transparent 70%); pointer-events: none;
+        }
+        .badge { display: inline-block; padding: 6px 16px; background: var(--primary-glow); border: 1px solid rgba(99,102,241,0.3); border-radius: 100px; font-size: 12px; font-weight: 600; color: #a78bfa; margin-bottom: 28px; letter-spacing: 0.5px; }
+        .hero h1 { font-size: clamp(40px, 6vw, 72px); font-weight: 800; line-height: 1.1; margin-bottom: 20px; background: linear-gradient(135deg, #fff 0%, #a78bfa 50%, #6366f1 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; white-space: pre-line; }
+        .hero p { font-size: 18px; color: var(--text-light); max-width: 560px; line-height: 1.6; margin-bottom: 40px; }
+        .hero-buttons { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
+
+        .btn { padding: 14px 32px; border-radius: 12px; font-size: 15px; font-weight: 600; cursor: pointer; border: none; text-decoration: none; display: inline-flex; align-items: center; gap: 10px; transition: all 0.3s; font-family: inherit; }
+        .btn-primary { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; box-shadow: 0 4px 24px rgba(99,102,241,0.3); }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(99,102,241,0.4); }
+        .btn-secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+        .btn-secondary:hover { border-color: rgba(99,102,241,0.4); background: rgba(99,102,241,0.05); }
+
+        .stats { display: flex; gap: 48px; justify-content: center; margin-top: 60px; flex-wrap: wrap; }
+        .stat { text-align: center; }
+        .stat-value { font-size: 28px; font-weight: 700; color: #a78bfa; }
+        .stat-label { font-size: 13px; color: var(--text-light); margin-top: 4px; }
+
+        .section { padding: 100px 40px; max-width: 1100px; margin: 0 auto; }
+        .section-title { text-align: center; font-size: 36px; font-weight: 700; margin-bottom: 12px; }
+        .section-sub { text-align: center; color: var(--text-light); font-size: 16px; margin-bottom: 60px; }
+        .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .feature-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 32px; transition: border-color 0.3s, transform 0.3s; }
+        .feature-card:hover { border-color: rgba(99,102,241,0.3); transform: translateY(-4px); }
+        .feature-icon { width: 48px; height: 48px; border-radius: 12px; background: var(--primary-glow); display: flex; align-items: center; justify-content: center; font-size: 22px; margin-bottom: 16px; }
+        .feature-card h3 { font-size: 17px; font-weight: 600; margin-bottom: 8px; }
+        .feature-card p { font-size: 14px; color: var(--text-light); line-height: 1.6; }
+
+        .gallery-section { padding: 80px 40px; max-width: 1100px; margin: 0 auto; }
+        .slider-wrap { position: relative; border-radius: 16px; overflow: hidden; aspect-ratio: 16/7; background: var(--surface); border: 1px solid var(--border); }
+        .slider-wrap img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 0.6s ease; }
+        .slider-wrap img.active { opacity: 1; }
+        .slider-dots { position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; z-index: 5; }
+        .slider-dots .dot { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,0.3); cursor: pointer; transition: background 0.3s; }
+        .slider-dots .dot.active { background: #fff; }
+        .slider-arrows { position: absolute; top: 50%; width: 100%; display: flex; justify-content: space-between; transform: translateY(-50%); padding: 0 16px; z-index: 5; pointer-events: none; }
+        .slider-arrow { pointer-events: all; width: 40px; height: 40px; border-radius: 50%; background: rgba(0,0,0,0.5); border: none; color: #fff; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
+        .slider-arrow:hover { background: rgba(99,102,241,0.7); }
+
+        .cta { text-align: center; padding: 100px 40px; background: linear-gradient(180deg, transparent, rgba(99,102,241,0.05)); }
+        .cta h2 { font-size: 36px; font-weight: 700; margin-bottom: 16px; }
+        .cta p { color: var(--text-light); margin-bottom: 36px; font-size: 16px; }
+
+        footer { padding: 40px; text-align: center; border-top: 1px solid var(--border); color: var(--text-light); font-size: 13px; }
+        footer a { color: #a78bfa; text-decoration: none; }
+
+        .loading { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+        .spinner { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        @media (max-width: 600px) {
+            nav { padding: 12px 20px; }
+            .section, .gallery-section { padding: 60px 20px; }
+            .hero { padding: 100px 16px 60px; }
+            .stats { gap: 24px; }
+            .slider-arrow { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="loading" id="loading"><div class="spinner"></div></div>
+
+    <div id="page-content" style="display:none;">
+        <nav>
+            <div class="logo">S&O+ Ultra Workspace</div>
+            <div class="nav-links">
+                <a href="#features">Funcionalidades</a>
+                <a href="#extensions">Extensões</a>
+                <a href="#gallery">Galeria</a>
+                <a href="#download">Download</a>
+            </div>
+        </nav>
+
+        <section class="hero" id="hero-section"></section>
+        <section class="section" id="features-section"></section>
+        <section class="section" id="extensions-section"></section>
+        <section class="gallery-section" id="gallery-section"></section>
+        <section class="cta" id="download-section"></section>
+        <footer id="footer-section"></footer>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyCEZO2Haz9W2OFmecNJG2wk6nicjpQvTTI",
+        authDomain: "s123o-f3e37.firebaseapp.com",
+        databaseURL: "https://s123o-f3e37-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "s123o-f3e37",
+        storageBucket: "s123o-f3e37.firebasestorage.app",
+        messagingSenderId: "714841609825",
+        appId: "1:714841609825:web:9a229c4679b11fdf1cbc20"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    const DEFAULT_DATA = {
+        hero: { badge:"v1.0 — 2026", title:"O Workspace Escolar\ndefinitivo", subtitle:"Notas, provas, chat, videochamadas, IDE, editor de documentos, desenho, IA integrada e muito mais — tudo num só sítio.", ctaText:"Descarregar para Windows", ctaLink:"/downloads/S+O-Workspace-Instalador.exe", secondaryText:"Saber mais", secondaryLink:"#features" },
+        features: [
+            { icon:"📊", title:"Notas e Provas", desc:"Regista notas, cria provas com questões, corrige automaticamente com IA e acompanha o teu desempenho." },
+            { icon:"💬", title:"Chat e Videochamadas", desc:"Chat em tempo real com a turma e videochamadas integradas via Jitsi — sem contas extras." },
+            { icon:"🤖", title:"Estúdio IA", desc:"Chat com IA, geração de imagens, análise de documentos, escrita criativa, tradutor e muito mais." },
+            { icon:"💻", title:"IDE de Código", desc:"Escreve e executa código Python, JavaScript, HTML, CSS, Java e C++ diretamente no browser." },
+            { icon:"📝", title:"Office Integrado", desc:"Editor de texto (Word), folhas de cálculo (Excel) e apresentações (PowerPoint) built-in." },
+            { icon:"🎵", title:"Estudar com Música", desc:"Spotify integrado e recomendações de IA para encontrares a playlist perfeita para estudar." }
+        ],
+        gallery: [],
+        extensions: [
+            { icon:"🔍", name:"Pesquisa Web", desc:"Pesquisa na web diretamente pela app. Resultados organizados e rápidos.", price:"€2.99", category:"ia", status:"available" },
+            { icon:"🧮", name:"Calculadora Pro", desc:"Calculadora avançada com funções científicas e histórico.", price:"€1.99", category:"produtividade", status:"available" },
+            { icon:"📰", name:"Notícias Educação", desc:"Feed de notícias de educação e escolas em Portugal.", price:"€1.99", category:"comunicacao", status:"available" },
+            { icon:"📅", name:"Calendário Escolar", desc:"Calendário com feriados, períodos letivos e eventos.", price:"€2.99", category:"produtividade", status:"available" },
+            { icon:"🧰", name:"Caixa de Ferramentas", desc:"Timer, gerador de senhas, conversor de unidades e mais.", price:"€3.99", category:"produtividade", status:"coming" },
+            { icon:"📚", name:"Pacote de Exames", desc:"Centenas de exames resolvidos com correção IA.", price:"€4.99", category:"recursos", status:"coming" },
+            { icon:"🤖", name:"IA Professor", desc:"Correção automática e feedback personalizado por IA.", price:"€7.99", category:"ia", status:"coming" },
+            { icon:"📊", name:"Analytics Avançado", desc:"Gráficos detalhados de desempenho por disciplina.", price:"€2.99", category:"produtividade", status:"coming" }
+        ],
+        footer: { title:"Feito para escolas", subtitle:"Interface moderna, escura e sem distrações", copyright:"S&O+ Ultra Workspace © 2026", downloadText:"Pronto para começar?", downloadSub:"Descarrega o instalador e tem o workspace a funcionar em menos de 1 minuto.", downloadBtn:"Descarregar v1.0 (~2MB)", downloadLink:"/downloads/S+O-Workspace-Instalador.exe", downloadInfo:"Windows 10/11 • Python instalado automaticamente • Grátis para sempre" }
+    };
+
+    db.ref('site_content').on('value', snap => {
+        const data = snap.val() || DEFAULT_DATA;
+        renderPage(data);
+    }, () => {
+        renderPage(DEFAULT_DATA);
+    });
+
+    function renderPage(d) {
+        const h = d.hero || DEFAULT_DATA.hero;
+        const feats = d.features || DEFAULT_DATA.features;
+        const gal = d.gallery || [];
+        const f = d.footer || DEFAULT_DATA.footer;
+
+        document.getElementById('hero-section').innerHTML = `
+            <div class="badge">${h.badge || ''}</div>
+            <h1>${(h.title || '').replace(/\\n/g, '\n')}</h1>
+            <p>${h.subtitle || ''}</p>
+            <div class="hero-buttons">
+                <a href="${h.ctaLink || '#download'}" class="btn btn-primary">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    ${h.ctaText || 'Download'}
+                </a>
+                <a href="${h.secondaryLink || '#features'}" class="btn btn-secondary">${h.secondaryText || 'Saber mais'}</a>
+            </div>
+            <div class="stats">
+                <div class="stat"><div class="stat-value">15+</div><div class="stat-label">Funcionalidades</div></div>
+                <div class="stat"><div class="stat-value">Grátis</div><div class="stat-label">Para sempre</div></div>
+                <div class="stat"><div class="stat-value">1 min</div><div class="stat-label">Instalação</div></div>
+            </div>
+        `;
+
+        document.getElementById('features-section').innerHTML = `
+            <div class="section-title">Tudo o que precisas</div>
+            <div class="section-sub">Funcionalidades pensadas para professores e alunos</div>
+            <div class="features-grid">
+                ${feats.map(feat => `
+                    <div class="feature-card">
+                        <div class="feature-icon">${feat.icon}</div>
+                        <h3>${feat.title}</h3>
+                        <p>${feat.desc}</p>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+
+        const exts = d.extensions || [];
+        const extSection = document.getElementById('extensions-section');
+        if (exts.length > 0) {
+            const categories = { recursos:'📚 Recursos', ia:'🤖 IA', produtividade:'⚡ Produtividade', criatividade:'🎨 Criatividade', comunicacao:'💬 Comunicação' };
+            const statusBadge = { coming:'🔜 Em breve', available:'✅ Disponível', beta:'🧪 Beta' };
+            const statusColor = { coming:'rgba(234,179,8,0.15)', available:'rgba(34,197,94,0.15)', beta:'rgba(99,102,241,0.15)' };
+            extSection.innerHTML = `
+                <div class="section-title">Extensões</div>
+                <div class="section-sub">Novas funcionalidades que podes adicionar ao teu workspace</div>
+                <div class="features-grid">
+                    ${exts.map(ext => `
+                        <div class="feature-card" style="position:relative;">
+                            <div style="position:absolute;top:16px;right:16px;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;background:${statusColor[ext.status] || statusColor.coming};color:#e2e8f0;">${statusBadge[ext.status] || '🔜 Em breve'}</div>
+                            <div class="feature-icon">${ext.icon}</div>
+                            <h3>${ext.name}</h3>
+                            <p>${ext.desc}</p>
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:16px;">
+                                <span style="font-size:13px;color:var(--text-light);">${categories[ext.category] || '📦 Outro'}</span>
+                                <span style="font-size:18px;font-weight:700;color:#a78bfa;">${ext.price}</span>
+                            </div>
+                            ${ext.status === 'available' ? '<div style="margin-top:12px;padding:8px 14px;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:8px;font-size:12px;color:#22c55e;text-align:center;">Disponível na Loja da App</div>' : ''}
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        } else {
+            extSection.innerHTML = '';
+        }
+
+        if (gal.length > 0) {
+            document.getElementById('gallery-section').innerHTML = `
+                <div class="section-title">Galeria</div>
+                <div class="section-sub">Vê o workspace em ação</div>
+                <div class="slider-wrap" id="main-slider">
+                    ${gal.map((img, i) => `<img src="${img}" class="${i === 0 ? 'active' : ''}" alt="Slide ${i+1}">`).join('')}
+                    <div class="slider-arrows">
+                        <button class="slider-arrow" onclick="slideMove(-1)">‹</button>
+                        <button class="slider-arrow" onclick="slideMove(1)">›</button>
+                    </div>
+                    <div class="slider-dots">
+                        ${gal.map((_, i) => `<div class="dot ${i === 0 ? 'active' : ''}" onclick="slideGo(${i})"></div>`).join('')}
+                    </div>
+                </div>
+            `;
+            startMainSlider(gal.length);
+        } else {
+            document.getElementById('gallery-section').innerHTML = '';
+        }
+
+        document.getElementById('download-section').innerHTML = `
+            <h2>${f.downloadText || 'Pronto para começar?'}</h2>
+            <p>${f.downloadSub || ''}</p>
+            <div class="hero-buttons" style="justify-content:center;">
+                <a href="${f.downloadLink || '#'}" class="btn btn-primary">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    ${f.downloadBtn || 'Download'}
+                </a>
+            </div>
+            <p style="margin-top:20px;font-size:12px;color:var(--text-light);">${f.downloadInfo || ''}</p>
+        `;
+
+        document.getElementById('footer-section').innerHTML = `
+            <p>${f.copyright || ''}</p>
+            <p style="margin-top:8px;"><a href="#">Política de Privacidade</a></p>
+        `;
+
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('page-content').style.display = 'block';
+    }
+
+    let mainSliderIdx = 0, mainSliderTotal = 0, mainSliderTimer;
+    function startMainSlider(total) {
+        mainSliderTotal = total;
+        mainSliderIdx = 0;
+        clearInterval(mainSliderTimer);
+        mainSliderTimer = setInterval(() => slideMove(1), 4000);
+    }
+    function slideMove(dir) {
+        if (!mainSliderTotal) return;
+        mainSliderIdx = (mainSliderIdx + dir + mainSliderTotal) % mainSliderTotal;
+        updateSlider();
+    }
+    function slideGo(i) {
+        mainSliderIdx = i;
+        updateSlider();
+        clearInterval(mainSliderTimer);
+        mainSliderTimer = setInterval(() => slideMove(1), 4000);
+    }
+    function updateSlider() {
+        const imgs = document.querySelectorAll('#main-slider img');
+        const dots = document.querySelectorAll('#main-slider .dot');
+        imgs.forEach((img, i) => img.classList.toggle('active', i === mainSliderIdx));
+        dots.forEach((d, i) => d.classList.toggle('active', i === mainSliderIdx));
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+        a.addEventListener('click', e => { e.preventDefault(); document.querySelector(a.getAttribute('href'))?.scrollIntoView({ behavior: 'smooth' }); });
+    });
+    </script>
+</body>
+</html>

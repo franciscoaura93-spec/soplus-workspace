@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DevS&O — Painel Admin</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg: #09090b; --surface: #18181b; --card: #1e1e24;
+            --border: rgba(255,255,255,0.08); --text: #fafafa;
+            --text-dim: #71717a; --primary: #6366f1;
+            --accent: #a78bfa; --danger: #ef4444; --success: #22c55e;
+        }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+        .login-screen {
+            display: flex; align-items: center; justify-content: center;
+            min-height: 100vh; flex-direction: column; gap: 20px;
+        }
+        .login-box {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 16px; padding: 40px; width: 100%; max-width: 400px;
+        }
+        .login-box h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; }
+        .login-box p { font-size: 13px; color: var(--text-dim); margin-bottom: 24px; }
+        .login-box input {
+            width: 100%; padding: 12px 16px; background: var(--card);
+            border: 1px solid var(--border); border-radius: 10px;
+            color: var(--text); font-size: 14px; font-family: inherit;
+            outline: none; margin-bottom: 12px;
+        }
+        .login-box input:focus { border-color: var(--primary); }
+        .login-box button {
+            width: 100%; padding: 12px; background: var(--primary);
+            border: none; border-radius: 10px; color: #fff;
+            font-size: 14px; font-weight: 600; cursor: pointer;
+            font-family: inherit; transition: opacity 0.2s;
+        }
+        .login-box button:hover { opacity: 0.9; }
+        .login-err { color: var(--danger); font-size: 12px; margin-top: 8px; display: none; }
+
+        .admin-panel { display: none; }
+        .admin-header {
+            padding: 16px 24px; border-bottom: 1px solid var(--border);
+            display: flex; justify-content: space-between; align-items: center;
+            background: var(--surface); position: sticky; top: 0; z-index: 50;
+        }
+        .admin-header h2 { font-size: 16px; font-weight: 700; }
+        .admin-header-actions { display: flex; gap: 10px; align-items: center; }
+        .btn {
+            padding: 8px 18px; border-radius: 8px; font-size: 13px;
+            font-weight: 600; border: none; cursor: pointer;
+            font-family: inherit; transition: all 0.2s;
+            display: inline-flex; align-items: center; gap: 6px;
+        }
+        .btn-primary { background: var(--primary); color: #fff; }
+        .btn-success { background: var(--success); color: #fff; }
+        .btn-danger { background: var(--danger); color: #fff; }
+        .btn-outline { background: transparent; color: var(--text-dim); border: 1px solid var(--border); }
+        .btn:hover { opacity: 0.85; }
+        .btn-publish { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; font-size: 14px; padding: 10px 24px; }
+
+        .tabs {
+            display: flex; gap: 0; border-bottom: 1px solid var(--border);
+            background: var(--surface); padding: 0 24px; overflow-x: auto;
+        }
+        .tab {
+            padding: 14px 20px; font-size: 13px; font-weight: 500;
+            color: var(--text-dim); cursor: pointer; border-bottom: 2px solid transparent;
+            transition: all 0.2s; white-space: nowrap;
+        }
+        .tab:hover { color: var(--text); }
+        .tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+        .editor-area {
+            max-width: 900px; margin: 0 auto; padding: 32px 24px;
+        }
+        .section-block {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 14px; padding: 28px; margin-bottom: 20px;
+        }
+        .section-block h3 {
+            font-size: 15px; font-weight: 700; margin-bottom: 18px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .field { margin-bottom: 16px; }
+        .field label {
+            display: block; font-size: 12px; font-weight: 600;
+            color: var(--text-dim); margin-bottom: 6px; text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .field input, .field textarea, .field select {
+            width: 100%; padding: 10px 14px; background: var(--card);
+            border: 1px solid var(--border); border-radius: 8px;
+            color: var(--text); font-size: 14px; font-family: inherit;
+            outline: none; transition: border-color 0.2s;
+        }
+        .field input:focus, .field textarea:focus { border-color: var(--primary); }
+        .field textarea { resize: vertical; min-height: 80px; }
+
+        .features-list { display: flex; flex-direction: column; gap: 12px; }
+        .feature-item {
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: 10px; padding: 16px; position: relative;
+        }
+        .feature-item .remove-btn {
+            position: absolute; top: 10px; right: 10px;
+            background: var(--danger); color: #fff; border: none;
+            border-radius: 6px; width: 24px; height: 24px; cursor: pointer;
+            font-size: 12px; display: flex; align-items: center; justify-content: center;
+        }
+        .feature-item .field { margin-bottom: 10px; }
+        .feature-item .field:last-child { margin-bottom: 0; }
+
+        .image-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 12px; margin-top: 12px;
+        }
+        .image-slot {
+            aspect-ratio: 16/10; background: var(--card); border: 2px dashed var(--border);
+            border-radius: 10px; overflow: hidden; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: border-color 0.2s; position: relative;
+        }
+        .image-slot:hover { border-color: var(--primary); }
+        .image-slot img { width: 100%; height: 100%; object-fit: cover; }
+        .image-slot .remove-img {
+            position: absolute; top: 6px; right: 6px;
+            background: rgba(0,0,0,0.7); color: #fff; border: none;
+            border-radius: 50%; width: 22px; height: 22px; cursor: pointer;
+            font-size: 11px; display: flex; align-items: center; justify-content: center;
+        }
+        .image-slot .placeholder-text {
+            font-size: 12px; color: var(--text-dim); text-align: center;
+        }
+        .image-slot .add-icon { font-size: 28px; color: var(--text-dim); }
+
+        .slider-preview {
+            margin-top: 16px; border-radius: 12px; overflow: hidden;
+            background: var(--card); position: relative; aspect-ratio: 16/7;
+        }
+        .slider-preview img {
+            width: 100%; height: 100%; object-fit: cover;
+            position: absolute; top: 0; left: 0;
+            opacity: 0; transition: opacity 0.5s;
+        }
+        .slider-preview img.active { opacity: 1; }
+        .slider-dots {
+            position: absolute; bottom: 10px; left: 50%;
+            transform: translateX(-50%); display: flex; gap: 6px;
+        }
+        .slider-dots .dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: rgba(255,255,255,0.3); cursor: pointer;
+        }
+        .slider-dots .dot.active { background: #fff; }
+
+        .save-indicator {
+            position: fixed; bottom: 24px; right: 24px;
+            background: var(--surface); border: 1px solid var(--border);
+            padding: 10px 18px; border-radius: 10px;
+            font-size: 13px; display: none; align-items: center; gap: 8px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+        }
+        .save-indicator.show { display: flex; }
+
+        .empty-state { text-align: center; padding: 40px; color: var(--text-dim); }
+        .empty-state .icon { font-size: 40px; margin-bottom: 12px; }
+
+        input[type="file"] { display: none; }
+
+        @media (max-width: 700px) {
+            .editor-area { padding: 16px; }
+            .section-block { padding: 20px; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-screen" id="login-screen">
+    <div class="login-box">
+        <h1>🔧 DevS&O</h1>
+        <p>Painel de administração do site</p>
+        <input type="password" id="login-pass" placeholder="Palavra-passe de admin" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+        <button onclick="doLogin()">Entrar</button>
+        <div class="login-err" id="login-err"></div>
+    </div>
+</div>
+
+<!-- ADMIN -->
+<div class="admin-panel" id="admin-panel">
+    <div class="admin-header">
+        <h2>🔧 DevS&O — Editor do Site</h2>
+        <div class="admin-header-actions">
+            <button class="btn btn-outline" onclick="window.open('/index.html','_blank')">👁️ Ver Site</button>
+            <button class="btn btn-publish" onclick="publishAll()">🚀 Publicar Alterações</button>
+        </div>
+    </div>
+
+    <div class="tabs" id="admin-tabs">
+        <div class="tab active" data-tab="hero" onclick="switchTab('hero')">🏠 Hero</div>
+        <div class="tab" data-tab="features" onclick="switchTab('features')">✨ Funcionalidades</div>
+        <div class="tab" data-tab="extensions" onclick="switchTab('extensions')">🧩 Extensões</div>
+        <div class="tab" data-tab="gallery" onclick="switchTab('gallery')">🖼️ Galeria</div>
+        <div class="tab" data-tab="footer" onclick="switchTab('footer')">📝 Textos</div>
+        <div class="tab" data-tab="codigos" onclick="switchTab('codigos')">🔑 Códigos</div>
+        <div class="tab" data-tab="prompts" onclick="switchTab('prompts')">🖼️ Prompts Imagens</div>
+    </div>
+
+    <div class="editor-area" id="editor-content"></div>
+</div>
+
+<div class="save-indicator" id="save-indicator">✅ Guardado</div>
+
+<input type="file" id="image-upload" accept="image/*" multiple>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script>
+const firebaseConfig = {
+    apiKey: "AIzaSyCEZO2Haz9W2OFmecNJG2wk6nicjpQvTTI",
+    authDomain: "s123o-f3e37.firebaseapp.com",
+    databaseURL: "https://s123o-f3e37-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "s123o-f3e37",
+    storageBucket: "s123o-f3e37.firebasestorage.app",
+    messagingSenderId: "714841609825",
+    appId: "1:714841609825:web:9a229c4679b11fdf1cbc20"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+let siteData = {};
+let currentTab = 'hero';
+let uploadCallback = null;
+
+const DEFAULT_DATA = {
+    hero: {
+        badge: "v1.0 — 2026",
+        title: "O Workspace Escolar\ndefinitivo",
+        subtitle: "Notas, provas, chat, videochamadas, IDE, editor de documentos, desenho, IA integrada e muito mais — tudo num só sítio.",
+        ctaText: "Descarregar para Windows",
+        ctaLink: "#download",
+        secondaryText: "Saber mais",
+        secondaryLink: "#features"
+    },
+    features: [
+        { icon: "📊", title: "Notas e Provas", desc: "Regista notas, cria provas com questões, corrige automaticamente com IA e acompanha o teu desempenho." },
+        { icon: "💬", title: "Chat e Videochamadas", desc: "Chat em tempo real com a turma e videochamadas integradas via Jitsi — sem contas extras." },
+        { icon: "🤖", title: "Estúdio IA", desc: "Chat com IA, geração de imagens, análise de documentos, escrita criativa, tradutor e muito mais." },
+        { icon: "💻", title: "IDE de Código", desc: "Escreve e executa código Python, JavaScript, HTML, CSS, Java e C++ diretamente no browser." },
+        { icon: "📝", title: "Office Integrado", desc: "Editor de texto (Word), folhas de cálculo (Excel) e apresentações (PowerPoint) built-in." },
+        { icon: "🎵", title: "Estudar com Música", desc: "Spotify integrado e recomendações de IA para encontrares a playlist perfeita para estudar." }
+    ],
+    gallery: [],
+    footer: {
+        title: "Feito para escolas",
+        subtitle: "Interface moderna, escura e sem distrações",
+        copyright: "S&O+ Ultra Workspace © 2026 • Feito com ❤️ para escolas portuguesas",
+        downloadText: "Pronto para começar?",
+        downloadSub: "Descarrega o instalador e tem o workspace a funcionar em menos de 1 minuto.",
+        downloadBtn: "Descarregar v1.0 (~2MB)",
+        downloadLink: "https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v1.0/S%2BO-Workspace-Instalador.exe",
+        downloadInfo: "Windows 10/11 • Python instalado automaticamente • Grátis para sempre"
+    }
+};
+
+function doLogin() {
+    const pass = document.getElementById('login-pass').value;
+    const errEl = document.getElementById('login-err');
+    if (pass === 's&oadm') {
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('admin-panel').style.display = 'block';
+        loadAdmin();
+    } else {
+        errEl.textContent = 'Palavra-passe incorreta';
+        errEl.style.display = 'block';
+    }
+}
+
+async function loadAdmin() {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('admin-panel').style.display = 'block';
+    const snap = await db.ref('site_content').once('value');
+    siteData = snap.val() || JSON.parse(JSON.stringify(DEFAULT_DATA));
+    if (!siteData.features) siteData.features = DEFAULT_DATA.features;
+    if (!siteData.gallery) siteData.gallery = [];
+    if (!siteData.footer) siteData.footer = DEFAULT_DATA.footer;
+    renderTab();
+}
+
+function switchTab(tab) {
+    currentTab = tab;
+    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+    renderTab();
+}
+
+function renderTab() {
+    const area = document.getElementById('editor-content');
+        switch(currentTab) {
+        case 'hero': renderHeroEditor(area); break;
+        case 'features': renderFeaturesEditor(area); break;
+        case 'gallery': renderGalleryEditor(area); break;
+        case 'footer': renderFooterEditor(area); break;
+        case 'codigos': renderCodigos(area); break;
+        case 'prompts': renderPrompts(area); break;
+        case 'extensions': renderExtensions(area); break;
+    }
+}
+
+function renderHeroEditor(area) {
+    const h = siteData.hero || DEFAULT_DATA.hero;
+    area.innerHTML = `
+        <div class="section-block">
+            <h3>🏠 Secção Hero (topo do site)</h3>
+            <div class="field"><label>Badge</label><input value="${esc(h.badge)}" onchange="siteData.hero.badge=this.value"></div>
+            <div class="field"><label>Título (usa \n para quebra de linha)</label><textarea onchange="siteData.hero.title=this.value">${esc(h.title)}</textarea></div>
+            <div class="field"><label>Subtítulo</label><textarea onchange="siteData.hero.subtitle=this.value">${esc(h.subtitle)}</textarea></div>
+            <div class="field"><label>Texto Botão Principal</label><input value="${esc(h.ctaText)}" onchange="siteData.hero.ctaText=this.value"></div>
+            <div class="field"><label>Link Botão Principal</label><input value="${esc(h.ctaLink)}" onchange="siteData.hero.ctaLink=this.value" placeholder="#download ou https://..."></div>
+            <div class="field"><label>Texto Botão Secundário</label><input value="${esc(h.secondaryText)}" onchange="siteData.hero.secondaryText=this.value"></div>
+            <div class="field"><label>Link Botão Secundário</label><input value="${esc(h.secondaryLink)}" onchange="siteData.hero.secondaryLink=this.value"></div>
+        </div>
+    `;
+}
+
+function renderFeaturesEditor(area) {
+    const feats = siteData.features || [];
+    area.innerHTML = `
+        <div class="section-block">
+            <h3>✨ Funcionalidades <button class="btn btn-outline" onclick="addFeature()" style="margin-left:auto;">+ Adicionar</button></h3>
+            <div class="features-list" id="features-list">
+                ${feats.map((f, i) => `
+                    <div class="feature-item">
+                        <button class="remove-btn" onclick="removeFeature(${i})">✕</button>
+                        <div class="field"><label>Ícone (emoji)</label><input value="${esc(f.icon)}" onchange="siteData.features[${i}].icon=this.value" style="width:80px;"></div>
+                        <div class="field"><label>Título</label><input value="${esc(f.title)}" onchange="siteData.features[${i}].title=this.value"></div>
+                        <div class="field"><label>Descrição</label><textarea onchange="siteData.features[${i}].desc=this.value">${esc(f.desc)}</textarea></div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `;
+}
+
+function renderGalleryEditor(area) {
+    const gallery = siteData.gallery || [];
+    area.innerHTML = `
+        <div class="section-block">
+            <h3>🖼️ Galeria de Imagens (Slider) <button class="btn btn-outline" onclick="triggerImageUpload()" style="margin-left:auto;">+ Adicionar Imagem</button></h3>
+            <p style="font-size:13px;color:var(--text-dim);margin-bottom:16px;">As imagens aparecem num slider automático no site. Clica + para adicionar.</p>
+            <div class="image-grid" id="image-grid">
+                ${gallery.map((img, i) => `
+                    <div class="image-slot">
+                        <img src="${img}" alt="Slide ${i+1}">
+                        <button class="remove-img" onclick="removeImage(${i})">✕</button>
+                    </div>
+                `).join('')}
+                <div class="image-slot" onclick="triggerImageUpload()">
+                    <div class="placeholder-text"><div class="add-icon">+</div>Adicionar</div>
+                </div>
+            </div>
+            ${gallery.length > 0 ? `
+            <div class="slider-preview" id="slider-preview">
+                ${gallery.map((img, i) => `<img src="${img}" class="${i === 0 ? 'active' : ''}">`).join('')}
+                <div class="slider-dots">
+                    ${gallery.map((_, i) => `<div class="dot ${i === 0 ? 'active' : ''}" onclick="goToSlide(${i})"></div>`).join('')}
+                </div>
+            </div>` : ''}
+        </div>
+    `;
+    if (gallery.length > 0) startSlider();
+}
+
+function renderFooterEditor(area) {
+    const f = siteData.footer || DEFAULT_DATA.footer;
+    area.innerHTML = `
+        <div class="section-block">
+            <h3>📝 Secções de Texto</h3>
+            <div class="field"><label>Título "Feito para escolas"</label><input value="${esc(f.title)}" onchange="siteData.footer.title=this.value"></div>
+            <div class="field"><label>Subtítulo</label><input value="${esc(f.subtitle)}" onchange="siteData.footer.subtitle=this.value"></div>
+        </div>
+        <div class="section-block">
+            <h3>⬇️ Secção Download</h3>
+            <div class="field"><label>Título</label><input value="${esc(f.downloadText)}" onchange="siteData.footer.downloadText=this.value"></div>
+            <div class="field"><label>Subtítulo</label><input value="${esc(f.downloadSub)}" onchange="siteData.footer.downloadSub=this.value"></div>
+            <div class="field"><label>Texto do Botão</label><input value="${esc(f.downloadBtn)}" onchange="siteData.footer.downloadBtn=this.value"></div>
+            <div class="field"><label>Link de Download (URL do .exe)</label><input value="${esc(f.downloadLink)}" onchange="siteData.footer.downloadLink=this.value" placeholder="https://..."></div>
+            <div class="field"><label>Info abaixo do botão</label><input value="${esc(f.downloadInfo)}" onchange="siteData.footer.downloadInfo=this.value"></div>
+        </div>
+        <div class="section-block">
+            <h3>📎 Rodapé</h3>
+            <div class="field"><label>Copyright</label><input value="${esc(f.copyright)}" onchange="siteData.footer.copyright=this.value"></div>
+        </div>
+    `;
+}
+
+function addFeature() {
+    if (!siteData.features) siteData.features = [];
+    siteData.features.push({ icon: "⭐", title: "Nova Funcionalidade", desc: "Descrição aqui..." });
+    renderTab();
+}
+
+function removeFeature(i) {
+    if (confirm('Remover esta funcionalidade?')) {
+        siteData.features.splice(i, 1);
+        renderTab();
+    }
+}
+
+function triggerImageUpload() {
+    document.getElementById('image-upload').click();
+}
+
+document.getElementById('image-upload').addEventListener('change', function(e) {
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
+    if (!siteData.gallery) siteData.gallery = [];
+    let loaded = 0;
+    files.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = ev => {
+            siteData.gallery.push(ev.target.result);
+            loaded++;
+            if (loaded === files.length) {
+                renderTab();
+                showSaveIndicator('Imagens adicionadas');
+            }
+        };
+        reader.readAsDataURL(file);
+    });
+    e.target.value = '';
+});
+
+function removeImage(i) {
+    if (confirm('Remover esta imagem?')) {
+        siteData.gallery.splice(i, 1);
+        renderTab();
+    }
+}
+
+let sliderInterval;
+function startSlider() {
+    clearInterval(sliderInterval);
+    let idx = 0;
+    const preview = document.getElementById('slider-preview');
+    if (!preview) return;
+    const imgs = preview.querySelectorAll('img');
+    const dots = preview.querySelectorAll('.dot');
+    if (imgs.length === 0) return;
+    sliderInterval = setInterval(() => {
+        imgs[idx].classList.remove('active');
+        dots[idx].classList.remove('active');
+        idx = (idx + 1) % imgs.length;
+        imgs[idx].classList.add('active');
+        dots[idx].classList.add('active');
+    }, 3000);
+}
+
+function goToSlide(i) {
+    clearInterval(sliderInterval);
+    const preview = document.getElementById('slider-preview');
+    if (!preview) return;
+    const imgs = preview.querySelectorAll('img');
+    const dots = preview.querySelectorAll('.dot');
+    imgs.forEach(img => img.classList.remove('active'));
+    dots.forEach(d => d.classList.remove('active'));
+    imgs[i].classList.add('active');
+    dots[i].classList.add('active');
+    startSlider();
+}
+
+async function publishAll() {
+    const btn = event.target;
+    btn.textContent = '⏳ A publicar...';
+    btn.disabled = true;
+    try {
+        await db.ref('site_content').set(siteData);
+        showSaveIndicator('🚀 Publicado com sucesso!');
+        btn.textContent = '🚀 Publicar Alterações';
+        btn.disabled = false;
+    } catch(e) {
+        alert('Erro: ' + e.message);
+        btn.textContent = '🚀 Publicar Alterações';
+        btn.disabled = false;
+    }
+}
+
+function showSaveIndicator(msg) {
+    const el = document.getElementById('save-indicator');
+    el.innerHTML = msg || '✅ Guardado';
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+function esc(s) { return (s || '').replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
+
+function renderCodigos(area) {
+    area.innerHTML = `
+        <div class="section-block">
+            <h3>🔑 Códigos de Acesso</h3>
+            <p style="font-size:13px;color:var(--text-dim);margin-bottom:20px;">Estes códigos são usados no app principal para registo de professores e outros acessos.</p>
+
+            <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                    <div>
+                        <div style="font-size:12px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Código de Professor</div>
+                        <div id="cod-prof" style="font-size:24px;font-weight:700;font-family:monospace;color:var(--accent);letter-spacing:2px;">professors&o</div>
+                    </div>
+                    <button class="btn btn-outline" onclick="copyCode('cod-prof')">📋 Copiar</button>
+                </div>
+                <p style="font-size:12px;color:var(--text-dim);">Usado no app → Criar Conta → Professor → Código de Verificação</p>
+            </div>
+
+            <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:16px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                    <div>
+                        <div style="font-size:12px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">Password Admin</div>
+                        <div id="cod-admin" style="font-size:24px;font-weight:700;font-family:monospace;color:var(--accent);letter-spacing:2px;">s&oadm</div>
+                    </div>
+                    <button class="btn btn-outline" onclick="copyCode('cod-admin')">📋 Copiar</button>
+                </div>
+                <p style="font-size:12px;color:var(--text-dim);">Password para entrar neste painel admin</p>
+            </div>
+
+            <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;">
+                <div style="font-size:12px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">URL do App</div>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <code style="font-size:14px;color:var(--text);flex:1;background:var(--bg);padding:10px 14px;border-radius:8px;">http://localhost:5000</code>
+                    <button class="btn btn-outline" onclick="copyText('http://localhost:5000')">📋 Copiar</button>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function copyCode(id) {
+    const text = document.getElementById(id).textContent;
+    navigator.clipboard.writeText(text).then(() => showToast('Copiado!'));
+}
+
+function copyText(text) {
+    navigator.clipboard.writeText(text).then(() => showToast('Copiado!'));
+}
+
+function renderPrompts(area) {
+    const prompts = [
+        {
+            title: "Dashboard do App",
+            prompt: "A dark-themed modern school dashboard UI showing grades, schedule, and statistics cards. Purple and indigo gradient accents. Clean minimal design with glass morphism elements. Modern web app screenshot, 16:9 aspect ratio.",
+            icon: "🏠"
+        },
+        {
+            title: "Chat em Tempo Real",
+            prompt: "A dark-themed real-time chat interface for a school app. Messages between students with purple accent colors. Modern messaging UI with timestamps, avatars, and sleek dark background. 16:9 screenshot style.",
+            icon: "💬"
+        },
+        {
+            title: "IDE de Código",
+            prompt: "A dark-themed code editor IDE interface inside a web browser. Syntax highlighting with purple and green colors on dark background. File explorer sidebar, terminal at bottom. Modern developer tools UI, 16:9.",
+            icon: "💻"
+        },
+        {
+            title: "Estúdio IA",
+            prompt: "An AI studio interface with chat bubbles, image generation preview, and writing tools. Dark purple theme with glowing accents. Modern AI assistant UI in a school app context. 16:9 screenshot.",
+            icon: "🤖"
+        },
+        {
+            title: "Videochamada",
+            prompt: "A video call interface showing multiple participants in a grid layout. Dark theme with purple accents. Modern video conferencing UI similar to Jitsi/Zoom inside a school app. 16:9.",
+            icon: "📹"
+        },
+        {
+            title: "Notas e Provas",
+            prompt: "A school grades and exams management interface. Dark theme showing grade charts, progress bars, and exam cards. Purple and indigo color scheme. Modern educational dashboard, 16:9.",
+            icon: "📊"
+        },
+        {
+            title: "Editor de Documentos",
+            prompt: "A document editor interface similar to Google Docs, dark theme. Toolbar with formatting options, clean writing area. Purple accent colors. Modern word processor in a school web app. 16:9.",
+            icon: "📝"
+        },
+        {
+            title: "Área de Desenho",
+            prompt: "A digital drawing canvas with color palette, brush tools sidebar, and drawing area. Dark theme with colorful drawing in progress. Creative art tool in a school app. 16:9 screenshot.",
+            icon: "🎨"
+        },
+        {
+            title: "Horários Escolares",
+            prompt: "A weekly school timetable grid view. Dark theme with color-coded subject blocks in purple, blue, and green. Clean modern schedule UI. 16:9 screenshot.",
+            icon: "🗓️"
+        },
+        {
+            title: "Login Screen",
+            prompt: "A sleek dark login screen for a school platform. Purple gradient background, centered login card with email/password fields, Google sign-in button, and subtle glow effects. Modern auth UI, 16:9.",
+            icon: "🔐"
+        }
+    ];
+
+    area.innerHTML = `
+        <div class="section-block">
+            <h3>🖼️ Prompts para Imagens da Galeria</h3>
+            <p style="font-size:13px;color:var(--text-dim);margin-bottom:20px;">Usa estes prompts num gerador de imagens IA (ChatGPT, Midjourney, DALL-E, etc.) para criar screenshots do app para a galeria.</p>
+
+            <div style="display:flex;flex-direction:column;gap:12px;">
+                ${prompts.map((p, i) => `
+                    <div class="feature-item">
+                        <div style="display:flex;justify-content:space-between;align-items:start;gap:12px;">
+                            <div style="flex:1;">
+                                <div style="font-size:14px;font-weight:600;margin-bottom:6px;">${p.icon} ${p.title}</div>
+                                <div style="font-size:13px;color:var(--text-dim);line-height:1.5;font-family:monospace;background:var(--bg);padding:10px 14px;border-radius:8px;border:1px solid var(--border);">${p.prompt}</div>
+                            </div>
+                            <button class="btn btn-outline" onclick="copyPrompt(${i})" style="flex-shrink:0;margin-top:20px;">📋 Copiar</button>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+
+            <div style="margin-top:20px;padding:16px;background:var(--primary);background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.3);border-radius:10px;">
+                <div style="font-size:13px;font-weight:600;margin-bottom:6px;">💡 Como usar</div>
+                <ol style="font-size:12px;color:var(--text-dim);line-height:1.8;padding-left:16px;">
+                    <li>Clica "Copiar" no prompt que quiseres</li>
+                    <li>Cola num gerador de imagens IA (ChatGPT DALL-E, Midjourney, Leonardo AI, etc.)</li>
+                    <li>Descarrega a imagem gerada</li>
+                    <li>No painel → Galeria → Adicionar Imagem</li>
+                    <li>Clica "Publicar" e a imagem aparece no site</li>
+                </ol>
+            </div>
+        </div>
+    `;
+
+    window._prompts = prompts;
+}
+
+function copyPrompt(i) {
+    navigator.clipboard.writeText(window._prompts[i].prompt).then(() => showToast('Prompt copiado!'));
+}
+
+function renderExtensions(area) {
+    if (!siteData.extensions) siteData.extensions = [];
+    const exts = siteData.extensions;
+    const enabled = siteData.extensions_enabled !== false;
+    area.innerHTML = `
+        <div class="section-block">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+                <h3 style="margin:0;">🧩 Extensões</h3>
+                <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+                    <span style="font-size:13px;color:var(--text-dim);">Loja visível na app</span>
+                    <div onclick="toggleExtensions()" style="width:48px;height:26px;border-radius:13px;background:${enabled ? 'var(--primary)' : '#333'};position:relative;transition:background 0.3s;cursor:pointer;">
+                        <div style="width:20px;height:20px;border-radius:50%;background:#fff;position:absolute;top:3px;${enabled ? 'right:3px;' : 'left:3px;'}transition:all 0.3s;"></div>
+                    </div>
+                </label>
+            </div>
+            <p style="font-size:13px;color:var(--text-dim);margin-bottom:20px;">${enabled ? 'A aba 🛒 Loja está visível para todos os utilizadores.' : 'A aba 🛒 Loja está escondida. Ninguém vê a loja.'}</p>
+            <button class="btn btn-outline" onclick="addExtension()" style="margin-bottom:16px;">+ Adicionar Extensão</button>
+            <div class="features-list" id="extensions-list">
+                ${exts.map((e, i) => `
+                    <div class="feature-item">
+                        <button class="remove-btn" onclick="removeExtension(${i})">✕</button>
+                        <div style="display:grid;grid-template-columns:60px 1fr;gap:12px;align-items:start;">
+                            <div class="field"><label>Ícone</label><input value="${esc(e.icon)}" onchange="siteData.extensions[${i}].icon=this.value" style="width:50px;font-size:24px;text-align:center;"></div>
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                                <div class="field"><label>Nome</label><input value="${esc(e.name)}" onchange="siteData.extensions[${i}].name=this.value"></div>
+                                <div class="field"><label>Label (na sidebar)</label><input value="${esc(e.label)}" onchange="siteData.extensions[${i}].label=this.value" placeholder="Pesquisa Web"></div>
+                            </div>
+                        </div>
+                        <div class="field"><label>Descrição</label><input value="${esc(e.desc)}" onchange="siteData.extensions[${i}].desc=this.value"></div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;">
+                            <div class="field"><label>Preço</label><input value="${esc(e.price)}" onchange="siteData.extensions[${i}].price=this.value" placeholder="€4.99"></div>
+                            <div class="field"><label>Categoria</label>
+                                <select onchange="siteData.extensions[${i}].category=this.value">
+                                    <option value="recursos" ${e.category==='recursos'?'selected':''}>📚 Recursos</option>
+                                    <option value="ia" ${e.category==='ia'?'selected':''}>🤖 IA</option>
+                                    <option value="produtividade" ${e.category==='produtividade'?'selected':''}>⚡ Produtividade</option>
+                                    <option value="criatividade" ${e.category==='criatividade'?'selected':''}>🎨 Criatividade</option>
+                                    <option value="comunicacao" ${e.category==='comunicacao'?'selected':''}>💬 Comunicação</option>
+                                </select>
+                            </div>
+                            <div class="field"><label>Página</label>
+                                <select onchange="siteData.extensions[${i}].pageType=this.value">
+                                    <option value="pesquisa" ${e.pageType==='pesquisa'?'selected':''}>🔍 Pesquisa Web</option>
+                                    <option value="calculadora" ${e.pageType==='calculadora'?'selected':''}>🧮 Calculadora</option>
+                                    <option value="noticias" ${e.pageType==='noticias'?'selected':''}>📰 Notícias</option>
+                                    <option value="calendario" ${e.pageType==='calendario'?'selected':''}>📅 Calendário</option>
+                                    <option value="ferramentas" ${e.pageType==='ferramentas'?'selected':''}>🧰 Ferramentas</option>
+                                    <option value="generic" ${e.pageType==='generic'?'selected':''}>📄 Genérica</option>
+                                </select>
+                            </div>
+                            <div class="field"><label>Estado</label>
+                                <select onchange="siteData.extensions[${i}].status=this.value">
+                                    <option value="coming" ${e.status==='coming'?'selected':''}>🔜 Em breve</option>
+                                    <option value="available" ${e.status==='available'?'selected':''}>✅ Disponível</option>
+                                    <option value="beta" ${e.status==='beta'?'selected':''}>🧪 Beta</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                `).join('')}
+                ${exts.length === 0 ? '<div class="empty-state"><div class="icon">🧩</div><p>Sem extensões. Clica + para adicionar.</p></div>' : ''}
+            </div>
+        </div>
+    `;
+}
+
+function addExtension() {
+    if (!siteData.extensions) siteData.extensions = [];
+    siteData.extensions.push({ icon:'🧩', name:'Nova Extensão', label:'Nova Tab', desc:'Descrição...', price:'€0.00', category:'recursos', pageType:'generic', status:'coming' });
+    renderTab();
+}
+
+function toggleExtensions() {
+    siteData.extensions_enabled = siteData.extensions_enabled === false ? true : false;
+    renderTab();
+}
+
+function removeExtension(i) {
+    if (confirm('Remover esta extensão?')) {
+        siteData.extensions.splice(i, 1);
+        renderTab();
+    }
+}
+
+function showToast(msg) {
+    const el = document.getElementById('save-indicator');
+    el.innerHTML = '✅ ' + msg;
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 2000);
+}
+
+window.addEventListener('beforeunload', e => { e.preventDefault(); });
+</script>
+</body>
+</html>

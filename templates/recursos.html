@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block topbar_title %}Recursos Professor{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>🎓 Painel do Professor</h2>
+    <p>Envia provas, notas e recursos para os teus alunos</p>
+</div>
+
+<div class="stat-grid">
+    <div class="stat-card">
+        <div class="stat-icon">👨‍🎓</div>
+        <div class="stat-value">{{ alunos|length }}</div>
+        <div class="stat-label">Alunos</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon">📝</div>
+        <div class="stat-value"><a href="/provas" style="color:inherit;text-decoration:none;">Ver →</a></div>
+        <div class="stat-label">Provas</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon">📊</div>
+        <div class="stat-value"><a href="/notas" style="color:inherit;text-decoration:none;">Ver →</a></div>
+        <div class="stat-label">Notas</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon">📁</div>
+        <div class="stat-value"><a href="/ficheiros" style="color:inherit;text-decoration:none;">Ver →</a></div>
+        <div class="stat-label">Ficheiros</div>
+    </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+    <div class="card animate-in stagger-1">
+        <div class="card-title">📝 Criar Nova Prova</div>
+        <p style="color:var(--text-light);font-size:13px;margin-bottom:16px;">Cria uma prova com questões de escolha múltipla, verdadeiro/falso ou resposta aberta.</p>
+        <a href="/provas/criar" class="btn btn-primary" style="width:100%;text-align:center;">➕ Criar Prova</a>
+    </div>
+
+    <div class="card animate-in stagger-2">
+        <div class="card-title">📊 Enviar Nota Direta</div>
+        <form method="POST" action="/recursos/enviar-nota">
+            <div class="form-group"><label>Aluno</label>
+                <select name="aluno_id" class="form-input" required>
+                    {% for a in alunos %}<option value="{{ a.id }}">{{ a.nome }} ({{ a.turma }})</option>{% endfor %}
+                </select>
+            </div>
+            <div class="form-group"><label>Disciplina</label><input type="text" name="disciplina" class="form-input" placeholder="Ex: Matemática" required></div>
+            <div class="form-group"><label>Nota</label><input type="number" name="valor" class="form-input" min="0" max="20" step="0.5" required></div>
+            <div class="form-group"><label>Tipo</label>
+                <select name="tipo" class="form-input">
+                    <option>Teste</option><option>Mini-Teste</option><option>Projeto</option><option>Participação</option><option>Exame</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-success" style="width:100%;">📤 Enviar Nota ao Aluno</button>
+        </form>
+    </div>
+</div>
+
+<div class="card animate-in stagger-3" style="margin-top:20px;">
+    <div class="card-title">📋 Lista de Alunos</div>
+    <div class="table-wrap">
+        <table class="sheet-table">
+            <tr><th>Nome</th><th>Email</th><th>Turma</th></tr>
+            {% for a in alunos %}
+            <tr>
+                <td><strong>{{ a.nome }}</strong></td>
+                <td>{{ a.email }}</td>
+                <td>{{ a.turma or '—' }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+</div>
+{% endblock %}

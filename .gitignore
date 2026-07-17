@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+uploads/
+installer_output/
+node_modules/
+.env
+*.exe
+instance/
+.firebase/
+
+.firebase/
+instance/

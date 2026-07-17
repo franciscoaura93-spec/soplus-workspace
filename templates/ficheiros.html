@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block topbar_title %}Repositório Cloud{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>📁 Repositório de Ficheiros</h2>
+    <p>Armazena e partilha ficheiros com a turma</p>
+</div>
+
+<div class="card animate-in stagger-1">
+    <div class="card-title">☁️ Upload de Ficheiro</div>
+    <form method="POST" action="/ficheiros/upload" enctype="multipart/form-data" style="display:flex;gap:12px;align-items:end;">
+        <div class="form-group" style="flex:1;">
+            <label>Selecionar Ficheiro</label>
+            <input type="file" name="ficheiro" class="form-input" required style="padding:8px;">
+        </div>
+        <button type="submit" class="btn btn-primary">📤 Enviar</button>
+    </form>
+</div>
+
+<div class="card animate-in stagger-2">
+    <div class="card-title">📋 Ficheiros ({{ files|length }})</div>
+    {% if files|length > 0 %}
+        {% for f in files %}
+        <div class="file-item" style="animation-delay: {{ loop.index * 0.05 }}s;">
+            <div class="file-icon">
+                {% if f.nome.endswith('.pdf') %}📄
+                {% elif f.nome.endswith(('.jpg','.jpeg','.png','.gif')) %}🖼️
+                {% elif f.nome.endswith(('.py','.js','.html','.css')) %}💻
+                {% elif f.nome.endswith(('.docx','.doc')) %}📝
+                {% elif f.nome.endswith(('.xlsx','.xls','.csv')) %}📊
+                {% elif f.nome.endswith(('.zip','.rar')) %}📦
+                {% else %}📁{% endif %}
+            </div>
+            <div class="file-info">
+                <div class="file-name">{{ f.nome }}</div>
+                <div class="file-meta">{{ f.upload_time.strftime('%d/%m/%Y %H:%M') }}</div>
+            </div>
+            <a href="/ficheiros/download/{{ f.nome_ficheiro }}" class="btn btn-sm btn-primary">⬇ Baixar</a>
+            <a href="/ficheiros/delete/{{ f.id }}" class="btn btn-sm btn-danger" onclick="return confirm('Eliminar ficheiro?')">✕</a>
+        </div>
+        {% endfor %}
+    {% else %}
+    <div class="empty-state">
+        <div class="icon">📁</div>
+        <h3>Repositório vazio</h3>
+        <p>Envia o primeiro ficheiro!</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

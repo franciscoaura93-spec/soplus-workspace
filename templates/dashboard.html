@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block topbar_title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Olá, {{ current_user.nome }} 👋</h2>
+    <p>Bem-vindo ao S&O+ Ultra Workspace</p>
+</div>
+
+<div class="stat-grid">
+    <div class="stat-card">
+        <div class="stat-icon">📚</div>
+        <div class="stat-value">{{ notas|length if notas else 0 }}</div>
+        <div class="stat-label">Notas</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon">📝</div>
+        <div class="stat-value">{{ provas_pendentes|length if provas_pendentes else 0 }}</div>
+        <div class="stat-label">Provas Pendentes</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon">📊</div>
+        <div class="stat-value">
+            {% if notas %}
+                {% set ns = namespace(s=0) %}
+                {% for n in notas %}{% set ns.s = ns.s + n.valor %}{% endfor %}
+                {{ "%.1f"|format(ns.s / notas|length) }}
+            {% else %}-{% endif %}
+        </div>
+        <div class="stat-label">Média Geral</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon">🎓</div>
+        <div class="stat-value">{{ current_user.turma or '—' }}</div>
+        <div class="stat-label">Turma</div>
+    </div>
+</div>
+
+{% if current_user.role == 'professor' and provas_criadas %}
+<div class="card animate-in stagger-3">
+    <div class="card-title">📝 Provas Criadas</div>
+    <div class="table-wrap">
+        <table class="sheet-table">
+            <tr><th>Título</th><th>Disciplina</th><th>Turma</th><th>Ações</th></tr>
+            {% for p in provas_criadas %}
+            <tr>
+                <td>{{ p.titulo }}</td>
+                <td>{{ p.disciplina }}</td>
+                <td>{{ p.turma }}</td>
+                <td><a href="/provas/corrigir/{{ p.id }}" class="btn btn-sm btn-outline">Corrigir</a></td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+</div>
+{% endif %}
+
+{% if notas %}
+<div class="card animate-in stagger-4">
+    <div class="card-title">📊 Gráfico de Notas</div>
+    <canvas id="dashChart" style="max-height:280px;"></canvas>
+</div>
+{% endif %}
+
+{% if provas_pendentes %}
+<div class="card animate-in stagger-5">
+    <div class="card-title">⏰ Provas por Fazer</div>
+    {% for p in provas_pendentes %}
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);">
+        <div>
+            <strong>{{ p.titulo }}</strong>
+            <div style="font-size:12px;color:var(--text-light);">{{ p.disciplina }} · {{ p.duracao_min }}min</div>
+        </div>
+        <a href="/provas/responder/{{ p.id }}" class="btn btn-sm btn-primary">Responder</a>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if notas %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const labels = [{% for n in notas %}'{{ n.disciplina }} ({{ n.tipo }})'{{ ',' if not loop.last }}{% endfor %}];
+    const data = [{% for n in notas %}{{ n.valor }}{{ ',' if not loop.last }}{% endfor %}];
+    new Chart(document.getElementById('dashChart'), {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Notas',
+                data: data,
+                backgroundColor: data.map(v => v >= 10 ? 'rgba(16,185,129,0.7)' : 'rgba(239,68,68,0.7)'),
+                borderColor: data.map(v => v >= 10 ? '#10B981' : '#EF4444'),
+                borderWidth: 2, borderRadius: 8,
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, max: 20, grid: { color: '#E2E8F0' } },
+                x: { grid: { display: false } }
+            }
+        }
+    });
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block topbar_title %}Provas{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>📝 Provas Disponíveis</h2>
+    <p>Responde às provas atribuídas à tua turma</p>
+</div>
+
+{% if provas|length > 0 %}
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px;">
+    {% for p in provas %}
+    <div class="exam-card">
+        <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:12px;">
+            <div>
+                <h3 style="font-size:17px;margin-bottom:4px;">{{ p.titulo }}</h3>
+                <span style="color:var(--text-light);font-size:13px;">{{ p.disciplina }}</span>
+            </div>
+            {% if p.id in submetidas %}
+                <span class="exam-status submetida">✓ Submetida</span>
+            {% else %}
+                <span class="exam-status pendente">Pendente</span>
+            {% endif %}
+        </div>
+        <div style="display:flex;gap:16px;font-size:12px;color:var(--text-light);margin-bottom:14px;">
+            <span>⏱️ {{ p.duracao_min }}min</span>
+            <span>📅 {{ p.data_criacao.strftime('%d/%m/%Y') if p.data_criacao else '—' }}</span>
+            {% if p.data_limite %}<span>⏰ Até {{ p.data_limite.strftime('%d/%m %H:%M') }}</span>{% endif %}
+        </div>
+        {% if p.id not in submetidas %}
+        <a href="/provas/responder/{{ p.id }}" class="btn btn-primary">Responder Agora</a>
+        {% else %}
+        <span class="btn btn-sm" style="background:#D1FAE5;color:#065F46;cursor:default;">✓ Já respondida</span>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+    <div class="icon">📝</div>
+    <h3>Sem provas disponíveis</h3>
+    <p>Quando o professor criar provas para a tua turma, elas aparecerão aqui.</p>
+</div>
+{% endif %}
+{% endblock %}

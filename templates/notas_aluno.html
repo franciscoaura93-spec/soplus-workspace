@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block topbar_title %}As Minhas Notas{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>📊 As Minhas Notas</h2>
+    <p>Acompanha o teu desempenho</p>
+</div>
+
+<div class="stat-grid">
+    <div class="stat-card">
+        <div class="stat-icon">📝</div>
+        <div class="stat-value">{{ notas|length }}</div>
+        <div class="stat-label">Avaliações</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon">📊</div>
+        <div class="stat-value">
+            {% if notas %}
+                {% set ns = namespace(s=0) %}{% for n in notas %}{% set ns.s = ns.s + n.valor %}{% endfor %}
+                {{ "%.1f"|format(ns.s / notas|length) }}
+            {% else %}—{% endif %}
+        </div>
+        <div class="stat-label">Média</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon">🌟</div>
+        <div class="stat-value">
+            {% if notas %}{% set max_n = notas|map(attribute='valor')|max %}{{ max_n }}{% else %}—{% endif %}
+        </div>
+        <div class="stat-label">Melhor Nota</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon">📈</div>
+        <div class="stat-value">
+            {% if notas %}{% set min_n = notas|map(attribute='valor')|min %}{{ min_n }}{% else %}—{% endif %}
+        </div>
+        <div class="stat-label">Pior Nota</div>
+    </div>
+</div>
+
+{% if notas|length > 0 %}
+<div class="card animate-in stagger-2">
+    <div class="card-title">📋 Histórico de Notas</div>
+    <div class="table-wrap">
+        <table class="sheet-table">
+            <tr><th>Disciplina</th><th>Tipo</th><th>Nota</th><th>Estado</th></tr>
+            {% for n in notas %}
+            <tr>
+                <td><strong>{{ n.disciplina }}</strong></td>
+                <td>{{ n.tipo }}</td>
+                <td><strong style="font-size:16px;">{{ n.valor }}</strong>/20</td>
+                <td>
+                    {% if n.valor >= 16 %}⭐ Excelente
+                    {% elif n.valor >= 14 %}✅ Muito Bom
+                    {% elif n.valor >= 10 %}👍 Bom
+                    {% elif n.valor >= 8 %}⚠️ Suficiente
+                    {% else %}❌ Insuficiente{% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+</div>
+<div class="card animate-in stagger-3">
+    <div class="card-title">📈 Evolução</div>
+    <canvas id="gradesChart" style="max-height:250px;"></canvas>
+</div>
+{% else %}
+<div class="empty-state">
+    <div class="icon">📊</div>
+    <h3>Sem notas ainda</h3>
+    <p>As tuas notas aparecerão aqui quando o professor as publicar.</p>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+{% if notas %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    new Chart(document.getElementById('gradesChart'), {
+        type: 'line',
+        data: {
+            labels: [{% for n in notas %}'{{ n.disciplina }}'{% if not loop.last %},{% endif %}{% endfor %}],
+            datasets: [{
+                label: 'Nota',
+                data: [{% for n in notas %}{{ n.valor }}{% if not loop.last %},{% endif %}{% endfor %}],
+                borderColor: '#2563EB', backgroundColor: 'rgba(37,99,235,0.1)',
+                fill: true, tension: 0.4, pointBackgroundColor: '#2563EB',
+                pointBorderColor: '#fff', pointBorderWidth: 2, pointRadius: 6,
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, max: 20 }, x: { grid: { display: false } } }
+        }
+    });
+</script>
+{% endif %}
+{% endblock %}

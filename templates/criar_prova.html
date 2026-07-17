@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block topbar_title %}Criar Prova{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>📝 Criar Nova Prova</h2>
+    <p>Adiciona questões e envia para a turma</p>
+</div>
+
+<div class="card animate-in stagger-1">
+    <form method="POST" action="/provas/criar">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:20px;">
+            <div class="form-group"><label>Título da Prova</label><input type="text" name="titulo" class="form-input" placeholder="Ex: Teste de Matemática 1º Período" required></div>
+            <div class="form-group"><label>Disciplina</label><input type="text" name="disciplina" class="form-input" placeholder="Ex: Matemática" required></div>
+            <div class="form-group"><label>Turma</label><input type="text" name="turma" class="form-input" placeholder="Ex: 10A" required></div>
+            <div class="form-group"><label>Duração (min)</label><input type="number" name="duracao_min" class="form-input" value="60" min="5" max="300"></div>
+            <div class="form-group"><label>Data Limite</label><input type="datetime-local" name="data_limite" class="form-input"></div>
+        </div>
+
+        <div class="card-title" style="margin-top:20px;">📋 Questões</div>
+        <div id="questions-container">
+            <div class="question-editor" data-idx="0">
+                <div class="card" style="border-left:3px solid var(--primary);">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                        <strong>Questão 1</strong>
+                        <button type="button" class="btn btn-sm btn-danger" onclick="removeQuestion(this)">✕ Remover</button>
+                    </div>
+                    <div class="form-group"><label>Enunciado</label><textarea name="q_text" class="form-input" rows="2" placeholder="Escreve a pergunta..." required></textarea></div>
+                    <div class="form-group"><label>Tipo</label>
+                        <select name="q_tipo" class="form-input" onchange="toggleOptions(this)">
+                            <option value="multipla">Escolha Múltipla</option>
+                            <option value="aberta">Resposta Aberta</option>
+                            <option value="verdadeiro">Verdadeiro/Falso</option>
+                        </select>
+                    </div>
+                    <div class="q-options">
+                        <div class="form-group"><label>Opções (uma por linha)</label>
+                            <textarea name="q_opcoes" class="form-input" rows="4" placeholder="Opção A&#10;Opção B&#10;Opção C&#10;Opção D"></textarea>
+                        </div>
+                        <div class="form-group"><label>Resposta Correta</label><input type="text" name="q_correta" class="form-input" placeholder="Ex: Opção A"></div>
+                    </div>
+                    <input type="hidden" name="q_pontos" value="1">
+                </div>
+            </div>
+        </div>
+
+        <div style="display:flex;gap:10px;margin-top:16px;">
+            <button type="button" class="btn btn-outline" onclick="addQuestion()">➕ Adicionar Questão</button>
+        </div>
+
+        <div style="margin-top:24px;padding-top:20px;border-top:1px solid var(--border);">
+            <button type="submit" class="btn btn-primary" style="width:100%;">📤 Criar e Enviar Prova para a Turma</button>
+        </div>
+        <input type="hidden" name="perguntas" id="perguntas-json">
+    </form>
+</div>
+
+<script>
+function toggleOptions(sel) {
+    const opts = sel.closest('.question-editor').querySelector('.q-options');
+    opts.style.display = sel.value === 'aberta' ? 'none' : 'block';
+}
+
+function addQuestion() {
+    const container = document.getElementById('questions-container');
+    const idx = container.children.length;
+    const div = document.createElement('div');
+    div.className = 'question-editor';
+    div.dataset.idx = idx;
+    div.innerHTML = `
+        <div class="card" style="border-left:3px solid var(--ai);margin-top:12px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                <strong>Questão ${idx + 1}</strong>
+                <button type="button" class="btn btn-sm btn-danger" onclick="removeQuestion(this)">✕ Remover</button>
+            </div>
+            <div class="form-group"><label>Enunciado</label><textarea name="q_text" class="form-input" rows="2" placeholder="Escreve a pergunta..." required></textarea></div>
+            <div class="form-group"><label>Tipo</label>
+                <select name="q_tipo" class="form-input" onchange="toggleOptions(this)">
+                    <option value="multipla">Escolha Múltipla</option>
+                    <option value="aberta">Resposta Aberta</option>
+                    <option value="verdadeiro">Verdadeiro/Falso</option>
+                </select>
+            </div>
+            <div class="q-options">
+                <div class="form-group"><label>Opções (uma por linha)</label>
+                    <textarea name="q_opcoes" class="form-input" rows="4" placeholder="Opção A&#10;Opção B&#10;Opção C&#10;Opção D"></textarea>
+                </div>
+                <div class="form-group"><label>Resposta Correta</label><input type="text" name="q_correta" class="form-input" placeholder="Ex: Opção A"></div>
+            </div>
+            <input type="hidden" name="q_pontos" value="1">
+        </div>`;
+    container.appendChild(div);
+    div.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function removeQuestion(btn) {
+    const editors = document.querySelectorAll('.question-editor');
+    if (editors.length <= 1) return alert('Precisas de pelo menos uma questão!');
+    btn.closest('.question-editor').remove();
+    document.querySelectorAll('.question-editor').forEach((e, i) => {
+        e.querySelector('strong').textContent = `Questão ${i + 1}`;
+    });
+}
+
+document.querySelector('form').addEventListener('submit', function() {
+    const perguntas = [];
+    document.querySelectorAll('.question-editor').forEach(ed => {
+        perguntas.push({
+            texto: ed.querySelector('[name="q_text"]').value,
+            tipo: ed.querySelector('[name="q_tipo"]').value,
+            opcoes: (ed.querySelector('[name="q_opcoes"]')?.value || '').split('\n').filter(x => x.trim()),
+            correta: ed.querySelector('[name="q_correta"]')?.value || '',
+            pontos: 1
+        });
+    });
+    document.getElementById('perguntas-json').value = JSON.stringify(perguntas);
+});
+</script>
+{% endblock %}

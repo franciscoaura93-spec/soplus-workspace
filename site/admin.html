@@ -373,7 +373,10 @@ function renderDesignEditor(area) {
             <div style="display:flex;gap:16px;align-items:start;">
                 <div style="flex:1;">
                     <div class="field"><label>URL da imagem (HTTPS)</label><input id="favicon-url" value="${esc(d.favicon || '')}" placeholder="https://exemplo.com/logo.png" onchange="siteData.design.favicon=this.value"></div>
-                    <div style="margin-top:8px;"><button class="btn btn-outline" onclick="uploadDesignImage('favicon')">📤 Ou fazer upload</button></div>
+                    <div style="margin-top:8px;display:flex;gap:8px;">
+                        <button class="btn btn-outline" onclick="uploadDesignImage('favicon')">📤 Ou fazer upload</button>
+                        <button class="btn btn-outline" onclick="resetDesignField('favicon')" style="color:var(--text-dim);">🔄 Padrão</button>
+                    </div>
                 </div>
                 <div id="favicon-preview" style="width:64px;height:64px;border:1px solid var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;background:var(--surface);overflow:hidden;">
                     ${d.favicon ? `<img src="${d.favicon}" style="width:100%;height:100%;object-fit:contain;">` : '<span style="font-size:24px;">🌐</span>'}
@@ -386,7 +389,10 @@ function renderDesignEditor(area) {
             <div style="display:flex;gap:16px;align-items:start;">
                 <div style="flex:1;">
                     <div class="field"><label>URL da imagem (HTTPS)</label><input id="logo-url" value="${esc(d.logo || '')}" placeholder="https://exemplo.com/logo.png" onchange="siteData.design.logo=this.value"></div>
-                    <div style="margin-top:8px;"><button class="btn btn-outline" onclick="uploadDesignImage('logo')">📤 Ou fazer upload</button></div>
+                    <div style="margin-top:8px;display:flex;gap:8px;">
+                        <button class="btn btn-outline" onclick="uploadDesignImage('logo')">📤 Ou fazer upload</button>
+                        <button class="btn btn-outline" onclick="resetDesignField('logo')" style="color:var(--text-dim);">🔄 Padrão</button>
+                    </div>
                 </div>
                 <div id="logo-preview" style="width:120px;height:64px;border:1px solid var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;background:var(--surface);overflow:hidden;">
                     ${d.logo ? `<img src="${d.logo}" style="max-width:100%;max-height:100%;object-fit:contain;">` : '<span style="font-size:24px;">🏢</span>'}
@@ -400,14 +406,27 @@ function renderDesignEditor(area) {
                 <div style="display:flex;gap:12px;align-items:center;">
                     <input type="color" value="${d.accentColor || '#6366f1'}" onchange="siteData.design.accentColor=this.value;this.nextElementSibling.value=this.value" style="width:50px;height:40px;border:none;cursor:pointer;">
                     <input value="${esc(d.accentColor || '#6366f1')}" onchange="siteData.design.accentColor=this.value;this.previousElementSibling.value=this.value" style="flex:1;">
+                    <button class="btn btn-outline" onclick="resetDesignField('accentColor')" style="font-size:11px;white-space:nowrap;">🔄 Padrão</button>
                 </div>
             </div>
         </div>
         <div class="section-block">
             <h3>⬇️ Link Download Instalador</h3>
-            <div class="field"><label>URL do .exe</label><input value="${esc(d.downloadUrl || '')}" placeholder="https://github.com/.../releases/..." onchange="siteData.design.downloadUrl=this.value"></div>
+            <div class="field"><label>URL do .exe</label>
+                <div style="display:flex;gap:8px;">
+                    <input value="${esc(d.downloadUrl || '')}" placeholder="https://github.com/.../releases/..." onchange="siteData.design.downloadUrl=this.value" style="flex:1;">
+                    <button class="btn btn-outline" onclick="resetDesignField('downloadUrl')" style="font-size:11px;white-space:nowrap;">🔄 Padrão</button>
+                </div>
+            </div>
         </div>
     `;
+}
+
+function resetDesignField(field) {
+    siteData.design = siteData.design || {};
+    delete siteData.design[field];
+    renderTab();
+    publishAll();
 }
 
 function uploadDesignImage(field) {

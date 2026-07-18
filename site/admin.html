@@ -369,6 +369,11 @@ function renderHeroEditor(area) {
 function renderDesignEditor(area) {
     const d = siteData.design || {};
     area.innerHTML = `
+        <div class="section-block" style="border:2px solid var(--danger);text-align:center;">
+            <h3 style="justify-content:center;">⚠️ Repor Tudo ao Padrão</h3>
+            <p style="font-size:13px;color:var(--text-dim);margin-bottom:16px;">Remove TODA a personalização (favicon, logo, cor, download) e volta ao aspeto original.</p>
+            <button class="btn btn-danger" onclick="resetAllDesign()" style="font-size:16px;padding:14px 40px;">🔄 Tudo Padrão</button>
+        </div>
         <div class="section-block">
             <h3>🎨 Ícone do Site (Favicon)</h3>
             <p style="font-size:13px;color:var(--text-dim);margin-bottom:12px;">Aparece na aba do browser e no ícone do atalho.</p>
@@ -422,6 +427,15 @@ function renderDesignEditor(area) {
             </div>
         </div>
     `;
+}
+
+function resetAllDesign() {
+    if (!confirm('Tens a certeza? Vai remover TODA a personalização e voltar ao aspeto original.')) return;
+    siteData.design = {};
+    db.ref('site_content/design').remove();
+    renderTab();
+    publishAll();
+    showToast('Tudo reposto ao padrão!');
 }
 
 function resetDesignField(field) {

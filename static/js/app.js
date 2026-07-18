@@ -2175,17 +2175,27 @@ function renderPesquisa(area, ext) {
             </div>
         </div>
         <div id="search-results"></div>
+        <div style="margin-top:24px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                <h3 style="font-size:14px;font-weight:700;">📋 Histórico de Pesquisas</h3>
+                <button class="btn btn-outline" onclick="clearSearchHistory()" style="font-size:11px;padding:4px 12px;">Limpar</button>
+            </div>
+            <div id="search-history"></div>
+        </div>
     `;
-    const lastQuery = localStorage.getItem('lastSearch');
-    if (lastQuery) document.getElementById('search-input').value = lastQuery;
+    loadSearchHistory();
 }
 
 async function doWebSearch() {
     const q = document.getElementById('search-input').value.trim();
     if (!q) return;
-    localStorage.setItem('lastSearch', q);
     const results = document.getElementById('search-results');
     results.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-light);"><div class="spinner" style="margin:0 auto 12px;"></div>A pesquisar...</div>';
+
+    if (currentUser) {
+        dbPush(`search_history/${currentUser.uid}`, { query: q, timestamp: Date.now() });
+    }
+
     try {
         const r = await fetch('/api/ai/web-search', {
             method: 'POST',
@@ -2193,20 +2203,44 @@ async function doWebSearch() {
             body: JSON.stringify({ q })
         });
         const data = await r.json();
-        if (data.erro) { results.innerHTML = `<div class="empty-state"><p>${data.erro}</p></div>`; return; }
-        const blocks = data.resultados.split(/\n\n+/).filter(l => l.trim());
-        results.innerHTML = blocks.map(block => {
-            const lines = block.trim().split('\n');
-            const title = (lines[0] || '').replace(/\*\*/g, '').replace(/^[\d\.\-\*]+\s*/, '');
-            const desc = lines.slice(1).join(' ').replace(/🔗\s*/, '');
-            return `<div style="padding:18px 20px;background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:10px;cursor:pointer;transition:border-color 0.2s;" onmouseover="this.style.borderColor='rgba(37,99,235,0.3)'" onmouseout="this.style.borderColor='var(--border)'">
-                <div style="font-size:15px;font-weight:600;color:var(--accent);margin-bottom:6px;">${title}</div>
-                <div style="font-size:13px;color:var(--text-light);line-height:1.5;">${desc}</div>
-            </div>`;
-        }).join('');
+        if (data.erro) { results.innerHTML = `<div class="empty-state"><div class="icon">⚠️</div><p>${data.erro}</p></div>`; loadSearchHistory(); return; }
+        const items = data.resultados;
+        results.innerHTML = `
+            <div style="font-size:12px;color:var(--text-light);margin-bottom:12px;">${items.length} resultados para "<strong>${q}</strong>"</div>
+            ${items.map(r => `
+                <div style="padding:18px 20px;background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:10px;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.borderColor='rgba(37,99,235,0.3)'" onmouseout="this.style.borderColor='var(--border)'">
+                    <div style="font-size:15px;font-weight:600;color:var(--accent);margin-bottom:4px;">${r.title}</div>
+                    <div style="font-size:13px;color:var(--text-light);line-height:1.5;margin-bottom:6px;">${r.body}</div>
+                    <div style="font-size:11px;color:var(--primary);word-break:break-all;">${r.href}</div>
+                </div>
+            `).join('')}
+        `;
+        loadSearchHistory();
     } catch(e) {
         results.innerHTML = '<div class="empty-state"><div class="icon">⚠️</div><h3>Erro na pesquisa</h3><p>Verifica a ligação e tenta novamente.</p></div>';
     }
+}
+
+async function loadSearchHistory() {
+    const el = document.getElementById('search-history');
+    if (!el || !currentUser) return;
+    const snap = await dbGet(`search_history/${currentUser.uid}`);
+    if (!snap) { el.innerHTML = '<div style="font-size:13px;color:var(--text-light);padding:12px;">Sem histórico.</div>'; return; }
+    const entries = Object.entries(snap).sort((a,b) => (b[1].timestamp||0) - (a[1].timestamp||0)).slice(0, 20);
+    el.innerHTML = entries.map(([id, h]) => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:6px;cursor:pointer;transition:border-color 0.2s;" onmouseover="this.style.borderColor='rgba(37,99,235,0.3)'" onmouseout="this.style.borderColor='var(--border)'" onclick="document.getElementById('search-input').value='${h.query.replace(/'/g, "\\'")}';doWebSearch();">
+            <span style="font-size:13px;">🔍 ${h.query}</span>
+            <span style="font-size:11px;color:var(--text-light);">${new Date(h.timestamp).toLocaleDateString('pt-PT')}</span>
+        </div>
+    `).join('');
+}
+
+async function clearSearchHistory() {
+    if (!currentUser) return;
+    if (!confirm('Limpar todo o histórico de pesquisas?')) return;
+    await dbRemove(`search_history/${currentUser.uid}`);
+    loadSearchHistory();
+    showToast('Histórico limpo!');
 }
 
 function renderCalculadora(area, ext) {
@@ -2342,16 +2376,17 @@ async function loadNoticias() {
         const r = await fetch('/api/ai/news', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
         const data = await r.json();
         if (data.erro) { el.innerHTML = `<div class="empty-state"><p>${data.erro}</p></div>`; return; }
-        const blocks = data.noticias.split(/\n\n+/).filter(l => l.trim());
-        el.innerHTML = blocks.map(block => {
-            const lines = block.trim().split('\n');
-            const title = (lines[0] || '').replace(/\*\*/g, '').replace(/^[\d\.\-\*]+\s*/, '');
-            const desc = lines.slice(1).join(' ');
-            return `<div style="padding:18px 20px;background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:10px;">
-                <div style="font-size:15px;font-weight:600;margin-bottom:6px;">${title}</div>
-                <div style="font-size:13px;color:var(--text-light);line-height:1.5;">${desc}</div>
-            </div>`;
-        }).join('');
+        const items = data.noticias;
+        el.innerHTML = items.map(n => `
+            <div style="padding:18px 20px;background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:10px;">
+                <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px;">
+                    <div style="font-size:15px;font-weight:600;flex:1;">${n.title}</div>
+                    <span style="font-size:11px;color:var(--text-light);white-space:nowrap;margin-left:12px;">${n.source || ''}</span>
+                </div>
+                <div style="font-size:13px;color:var(--text-light);line-height:1.5;margin-bottom:6px;">${n.body}</div>
+                ${n.url ? `<a href="${n.url}" target="_blank" style="font-size:11px;color:var(--accent);text-decoration:none;">🔗 Ler mais</a>` : ''}
+            </div>
+        `).join('');
     } catch(e) { el.innerHTML = '<div class="empty-state"><div class="icon">⚠️</div><p>Erro ao carregar notícias</p></div>'; }
 }
 

@@ -1,10 +1,15 @@
 import os
 
-for line in open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env')):
-    line = line.strip()
-    if line and '=' in line and not line.startswith('#'):
-        k, v = line.split('=', 1)
-        os.environ.setdefault(k.strip(), v.strip())
+for _dir in [os.path.dirname(os.path.abspath(__file__)), os.getcwd()]:
+    _env_path = os.path.join(_dir, '.env')
+    if os.path.exists(_env_path):
+        with open(_env_path) as _f:
+            for line in _f:
+                line = line.strip()
+                if line and '=' in line and not line.startswith('#'):
+                    k, v = line.split('=', 1)
+                    os.environ.setdefault(k.strip(), v.strip())
+        break
 
 import json
 import ssl
@@ -15,6 +20,7 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from email.mime.text import MIMEText
+from duckduckgo_search import DDGS
 from flask import Flask, render_template, request, jsonify
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
@@ -124,32 +130,37 @@ def web_search():
     if not q:
         return jsonify({'erro': 'Sem pergunta'}), 400
     try:
-        data = gemini_post(GEMINI_MODEL, {
-            'contents': [{'parts': [{'text': f'Tu és um mecanismo de busca web. O utilizador pesquisa: "{q}". Dá exatamente 8 resultados úteis e reais. Formato para cada resultado:\n\n**[Título do resultado]**\nDescrição curta e relevante (1-2 frases)\n🔗 URL se conhecida (ex: https://exemplo.com/artigo)\n\nSepara cada resultado por uma linha em branco. Responde só os resultados, sem introdução.'}]}],
-            'generationConfig': {'temperature': 0.4, 'maxOutputTokens': 2048}
-        }, timeout=30)
-        if 'error' in data:
-            err = data['error']
-            if err.get('code') == 429:
-                return jsonify({'erro': '⚠️ Quota excedida. Tenta novamente mais tarde.'})
-            return jsonify({'erro': err.get('message', 'Erro na API')})
-        txt = data['candidates'][0]['content']['parts'][0]['text']
-        return jsonify({'resultados': txt})
+        results = []
+        with DDGS() as ddgs:
+            for r in ddgs.text(q, max_results=8):
+                results.append({
+                    'title': r.get('title', ''),
+                    'body': r.get('body', ''),
+                    'href': r.get('href', '')
+                })
+        if not results:
+            return jsonify({'erro': 'Sem resultados encontrados'})
+        return jsonify({'resultados': results})
     except Exception as e:
-        return jsonify({'erro': f'Erro de ligação: {str(e)}'}), 500
+        return jsonify({'erro': f'Erro na pesquisa: {str(e)}'}), 500
 
 
 @app.route('/api/ai/news', methods=['POST'])
 def ai_news():
     try:
-        data = gemini_post(GEMINI_MODEL, {
-            'contents': [{'parts': [{'text': 'Tu és um agregador de notícias educativas. Dá 6 notícias reais e recentes de educação em Portugal. Formato para cada notícia:\n\n**[Título da notícia]**\nResumo de 2-3 frases. 📰 Fonte\n\nSepara cada notícia por uma linha em branco.'}]}],
-            'generationConfig': {'temperature': 0.5, 'maxOutputTokens': 2048}
-        }, timeout=30)
-        if 'error' in data:
-            return jsonify({'erro': data['error'].get('message', 'Erro')})
-        txt = data['candidates'][0]['content']['parts'][0]['text']
-        return jsonify({'noticias': txt})
+        results = []
+        with DDGS() as ddgs:
+            for r in ddgs.news('educação Portugal escolas', max_results=6, region='pt-pt'):
+                results.append({
+                    'title': r.get('title', ''),
+                    'body': r.get('body', ''),
+                    'url': r.get('url', ''),
+                    'source': r.get('source', ''),
+                    'date': r.get('date', '')
+                })
+        if not results:
+            return jsonify({'erro': 'Sem notícias encontradas'})
+        return jsonify({'noticias': results})
     except Exception as e:
         return jsonify({'erro': str(e)}), 500
 

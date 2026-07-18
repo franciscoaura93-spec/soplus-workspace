@@ -22,6 +22,7 @@ Name: "desktopicon"; Description: "Criar atalho no Desktop"; GroupDescription: "
 
 [Files]
 Source: "app.py"; DestDir: "{app}"; Flags: ignoreversion
+Source: "moodle.py"; DestDir: "{app}"; Flags: ignoreversion
 Source: ".env"; DestDir: "{app}"; Flags: ignoreversion
 Source: "requirements.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "iniciar.bat"; DestDir: "{app}"; Flags: ignoreversion

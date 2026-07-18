@@ -244,6 +244,135 @@ def admin_ai_query():
     except Exception as e:
         return jsonify({'erro': str(e)}), 500
 
+# ─── MOODLE PROXY ─────────────────────────────────────────
+
+from moodle import MoodleBridge, _DEV_KEY
+
+def _get_moodle(auth=""):
+    return MoodleBridge(authorization=auth)
+
+@app.route('/api/moodle/test', methods=['POST'])
+def moodle_test():
+    auth = request.json.get('auth', '')
+    m = _get_moodle(auth)
+    return jsonify(m.status())
+
+@app.route('/api/moodle/courses', methods=['POST'])
+def moodle_courses():
+    auth = request.json.get('auth', '')
+    m = _get_moodle(auth)
+    try:
+        return jsonify(m.cursos(request.json.get('userid')))
+    except (PermissionError, ValueError) as e:
+        return jsonify({'erro': str(e)}), 403
+
+@app.route('/api/moodle/grades', methods=['POST'])
+def moodle_grades():
+    auth = request.json.get('auth', '')
+    m = _get_moodle(auth)
+    try:
+        return jsonify(m.notas(request.json.get('courseid'), request.json.get('userid')))
+    except (PermissionError, ValueError) as e:
+        return jsonify({'erro': str(e)}), 403
+
+@app.route('/api/moodle/grades/push', methods=['POST'])
+def moodle_push_grade():
+    auth = request.json.get('auth', '')
+    d = request.json
+    m = _get_moodle(auth)
+    try:
+        return jsonify(m.registar_nota(d['userid'], d['itemid'], d['grade'], d.get('feedback', '')))
+    except (PermissionError, ValueError) as e:
+        return jsonify({'erro': str(e)}), 403
+
+@app.route('/api/moodle/assignments', methods=['POST'])
+def moodle_assignments():
+    auth = request.json.get('auth', '')
+    m = _get_moodle(auth)
+    try:
+        return jsonify(m.testes(request.json.get('courseids')))
+    except (PermissionError, ValueError) as e:
+        return jsonify({'erro': str(e)}), 403
+
+@app.route('/api/moodle/assignments/submit', methods=['POST'])
+def moodle_submit_assign():
+    auth = request.json.get('auth', '')
+    d = request.json
+    m = _get_moodle(auth)
+    try:
+        return jsonify(m.submeter_teste(d['assignid'], d['userid'], d.get('plugindata')))
+    except (PermissionError, ValueError) as e:
+        return jsonify({'erro': str(e)}), 403
+
+@app.route('/api/moodle/assignments/create', methods=['POST'])
+def moodle_create_assign():
+    auth = request.json.get('auth', '')
+    d = request.json
+    m = _get_moodle(auth)
+    try:
+        return jsonify(m.criar_teste(d['courseid'], d['name'], d.get('description', ''), d.get('duedate', 0), d.get('grade', 100)))
+    except (PermissionError, ValueError) as e:
+        return jsonify({'erro': str(e)}), 403
+
+@app.route('/api/moodle/schedule', methods=['POST'])
+def moodle_schedule():
+    auth = request.json.get('auth', '')
+    d = request.json
+    m = _get_moodle(auth)
+    try:
+        return jsonify(m.horario(d['courseid']))
+    except (PermissionError, ValueError) as e:
+        return jsonify({'erro': str(e)}), 403
+
+@app.route('/api/moodle/events', methods=['POST'])
+def moodle_events():
+    auth = request.json.get('auth', '')
+    m = _get_moodle(auth)
+    try:
+        return jsonify(m.eventos(request.json.get('courseids')))
+    except (PermissionError, ValueError) as e:
+        return jsonify({'erro': str(e)}), 403
+
+@app.route('/api/moodle/users', methods=['POST'])
+def moodle_users():
+    auth = request.json.get('auth', '')
+    d = request.json
+    m = _get_moodle(auth)
+    try:
+        return jsonify(m.utilizadores(d['userids']))
+    except (PermissionError, ValueError) as e:
+        return jsonify({'erro': str(e)}), 403
+
+@app.route('/api/moodle/quiz/create', methods=['POST'])
+def moodle_create_quiz():
+    auth = request.json.get('auth', '')
+    d = request.json
+    m = _get_moodle(auth)
+    try:
+        return jsonify(m.criar_quiz(d['courseid'], d['name'], d.get('description', ''), d.get('timeopen', 0), d.get('timeclose', 0), d.get('grade', 100)))
+    except (PermissionError, ValueError) as e:
+        return jsonify({'erro': str(e)}), 403
+
+@app.route('/api/moodle/course/create', methods=['POST'])
+def moodle_create_course():
+    auth = request.json.get('auth', '')
+    d = request.json
+    m = _get_moodle(auth)
+    try:
+        return jsonify(m.criar_curso(d['fullname'], d['shortname'], d.get('categoryid', 0)))
+    except (PermissionError, ValueError) as e:
+        return jsonify({'erro': str(e)}), 403
+
+@app.route('/api/moodle/course/update', methods=['POST'])
+def moodle_update_course():
+    auth = request.json.get('auth', '')
+    d = request.json
+    m = _get_moodle(auth)
+    try:
+        return jsonify(m.atualizar_curso(d['courseid'], d.get('fullname'), d.get('shortname')))
+    except (PermissionError, ValueError) as e:
+        return jsonify({'erro': str(e)}), 403
+
 if __name__ == '__main__':
     import webbrowser, threading, time
     threading.Timer(1.5, lambda: webbrowser.open('http://localhost:5000')).start()

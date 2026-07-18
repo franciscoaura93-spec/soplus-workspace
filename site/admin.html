@@ -930,6 +930,14 @@ function listenPedidos() {
 const GEMINI_MODEL = 'gemini-3.1-flash-lite';
 let dbTreeData = {};
 let dbExpandedPaths = new Set();
+let adminAIKey = '';
+let adminAIModel = '';
+
+db.ref('admin_config').once('value').then(snap => {
+    const cfg = snap.val() || {};
+    adminAIKey = cfg.ai_key || '';
+    adminAIModel = cfg.ai_model || GEMINI_MODEL;
+});
 
 function renderDatabase(area) {
     area.innerHTML = `
@@ -972,15 +980,19 @@ async function askDBAI() {
         return;
     }
 
+    if (!adminAIKey) { resp.innerHTML = '<div style="color:var(--danger);">❌ Chave IA não configurada no Firebase (admin_config/ai_key)</div>'; return; }
     try {
-        const r = await fetch('/api/admin/ai-query', {
+        const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${adminAIModel}:generateContent?key=${adminAIKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt: `Tu és o assistente de administração de uma base de dados Firebase. Aqui está a estrutura e dados:\n\n${dbSummary}\n\n---\n\nPergunta do admin: "${q}"\n\nResponde de forma clara e organizada. Usa emojis e formatação. Se a pergunta for sobre dados específicos, mostra os valores. Se pedir uma ação, explica o que fazer.` })
+            body: JSON.stringify({
+                contents: [{ parts: [{ text: `Tu és o assistente de administração de uma base de dados Firebase. Aqui está a estrutura e dados:\n\n${dbSummary}\n\n---\n\nPergunta do admin: "${q}"\n\nResponde de forma clara e organizada. Usa emojis e formatação. Se a pergunta for sobre dados específicos, mostra os valores. Se pedir uma ação, explica o que fazer.` }] }],
+                generationConfig: { temperature: 0.3, maxOutputTokens: 2048 }
+            })
         });
         const data = await r.json();
-        if (data.erro) { resp.innerHTML = `<div style="color:var(--danger);">❌ ${data.erro}</div>`; return; }
-        const txt = data.resposta || 'Sem resposta.';
+        if (data.error) { resp.innerHTML = `<div style="color:var(--danger);">❌ ${data.error.message}</div>`; return; }
+        const txt = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Sem resposta.';
         resp.innerHTML = `<div style="white-space:pre-wrap;line-height:1.7;">${txt.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/`([^`]+)`/g, '<pre>$1</pre>')}</div>`;
     } catch(e) {
         resp.innerHTML = `<div style="color:var(--danger);">Erro de ligação: ${e.message}</div>`;

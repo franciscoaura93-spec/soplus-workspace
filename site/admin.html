@@ -208,6 +208,7 @@
         <div class="tab" data-tab="footer" onclick="switchTab('footer')">📝 Textos</div>
         <div class="tab" data-tab="codigos" onclick="switchTab('codigos')">🔑 Códigos</div>
         <div class="tab" data-tab="prompts" onclick="switchTab('prompts')">🖼️ Prompts Imagens</div>
+        <div class="tab" data-tab="pedidos" onclick="switchTab('pedidos')" style="position:relative;">🛒 Pedidos <span id="pedidos-badge" style="display:none;background:var(--danger);color:#fff;font-size:10px;padding:2px 6px;border-radius:10px;margin-left:4px;font-weight:700;"></span></div>
     </div>
 
     <div class="editor-area" id="editor-content"></div>
@@ -289,6 +290,8 @@ async function loadAdmin() {
     if (!siteData.gallery) siteData.gallery = [];
     if (!siteData.footer) siteData.footer = DEFAULT_DATA.footer;
     renderTab();
+    listenPedidos();
+    updatePedidosBadge();
 }
 
 function switchTab(tab) {
@@ -307,6 +310,7 @@ function renderTab() {
         case 'codigos': renderCodigos(area); break;
         case 'prompts': renderPrompts(area); break;
         case 'extensions': renderExtensions(area); break;
+        case 'pedidos': renderPedidos(area); break;
     }
 }
 
@@ -719,6 +723,110 @@ function removeExtension(i) {
     if (confirm('Remover esta extensão?')) {
         siteData.extensions.splice(i, 1);
         renderTab();
+    }
+}
+
+async function renderPedidos(area) {
+    area.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-dim);"><div class="spinner" style="margin:0 auto 12px;width:30px;height:30px;border:3px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin 0.8s linear infinite;"></div>A carregar pedidos...</div>';
+    const snap = await db.ref('extension_purchases').once('value');
+    const all = snap.val() || {};
+    const entries = Object.entries(all).sort((a,b) => (b[1].createdAt||0) - (a[1].createdAt||0));
+
+    if (entries.length === 0) {
+        area.innerHTML = '<div class="empty-state"><div class="icon">🛒</div><p>Sem pedidos de extensões.</p></div>';
+        return;
+    }
+
+    const statusColors = { pending:'#eab308', approved:'#22c55e', rejected:'#ef4444' };
+    const statusLabels = { pending:'⏳ Pendente', approved:'✅ Aceite', rejected:'❌ Rejeitado' };
+
+    area.innerHTML = `
+        <div class="section-block">
+            <h3>🛒 Pedidos de Extensões</h3>
+            <p style="font-size:13px;color:var(--text-dim);margin-bottom:20px;">Gere os pedidos de compra de extensões dos utilizadores.</p>
+            <div style="display:flex;flex-direction:column;gap:12px;">
+                ${entries.map(([id, p]) => `
+                    <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;${p.status !== 'pending' ? 'opacity:0.6;' : ''}">
+                        <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:12px;">
+                            <div>
+                                <div style="font-size:15px;font-weight:700;">${p.extIcon || '🧩'} ${p.extName}</div>
+                                <div style="font-size:12px;color:var(--text-dim);margin-top:4px;">${p.userName} • ${p.userEmail || 'Sem email'}</div>
+                                <div style="font-size:12px;color:var(--text-dim);margin-top:2px;">Preço: <strong style="color:var(--accent);">${p.extPrice}</strong></div>
+                            </div>
+                            <span style="padding:4px 12px;border-radius:6px;font-size:11px;font-weight:700;background:${statusColors[p.status]}20;color:${statusColors[p.status]};border:1px solid ${statusColors[p.status]}40;">${statusLabels[p.status]}</span>
+                        </div>
+                        <div style="font-size:11px;color:var(--text-dim);margin-bottom:12px;">${new Date(p.createdAt).toLocaleString('pt-PT')}</div>
+                        ${p.status === 'pending' ? `
+                            <div style="display:flex;gap:8px;">
+                                <button class="btn btn-success" onclick="approvePurchase('${id}')">✅ Aceitar</button>
+                                <button class="btn btn-danger" onclick="rejectPurchase('${id}')">❌ Rejeitar</button>
+                            </div>
+                        ` : ''}
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `;
+}
+
+async function approvePurchase(id) {
+    const snap = await db.ref('extension_purchases/' + id).once('value');
+    const p = snap.val();
+    if (!p) return;
+
+    await db.ref('extension_purchases/' + id).update({ status: 'approved', processedAt: Date.now() });
+    await db.ref('user_extensions/' + p.userId + '/' + p.extId).set(true);
+
+    fetch('/api/admin/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            to: p.userEmail,
+            subject: `Extensão "${p.extName}" ativada — S&O+ Ultra Workspace`,
+            body: `Olá ${p.userName},\n\nO teu pagamento da extensão "${p.extName}" (${p.extPrice}) foi confirmado com sucesso!\n\nA extensão já está ativa na tua conta. Abre o S&O+ Ultra Workspace e acede à aba "${p.extName}" para começar a usar.\n\nObrigado pela compra!\n\nEquipa S&O+ Ultra Workspace`
+        })
+    }).catch(() => {});
+
+    showToast('Pedido aprovado! Email enviado.');
+    renderPedidos(document.getElementById('editor-content'));
+    updatePedidosBadge();
+}
+
+async function rejectPurchase(id) {
+    const snap = await db.ref('extension_purchases/' + id).once('value');
+    const p = snap.val();
+    if (!p) return;
+
+    await db.ref('extension_purchases/' + id).update({ status: 'rejected', processedAt: Date.now() });
+
+    fetch('/api/admin/send-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            to: p.userEmail,
+            subject: `Pagamento não processado — S&O+ Ultra Workspace`,
+            body: `Olá ${p.userName},\n\nInfelizmente o pagamento da extensão "${p.extName}" (${p.extPrice}) não foi efetuado corretamente.\n\nPodes tentar novamente na aba Loja do S&O+ Ultra Workspace.\n\nSe precisares de ajuda, responde a este email.\n\nEquipa S&O+ Ultra Workspace`
+        })
+    }).catch(() => {});
+
+    showToast('Pedido rejeitado. Email enviado.');
+    renderPedidos(document.getElementById('editor-content'));
+    updatePedidosBadge();
+}
+
+function listenPedidos() {
+    db.ref('extension_purchases').on('value', () => updatePedidosBadge());
+}
+
+async function updatePedidosBadge() {
+    const snap = await db.ref('extension_purchases').orderByChild('status').equalTo('pending').once('value');
+    const count = snap.numChildren();
+    const badge = document.getElementById('pedidos-badge');
+    if (count > 0) {
+        badge.textContent = count;
+        badge.style.display = 'inline';
+    } else {
+        badge.style.display = 'none';
     }
 }
 

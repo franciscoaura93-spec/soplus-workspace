@@ -101,20 +101,39 @@ function buildNav() {
 function navigateTo(page) {
     currentPage = page;
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-    document.getElementById('nav-' + page)?.classList.add('active');
+    const activeEl = document.getElementById('nav-' + page);
+    if (activeEl) {
+        activeEl.classList.add('active');
+        activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
     const pageInfo = PAGES.find(p => p.id === page);
     document.getElementById('page-title').textContent = pageInfo?.label || page;
 
     const area = document.getElementById('content-area');
     area.scrollTop = 0;
     area.style.opacity = '0';
-    area.style.transform = 'translateY(10px)';
-    setTimeout(() => {
+    area.style.transform = 'translateY(8px)';
+    requestAnimationFrame(() => {
         renderPage(page);
-        area.style.transition = 'all 0.4s cubic-bezier(0.16,1,0.3,1)';
-        area.style.opacity = '1';
-        area.style.transform = 'translateY(0)';
-    }, 150);
+        requestAnimationFrame(() => {
+            area.style.transition = 'all 0.35s cubic-bezier(0.16,1,0.3,1)';
+            area.style.opacity = '1';
+            area.style.transform = 'translateY(0)';
+        });
+    });
+    closeSidebar();
+}
+
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const backdrop = document.getElementById('sidebarBackdrop');
+    sidebar.classList.toggle('open');
+    backdrop.classList.toggle('show');
+}
+
+function closeSidebar() {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sidebarBackdrop').classList.remove('show');
 }
 
 // ─── PAGE RENDERERS ───────────────────────────────────────
@@ -2056,6 +2075,9 @@ async function renderLoja(area) {
     allExtensions = snap || {};
     const extEntries = Object.entries(allExtensions);
 
+    const purchasesSnap = await dbGet('extension_purchases');
+    const myPurchases = purchasesSnap ? Object.values(purchasesSnap).filter(p => p.userId === currentUser?.uid) : [];
+
     const categories = { recursos:'📚 Recursos', ia:'🤖 IA', produtividade:'⚡ Produtividade', criatividade:'🎨 Criatividade', comunicacao:'💬 Comunicação' };
     const statusBadge = { coming:'🔜 Em breve', available:'✅ Disponível', beta:'🧪 Beta' };
     const statusColor = { coming:'rgba(234,179,8,0.8)', available:'rgba(34,197,94,0.8)', beta:'rgba(99,102,241,0.8)' };
@@ -2065,10 +2087,12 @@ async function renderLoja(area) {
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;" id="loja-grid">
             ${extEntries.map(([id, ext]) => {
                 const unlocked = isExtUnlocked(id);
+                const pending = myPurchases.find(p => p.extId === id && p.status === 'pending');
+                const rejected = myPurchases.find(p => p.extId === id && p.status === 'rejected');
                 const isAvailable = ext.status === 'available' || ext.status === 'beta';
                 return `
-                <div class="card" style="position:relative;${unlocked ? 'border-color:rgba(34,197,94,0.4);' : ''}">
-                    ${unlocked ? '<div style="position:absolute;top:12px;right:12px;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;background:rgba(34,197,94,0.15);color:#22c55e;">✅ Ativo</div>' : `<div style="position:absolute;top:12px;right:12px;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;background:${statusColor[ext.status] || statusColor.coming};color:#fff;">${statusBadge[ext.status] || '🔜 Em breve'}</div>`}
+                <div class="card" style="position:relative;${unlocked ? 'border-color:rgba(34,197,94,0.4);' : pending ? 'border-color:rgba(234,179,8,0.4);' : ''}">
+                    ${unlocked ? '<div style="position:absolute;top:12px;right:12px;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;background:rgba(34,197,94,0.15);color:#22c55e;">✅ Ativo</div>' : pending ? '<div style="position:absolute;top:12px;right:12px;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;background:rgba(234,179,8,0.15);color:#eab308;">⏳ A aguardar</div>' : `<div style="position:absolute;top:12px;right:12px;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;background:${statusColor[ext.status] || statusColor.coming};color:#fff;">${statusBadge[ext.status] || '🔜 Em breve'}</div>`}
                     <div style="font-size:36px;margin-bottom:12px;">${ext.icon}</div>
                     <h3 style="font-size:18px;font-weight:700;margin-bottom:6px;">${ext.name}</h3>
                     <p style="font-size:13px;color:var(--text-light);line-height:1.5;margin-bottom:16px;">${ext.desc}</p>
@@ -2077,7 +2101,12 @@ async function renderLoja(area) {
                         <span style="font-size:20px;font-weight:700;color:#a78bfa;">${ext.price}</span>
                     </div>
                     ${unlocked ? `
-                        <button class="btn btn-primary" style="width:100%;margin-top:16px;" onclick="navigateTo('${id}')">Abrir ${ext.label}</button>
+                        <button class="btn btn-primary" style="width:100%;margin-top:16px;" onclick="navigateTo('${id}')">Abrir</button>
+                    ` : pending ? `
+                        <button class="btn" style="width:100%;margin-top:16px;background:rgba(234,179,8,0.15);color:#eab308;cursor:default;" disabled>⏳ Pedido pendente</button>
+                    ` : rejected ? `
+                        <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:8px;padding:10px;margin-top:16px;margin-bottom:8px;font-size:12px;color:#ef4444;text-align:center;">Pagamento não efetuado. Tenta novamente.</div>
+                        <button class="btn btn-primary" style="width:100%;margin-top:8px;" onclick="buyExtension('${id}')">Tentar Novamente</button>
                     ` : isAvailable ? `
                         <button class="btn btn-primary" style="width:100%;margin-top:16px;" onclick="buyExtension('${id}')">Desbloquear</button>
                     ` : `
@@ -2093,15 +2122,28 @@ async function renderLoja(area) {
 
 async function buyExtension(extId) {
     if (!currentUser) return;
-    if (!confirm('Desbloquear esta extensão?')) return;
-    await dbSet(`user_extensions/${currentUser.uid}/${extId}`, true);
-    userExtensions.push(extId);
     const ext = allExtensions[extId];
-    if (ext && !PAGES.find(p => p.id === extId)) {
-        PAGES.splice(PAGES.length - 1, 0, { id: extId, icon: ext.icon, label: ext.label, extPage: true });
+    if (!ext) return;
+
+    const existingSnap = await dbGet(`extension_purchases`);
+    const existing = existingSnap ? Object.values(existingSnap).find(p => p.userId === currentUser.uid && p.extId === extId && p.status === 'pending') : null;
+    if (existing) {
+        showToast('Já tens um pedido pendente para esta extensão!', 'info');
+        return;
     }
-    buildNav();
-    showToast('Extensão desbloqueada!', 'success');
+
+    await dbPush('extension_purchases', {
+        userId: currentUser.uid,
+        userName: userProfile?.nome || 'Sem nome',
+        userEmail: userProfile?.email || currentUser.email || '',
+        extId: extId,
+        extName: ext.name,
+        extIcon: ext.icon,
+        extPrice: ext.price,
+        status: 'pending',
+        createdAt: Date.now()
+    });
+    showToast('Pedido enviado! Aguarda aprovação do admin.', 'info');
     navigateTo('loja');
 }
 
@@ -2134,60 +2176,97 @@ function renderPesquisa(area, ext) {
         </div>
         <div id="search-results"></div>
     `;
+    const lastQuery = localStorage.getItem('lastSearch');
+    if (lastQuery) document.getElementById('search-input').value = lastQuery;
 }
 
 async function doWebSearch() {
     const q = document.getElementById('search-input').value.trim();
     if (!q) return;
+    localStorage.setItem('lastSearch', q);
     const results = document.getElementById('search-results');
-    results.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-light);"><div class="spinner" style="margin:0 auto 12px;width:30px;height:30px;border:3px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin 0.8s linear infinite;"></div>A pesquisar...</div>';
+    results.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-light);"><div class="spinner" style="margin:0 auto 12px;"></div>A pesquisar...</div>';
     try {
-        const data = await callAI(`Pesquisa na web sobre: "${q}". Dá-me os 5 resultados mais relevantes com título, descrição curta e link se possível. Formato:\n1. **Título**\nDescrição...\nLink`);
-        results.innerHTML = data.split('\n').filter(l => l.trim()).map(l => {
-            l = l.replace(/\*\*/g, '');
-            return `<div style="padding:14px 18px;background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:8px;font-size:14px;line-height:1.5;">${l}</div>`;
+        const r = await fetch('/api/ai/web-search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ q })
+        });
+        const data = await r.json();
+        if (data.erro) { results.innerHTML = `<div class="empty-state"><p>${data.erro}</p></div>`; return; }
+        const blocks = data.resultados.split(/\n\n+/).filter(l => l.trim());
+        results.innerHTML = blocks.map(block => {
+            const lines = block.trim().split('\n');
+            const title = (lines[0] || '').replace(/\*\*/g, '').replace(/^[\d\.\-\*]+\s*/, '');
+            const desc = lines.slice(1).join(' ').replace(/🔗\s*/, '');
+            return `<div style="padding:18px 20px;background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:10px;cursor:pointer;transition:border-color 0.2s;" onmouseover="this.style.borderColor='rgba(37,99,235,0.3)'" onmouseout="this.style.borderColor='var(--border)'">
+                <div style="font-size:15px;font-weight:600;color:var(--accent);margin-bottom:6px;">${title}</div>
+                <div style="font-size:13px;color:var(--text-light);line-height:1.5;">${desc}</div>
+            </div>`;
         }).join('');
     } catch(e) {
-        results.innerHTML = '<div class="empty-state"><p>Erro na pesquisa</p></div>';
+        results.innerHTML = '<div class="empty-state"><div class="icon">⚠️</div><h3>Erro na pesquisa</h3><p>Verifica a ligação e tenta novamente.</p></div>';
     }
 }
 
 function renderCalculadora(area, ext) {
     area.innerHTML = `
         <div class="page-header"><h2>${ext.icon} ${ext.name}</h2><p>${ext.desc}</p></div>
-        <div class="card" style="max-width:400px;">
-            <input class="form-input" id="calc-display" readonly style="font-size:28px;text-align:right;margin-bottom:12px;height:60px;" value="0">
-            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
-                <button class="btn" style="background:var(--card);color:var(--accent);padding:16px;font-size:18px;font-weight:600;border-radius:10px;" onclick="calcClear()">C</button>
-                <button class="btn" style="background:var(--card);color:var(--accent);padding:16px;font-size:18px;font-weight:600;border-radius:10px;" onclick="calcNeg()">±</button>
-                <button class="btn" style="background:var(--card);color:var(--accent);padding:16px;font-size:18px;font-weight:600;border-radius:10px;" onclick="calcPerc()">%</button>
-                <button class="btn" style="background:var(--primary);color:#fff;padding:16px;font-size:18px;font-weight:600;border-radius:10px;" onclick="calcOp('÷')">÷</button>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;max-width:700px;">
+            <div class="card" style="max-width:400px;">
+                <input class="form-input" id="calc-display" readonly style="font-size:28px;text-align:right;margin-bottom:12px;height:60px;" value="0">
+                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
+                    <button class="btn" style="background:var(--card);color:var(--accent);padding:16px;font-size:18px;font-weight:600;border-radius:10px;" onclick="calcClear()">C</button>
+                    <button class="btn" style="background:var(--card);color:var(--accent);padding:16px;font-size:18px;font-weight:600;border-radius:10px;" onclick="calcNeg()">±</button>
+                    <button class="btn" style="background:var(--card);color:var(--accent);padding:16px;font-size:18px;font-weight:600;border-radius:10px;" onclick="calcPerc()">%</button>
+                    <button class="btn" style="background:var(--primary);color:#fff;padding:16px;font-size:18px;font-weight:600;border-radius:10px;" onclick="calcOp('÷')">÷</button>
 
-                <button class="btn" style="background:var(--surface);padding:16px;font-size:18px;font-weight:600;border-radius:10px;" onclick="calcNum('7')">7</button>
-                <button class="btn" style="background:var(--surface);padding:16px;font-size:18px;font-weight:600;border-radius:10px;" onclick="calcNum('8')">8</button>
-                <button class="btn" style="background:var(--surface);padding:16px;font-size:18px;font-weight:600;border-radius:10px;" onclick="calcNum('9')">9</button>
-                <button class="btn" style="background:var(--primary);color:#fff;padding:16px;font-size:18px;font-weight:600;border-radius:10px;" onclick="calcOp('×')">×</button>
+                    <button class="btn" style="background:var(--surface);padding:16px;font-size:18px;font-weight:600;border-radius:10px;" onclick="calcNum('7')">7</button>
+                    <button class="btn" style="background:var(--surface);padding:16px;font-size:18px;font-weight:600;border-radius:10px;" onclick="calcNum('8')">8</button>
+                    <button class="btn" style="background:var(--surface);padding:16px;font-size:18px;font-weight:600;border-radius:10px;" onclick="calcNum('9')">9</button>
+                    <button class="btn" style="background:var(--primary);color:#fff;padding:16px;font-size:18px;font-weight:600;border-radius:10px;" onclick="calcOp('×')">×</button>
 
-                <button class="btn" style="background:var(--surface);padding:16px;font-size:18px;font-weight:600;border-radius:10px;" onclick="calcNum('4')">4</button>
-                <button class="btn" style="background:var(--surface);padding:16px;font-size:18px;font-weight:600;border-radius:10px;" onclick="calcNum('5')">5</button>
-                <button class="btn" style="background:var(--surface);padding:16px;font-size:18px;font-weight:600;border-radius:10px;" onclick="calcNum('6')">6</button>
-                <button class="btn" style="background:var(--primary);color:#fff;padding:16px;font-size:18px;font-weight:600;border-radius:10px;" onclick="calcOp('−')">−</button>
+                    <button class="btn" style="background:var(--surface);padding:16px;font-size:18px;font-weight:600;border-radius:10px;" onclick="calcNum('4')">4</button>
+                    <button class="btn" style="background:var(--surface);padding:16px;font-size:18px;font-weight:600;border-radius:10px;" onclick="calcNum('5')">5</button>
+                    <button class="btn" style="background:var(--surface);padding:16px;font-size:18px;font-weight:600;border-radius:10px;" onclick="calcNum('6')">6</button>
+                    <button class="btn" style="background:var(--primary);color:#fff;padding:16px;font-size:18px;font-weight:600;border-radius:10px;" onclick="calcOp('−')">−</button>
 
-                <button class="btn" style="background:var(--surface);padding:16px;font-size:18px;font-weight:600;border-radius:10px;" onclick="calcNum('1')">1</button>
-                <button class="btn" style="background:var(--surface);padding:16px;font-size:18px;font-weight:600;border-radius:10px;" onclick="calcNum('2')">2</button>
-                <button class="btn" style="background:var(--surface);padding:16px;font-size:18px;font-weight:600;border-radius:10px;" onclick="calcNum('3')">3</button>
-                <button class="btn" style="background:var(--primary);color:#fff;padding:16px;font-size:18px;font-weight:600;border-radius:10px;" onclick="calcOp('+')">+</button>
+                    <button class="btn" style="background:var(--surface);padding:16px;font-size:18px;font-weight:600;border-radius:10px;" onclick="calcNum('1')">1</button>
+                    <button class="btn" style="background:var(--surface);padding:16px;font-size:18px;font-weight:600;border-radius:10px;" onclick="calcNum('2')">2</button>
+                    <button class="btn" style="background:var(--surface);padding:16px;font-size:18px;font-weight:600;border-radius:10px;" onclick="calcNum('3')">3</button>
+                    <button class="btn" style="background:var(--primary);color:#fff;padding:16px;font-size:18px;font-weight:600;border-radius:10px;" onclick="calcOp('+')">+</button>
 
-                <button class="btn" style="background:var(--surface);padding:16px;font-size:18px;font-weight:600;border-radius:10px;grid-column:span 2;" onclick="calcNum('0')">0</button>
-                <button class="btn" style="background:var(--surface);padding:16px;font-size:18px;font-weight:600;border-radius:10px;" onclick="calcDot()">.</button>
-                <button class="btn" style="background:var(--surface);padding:16px;font-size:18px;font-weight:600;border-radius:10px;" onclick="calcBack()">⌫</button>
+                    <button class="btn" style="background:var(--surface);padding:16px;font-size:18px;font-weight:600;border-radius:10px;grid-column:span 2;" onclick="calcNum('0')">0</button>
+                    <button class="btn" style="background:var(--surface);padding:16px;font-size:18px;font-weight:600;border-radius:10px;" onclick="calcDot()">.</button>
+                    <button class="btn" style="background:var(--surface);padding:16px;font-size:18px;font-weight:600;border-radius:10px;" onclick="calcBack()">⌫</button>
+                </div>
+                <button class="btn btn-primary" style="width:100%;margin-top:8px;padding:16px;font-size:18px;border-radius:10px;" onclick="calcEquals()">=</button>
             </div>
-            <button class="btn btn-primary" style="width:100%;margin-top:8px;padding:16px;font-size:18px;border-radius:10px;" onclick="calcEquals()">=</button>
+            <div class="card">
+                <h3 style="font-size:14px;font-weight:700;margin-bottom:14px;">🧮 Funções Científicas</h3>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                    <button class="btn btn-outline" onclick="calcFunc('sin')">sin</button>
+                    <button class="btn btn-outline" onclick="calcFunc('cos')">cos</button>
+                    <button class="btn btn-outline" onclick="calcFunc('tan')">tan</button>
+                    <button class="btn btn-outline" onclick="calcFunc('log')">log</button>
+                    <button class="btn btn-outline" onclick="calcFunc('ln')">ln</button>
+                    <button class="btn btn-outline" onclick="calcFunc('sqrt')">√</button>
+                    <button class="btn btn-outline" onclick="calcFunc('pow2')">x²</button>
+                    <button class="btn btn-outline" onclick="calcFunc('pow3')">x³</button>
+                    <button class="btn btn-outline" onclick="calcFunc('pi')">π</button>
+                    <button class="btn btn-outline" onclick="calcFunc('e')">e</button>
+                    <button class="btn btn-outline" onclick="calcFunc('fact')">n!</button>
+                    <button class="btn btn-outline" onclick="calcFunc('abs')">|x|</button>
+                </div>
+                <h3 style="font-size:14px;font-weight:700;margin:18px 0 14px;">📋 Histórico</h3>
+                <div id="calc-history" style="max-height:200px;overflow-y:auto;font-size:12px;color:var(--text-light);"></div>
+            </div>
         </div>
     `;
     window._calcExpr = '';
     window._calcDisplay = '0';
     window._calcNew = true;
+    window._calcHistory = [];
 }
 
 function calcNum(n) {
@@ -2212,17 +2291,47 @@ function calcPerc() { const d = document.getElementById('calc-display'); d.value
 function calcBack() { const d = document.getElementById('calc-display'); d.value = d.value.length > 1 ? d.value.slice(0,-1) : '0'; window._calcExpr = d.value; }
 function calcEquals() {
     try {
-        const result = Function('"use strict";return (' + window._calcExpr + ')')();
-        document.getElementById('calc-display').value = isFinite(result) ? parseFloat(result.toFixed(10)) : 'Erro';
-        window._calcExpr = isFinite(result) ? String(parseFloat(result.toFixed(10))) : '';
+        const expr = window._calcExpr;
+        const result = Function('"use strict";return (' + expr + ')')();
+        const val = isFinite(result) ? parseFloat(result.toFixed(10)) : 'Erro';
+        document.getElementById('calc-display').value = val;
+        if (val !== 'Erro') {
+            window._calcHistory.unshift(expr + ' = ' + val);
+            if (window._calcHistory.length > 20) window._calcHistory.pop();
+            const histEl = document.getElementById('calc-history');
+            if (histEl) histEl.innerHTML = window._calcHistory.map(h => `<div style="padding:4px 0;border-bottom:1px solid var(--border);">${h}</div>`).join('');
+        }
+        window._calcExpr = val !== 'Erro' ? String(val) : '';
         window._calcNew = true;
     } catch(e) { document.getElementById('calc-display').value = 'Erro'; window._calcExpr = ''; window._calcNew = true; }
+}
+function calcFunc(fn) {
+    const d = document.getElementById('calc-display');
+    const v = parseFloat(d.value);
+    let result;
+    switch(fn) {
+        case 'sin': result = Math.sin(v * Math.PI / 180); break;
+        case 'cos': result = Math.cos(v * Math.PI / 180); break;
+        case 'tan': result = Math.tan(v * Math.PI / 180); break;
+        case 'log': result = Math.log10(v); break;
+        case 'ln': result = Math.log(v); break;
+        case 'sqrt': result = Math.sqrt(v); break;
+        case 'pow2': result = v * v; break;
+        case 'pow3': result = v * v * v; break;
+        case 'pi': result = Math.PI; break;
+        case 'e': result = Math.E; break;
+        case 'fact': result = v <= 0 ? 1 : Array.from({length:Math.floor(v)},(_,i)=>i+1).reduce((a,b)=>a*b,1); break;
+        case 'abs': result = Math.abs(v); break;
+    }
+    d.value = isFinite(result) ? parseFloat(result.toFixed(10)) : 'Erro';
+    window._calcExpr = d.value;
+    window._calcNew = true;
 }
 
 function renderNoticias(area, ext) {
     area.innerHTML = `
         <div class="page-header"><h2>${ext.icon} ${ext.name}</h2><p>${ext.desc}</p></div>
-        <div id="noticias-content"><div style="text-align:center;padding:40px;color:var(--text-light);"><div class="spinner" style="margin:0 auto 12px;width:30px;height:30px;border:3px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin 0.8s linear infinite;"></div>A carregar notícias...</div></div>
+        <div id="noticias-content"><div style="text-align:center;padding:40px;color:var(--text-light);"><div class="spinner" style="margin:0 auto 12px;"></div>A carregar notícias...</div></div>
     `;
     loadNoticias();
 }
@@ -2230,30 +2339,44 @@ function renderNoticias(area, ext) {
 async function loadNoticias() {
     const el = document.getElementById('noticias-content');
     try {
-        const data = await callAI('Dá-me 5 notícias recentes de educação e escolas em Portugal. Formato: 1. **Título** — Descrição curta (Fonte)');
-        el.innerHTML = data.split('\n').filter(l => l.trim()).map(l => {
-            l = l.replace(/\*\*/g, '');
-            return `<div style="padding:16px 20px;background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:10px;font-size:14px;line-height:1.6;">${l}</div>`;
+        const r = await fetch('/api/ai/news', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+        const data = await r.json();
+        if (data.erro) { el.innerHTML = `<div class="empty-state"><p>${data.erro}</p></div>`; return; }
+        const blocks = data.noticias.split(/\n\n+/).filter(l => l.trim());
+        el.innerHTML = blocks.map(block => {
+            const lines = block.trim().split('\n');
+            const title = (lines[0] || '').replace(/\*\*/g, '').replace(/^[\d\.\-\*]+\s*/, '');
+            const desc = lines.slice(1).join(' ');
+            return `<div style="padding:18px 20px;background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:10px;">
+                <div style="font-size:15px;font-weight:600;margin-bottom:6px;">${title}</div>
+                <div style="font-size:13px;color:var(--text-light);line-height:1.5;">${desc}</div>
+            </div>`;
         }).join('');
-    } catch(e) { el.innerHTML = '<div class="empty-state"><p>Erro ao carregar notícias</p></div>'; }
+    } catch(e) { el.innerHTML = '<div class="empty-state"><div class="icon">⚠️</div><p>Erro ao carregar notícias</p></div>'; }
 }
 
 function renderCalendario(area, ext) {
-    const now = new Date();
-    const month = now.toLocaleString('pt-PT', {month:'long', year:'numeric'});
-    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).getDay();
-    const daysInMonth = new Date(now.getFullYear(), now.getMonth()+1, 0).getDate();
-    const today = now.getDate();
+    if (!window._calDate) window._calDate = new Date();
+    const dt = window._calDate;
+    const month = dt.toLocaleString('pt-PT', {month:'long', year:'numeric'});
+    const firstDay = new Date(dt.getFullYear(), dt.getMonth(), 1).getDay();
+    const daysInMonth = new Date(dt.getFullYear(), dt.getMonth()+1, 0).getDate();
+    const today = new Date();
+    const isCurrentMonth = dt.getMonth() === today.getMonth() && dt.getFullYear() === today.getFullYear();
     let days = '';
     for (let i = 0; i < (firstDay === 0 ? 6 : firstDay-1); i++) days += '<div style="aspect-ratio:1;"></div>';
     for (let d = 1; d <= daysInMonth; d++) {
-        const isToday = d === today;
-        days += `<div style="aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:10px;font-size:14px;cursor:pointer;${isToday ? 'background:var(--primary);color:#fff;font-weight:700;' : 'background:var(--surface);border:1px solid var(--border);'}">${d}</div>`;
+        const isToday = isCurrentMonth && d === today.getDate();
+        days += `<div style="aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:10px;font-size:14px;cursor:pointer;transition:all 0.2s;${isToday ? 'background:var(--primary);color:#fff;font-weight:700;box-shadow:0 0 12px rgba(37,99,235,0.3);' : 'background:var(--surface);border:1px solid var(--border);'}" onmouseover="if(!this.style.background.includes('rgb(37'))this.style.borderColor='rgba(37,99,235,0.4)'" onmouseout="if(!this.style.background.includes('rgb(37'))this.style.borderColor='var(--border)'">${d}</div>`;
     }
     area.innerHTML = `
         <div class="page-header"><h2>${ext.icon} ${ext.name}</h2><p>${ext.desc}</p></div>
         <div class="card">
-            <div style="text-align:center;font-size:20px;font-weight:700;margin-bottom:20px;text-transform:capitalize;">${month}</div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+                <button class="btn btn-outline" onclick="calNav(-1)" style="font-size:18px;padding:8px 14px;">◀</button>
+                <div style="text-align:center;font-size:20px;font-weight:700;text-transform:capitalize;">${month}</div>
+                <button class="btn btn-outline" onclick="calNav(1)" style="font-size:18px;padding:8px 14px;">▶</button>
+            </div>
             <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;text-align:center;">
                 <div style="font-size:12px;color:var(--text-light);font-weight:600;">Seg</div>
                 <div style="font-size:12px;color:var(--text-light);font-weight:600;">Ter</div>
@@ -2264,36 +2387,127 @@ function renderCalendario(area, ext) {
                 <div style="font-size:12px;color:var(--text-light);font-weight:600;">Dom</div>
                 ${days}
             </div>
+            <button class="btn btn-outline" style="width:100%;margin-top:16px;" onclick="window._calDate=new Date();renderCalendario(document.getElementById('content-area'),{icon:'📅',name:'Calendário Escolar',desc:'Calendário com feriados e eventos'})">📅 Hoje</button>
         </div>
     `;
+}
+function calNav(dir) {
+    window._calDate.setMonth(window._calDate.getMonth() + dir);
+    renderCalendario(document.getElementById('content-area'), {icon:'📅',name:'Calendário Escolar',desc:'Calendário com feriados e eventos'});
 }
 
 function renderFerramentas(area, ext) {
     area.innerHTML = `
         <div class="page-header"><h2>${ext.icon} ${ext.name}</h2><p>${ext.desc}</p></div>
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px;">
-            <div class="card" style="cursor:pointer;" onclick="alert('Timer iniciado!')">
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;">
+            <div class="card">
                 <div style="font-size:32px;margin-bottom:8px;">⏱️</div>
-                <h3 style="font-size:15px;">Timer</h3>
-                <p style="font-size:12px;color:var(--text-light);">Cronómetro para provas e estudo</p>
+                <h3 style="font-size:16px;margin-bottom:12px;">Timer</h3>
+                <div id="timer-display" style="font-size:36px;font-weight:700;text-align:center;font-family:monospace;color:var(--accent);margin-bottom:12px;">00:00:00</div>
+                <div style="display:flex;gap:8px;">
+                    <input type="number" class="form-input" id="timer-min" placeholder="Min" value="5" style="width:70px;text-align:center;">
+                    <button class="btn btn-primary" onclick="timerStart()">▶ Iniciar</button>
+                    <button class="btn btn-outline" onclick="timerStop()">⏹ Parar</button>
+                    <button class="btn btn-outline" onclick="timerReset()">↺ Reset</button>
+                </div>
             </div>
-            <div class="card" style="cursor:pointer;" onclick="alert('Gerador de senhas: ' + Array.from({length:16},()=>'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$'[Math.floor(Math.random()*70)]).join(''))">
+            <div class="card">
                 <div style="font-size:32px;margin-bottom:8px;">🔐</div>
-                <h3 style="font-size:15px;">Gerador de Senhas</h3>
-                <p style="font-size:12px;color:var(--text-light);">Senhas seguras aleatórias</p>
+                <h3 style="font-size:16px;margin-bottom:12px;">Gerador de Senhas</h3>
+                <div style="display:flex;gap:8px;margin-bottom:12px;">
+                    <input type="number" class="form-input" id="pass-len" value="16" min="4" max="64" style="width:70px;text-align:center;">
+                    <button class="btn btn-primary" onclick="genPassword()">Gerar</button>
+                </div>
+                <div id="pass-result" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px;font-family:monospace;font-size:14px;word-break:break-all;min-height:44px;cursor:pointer;" onclick="navigator.clipboard.writeText(this.textContent);showToast('Copiado!')"></div>
+                <p style="font-size:11px;color:var(--text-light);margin-top:6px;">Clica para copiar</p>
             </div>
-            <div class="card" style="cursor:pointer;" onclick="navigator.clipboard.writeText(new Date().toLocaleString('pt-PT'));showToast('Data copiada!')">
+            <div class="card">
+                <div style="font-size:32px;margin-bottom:8px;">🔢</div>
+                <h3 style="font-size:16px;margin-bottom:12px;">Calculadora de Notas</h3>
+                <div id="grade-calc">
+                    <div style="font-size:12px;color:var(--text-light);margin-bottom:8px;">Adiciona as tuas notas (0-20):</div>
+                    <div id="grade-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px;"></div>
+                    <div style="display:flex;gap:8px;">
+                        <input type="number" class="form-input" id="grade-input" placeholder="Nota" min="0" max="20" style="width:80px;" onkeydown="if(event.key==='Enter')addGrade()">
+                        <button class="btn btn-outline" onclick="addGrade()">+ Adicionar</button>
+                    </div>
+                    <div id="grade-result" style="margin-top:12px;font-size:14px;"></div>
+                </div>
+            </div>
+            <div class="card">
                 <div style="font-size:32px;margin-bottom:8px;">📅</div>
-                <h3 style="font-size:15px;">Data Atual</h3>
-                <p style="font-size:12px;color:var(--text-light);">Data e hora atual formatadas</p>
-            </div>
-            <div class="card" style="cursor:pointer;" onclick="navigator.clipboard.writeText(Math.random().toString(36).substring(2,10));showToast('ID copiado!')">
-                <div style="font-size:32px;margin-bottom:8px;">🎲</div>
-                <h3 style="font-size:15px;">ID Aleatório</h3>
-                <p style="font-size:12px;color:var(--text-light);">Gera IDs únicos</p>
+                <h3 style="font-size:16px;margin-bottom:12px;">Data e Hora</h3>
+                <div id="datetime-display" style="font-size:14px;color:var(--text-light);line-height:2;"></div>
+                <button class="btn btn-outline" style="width:100%;margin-top:12px;" onclick="navigator.clipboard.writeText(new Date().toLocaleString('pt-PT'));showToast('Data copiada!')">📋 Copiar Data</button>
             </div>
         </div>
     `;
+    window._grades = [];
+    updateDateTime();
+    window._dtInterval = setInterval(updateDateTime, 1000);
+}
+
+function updateDateTime() {
+    const el = document.getElementById('datetime-display');
+    if (!el) { clearInterval(window._dtInterval); return; }
+    const now = new Date();
+    el.innerHTML = `
+        <div>📆 ${now.toLocaleDateString('pt-PT', {weekday:'long', day:'numeric', month:'long', year:'numeric'})}</div>
+        <div>🕐 ${now.toLocaleTimeString('pt-PT')}</div>
+        <div>📊 Semana ${Math.ceil(((now - new Date(now.getFullYear(),0,1)) / 86400000 + new Date(now.getFullYear(),0,1).getDay()+1) / 7)}</div>
+    `;
+}
+
+let _timerInterval = null;
+let _timerSeconds = 0;
+function timerStart() {
+    if (_timerInterval) return;
+    const min = parseInt(document.getElementById('timer-min').value) || 5;
+    if (_timerSeconds === 0) _timerSeconds = min * 60;
+    _timerInterval = setInterval(() => {
+        _timerSeconds--;
+        const h = String(Math.floor(_timerSeconds/3600)).padStart(2,'0');
+        const m = String(Math.floor((_timerSeconds%3600)/60)).padStart(2,'0');
+        const s = String(_timerSeconds%60).padStart(2,'0');
+        const display = document.getElementById('timer-display');
+        if (display) display.textContent = `${h}:${m}:${s}`;
+        if (_timerSeconds <= 0) { timerStop(); showToast('⏰ Tempo esgotado!'); }
+    }, 1000);
+}
+function timerStop() { clearInterval(_timerInterval); _timerInterval = null; }
+function timerReset() { timerStop(); _timerSeconds = 0; const d = document.getElementById('timer-display'); if(d) d.textContent = '00:00:00'; }
+
+function genPassword() {
+    const len = parseInt(document.getElementById('pass-len').value) || 16;
+    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%&*+-=';
+    const pass = Array.from({length:len}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+    document.getElementById('pass-result').textContent = pass;
+}
+
+function addGrade() {
+    const input = document.getElementById('grade-input');
+    const val = parseFloat(input.value);
+    if (isNaN(val) || val < 0 || val > 20) return;
+    window._grades.push(val);
+    input.value = '';
+    renderGradeList();
+}
+function removeGrade(i) {
+    window._grades.splice(i, 1);
+    renderGradeList();
+}
+function renderGradeList() {
+    const list = document.getElementById('grade-list');
+    const result = document.getElementById('grade-result');
+    if (!list) return;
+    list.innerHTML = window._grades.map((g, i) => `<div style="display:flex;align-items:center;gap:8px;font-size:13px;"><span style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:4px 10px;">${g}</span><span style="color:${g >= 10 ? 'var(--success)' : 'var(--danger)'};font-weight:600;">${g >= 10 ? '✅' : '❌'}</span><button onclick="removeGrade(${i})" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:14px;">✕</button></div>`).join('');
+    if (window._grades.length > 0) {
+        const avg = window._grades.reduce((a,b)=>a+b,0) / window._grades.length;
+        const emoji = avg >= 16 ? '🎉' : avg >= 10 ? '✅' : '❌';
+        result.innerHTML = `<div style="padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;">Média: <strong style="font-size:18px;color:${avg >= 10 ? 'var(--success)' : 'var(--danger)'};">${avg.toFixed(2)}</strong> / 20 ${emoji}</div>`;
+    } else {
+        result.innerHTML = '';
+    }
 }
 
 function renderGenericExt(area, ext) {

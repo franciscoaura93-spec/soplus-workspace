@@ -20,7 +20,11 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from email.mime.text import MIMEText
-from duckduckgo_search import DDGS
+try:
+    from duckduckgo_search import DDGS
+    HAS_DDG = True
+except ImportError:
+    HAS_DDG = False
 from flask import Flask, render_template, request, jsonify
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
@@ -129,38 +133,67 @@ def web_search():
     q = request.json.get('q', '')
     if not q:
         return jsonify({'erro': 'Sem pergunta'}), 400
+
+    if HAS_DDG:
+        try:
+            results = []
+            with DDGS() as ddgs:
+                for r in ddgs.text(q, max_results=8):
+                    results.append({
+                        'title': r.get('title', ''),
+                        'body': r.get('body', ''),
+                        'href': r.get('href', '')
+                    })
+            if results:
+                return jsonify({'resultados': results})
+        except Exception as e:
+            print(f"DuckDuckGo error: {e}")
+
     try:
-        results = []
-        with DDGS() as ddgs:
-            for r in ddgs.text(q, max_results=8):
-                results.append({
-                    'title': r.get('title', ''),
-                    'body': r.get('body', ''),
-                    'href': r.get('href', '')
-                })
-        if not results:
-            return jsonify({'erro': 'Sem resultados encontrados'})
-        return jsonify({'resultados': results})
+        data = gemini_post(GEMINI_MODEL, {
+            'contents': [{'parts': [{'text': f'Pesquisa web: "{q}". Dá 6 resultados reais. Formato JSON:\n[{{"title":"título","body":"descrição curta","href":"url"}}]'}]}],
+            'generationConfig': {'temperature': 0.3, 'maxOutputTokens': 1024}
+        }, timeout=30)
+        if 'error' in data:
+            return jsonify({'erro': data['error'].get('message', 'Erro')})
+        txt = data['candidates'][0]['content']['parts'][0]['text']
+        import json as _json
+        match = _json.loads(txt[txt.index('['):txt.rindex(']')+1])
+        return jsonify({'resultados': match})
     except Exception as e:
-        return jsonify({'erro': f'Erro na pesquisa: {str(e)}'}), 500
+        return jsonify({'erro': f'Erro: {str(e)}'}), 500
 
 
 @app.route('/api/ai/news', methods=['POST'])
 def ai_news():
+    if HAS_DDG:
+        try:
+            results = []
+            with DDGS() as ddgs:
+                for r in ddgs.news('educação Portugal escolas', max_results=6, region='pt-pt'):
+                    results.append({
+                        'title': r.get('title', ''),
+                        'body': r.get('body', ''),
+                        'url': r.get('url', ''),
+                        'source': r.get('source', ''),
+                        'date': r.get('date', '')
+                    })
+            if results:
+                return jsonify({'noticias': results})
+        except Exception as e:
+            print(f"DuckDuckGo news error: {e}")
+
     try:
-        results = []
-        with DDGS() as ddgs:
-            for r in ddgs.news('educação Portugal escolas', max_results=6, region='pt-pt'):
-                results.append({
-                    'title': r.get('title', ''),
-                    'body': r.get('body', ''),
-                    'url': r.get('url', ''),
-                    'source': r.get('source', ''),
-                    'date': r.get('date', '')
-                })
-        if not results:
-            return jsonify({'erro': 'Sem notícias encontradas'})
-        return jsonify({'noticias': results})
+        data = gemini_post(GEMINI_MODEL, {
+            'contents': [{'parts': [{'text': 'Dá 6 notícias reais de educação em Portugal. Formato JSON:\n[{{"title":"título","body":"resumo 2-3 frases","url":"https://...","source":"fonte","date":"2026-01-01"}}]'}]}],
+            'generationConfig': {'temperature': 0.5, 'maxOutputTokens': 1024}
+        }, timeout=30)
+        if 'error' in data:
+            return jsonify({'erro': data['error'].get('message', 'Erro')})
+        txt = data['candidates'][0]['content']['parts'][0]['text']
+        import json as _json
+        match = _json.loads(txt[txt.index('['):txt.rindex(']')+1])
+        return jsonify({'noticias': match})
     except Exception as e:
         return jsonify({'erro': str(e)}), 500
 

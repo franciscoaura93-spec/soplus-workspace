@@ -28,6 +28,7 @@ Source: "requirements.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "iniciar.bat"; DestDir: "{app}"; Flags: ignoreversion
 Source: "instalar_deps.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "static\*"; DestDir: "{app}\static"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "static\js\extensions\*"; DestDir: "{app}\static\js\extensions"; Flags: ignoreversion
 Source: "templates\*"; DestDir: "{app}\templates"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]

@@ -1,4 +1,11 @@
 import os
+
+for line in open(os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env')):
+    line = line.strip()
+    if line and '=' in line and not line.startswith('#'):
+        k, v = line.split('=', 1)
+        os.environ.setdefault(k.strip(), v.strip())
+
 import json
 import ssl
 import smtplib

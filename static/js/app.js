@@ -2208,11 +2208,11 @@ async function doWebSearch() {
         results.innerHTML = `
             <div style="font-size:12px;color:var(--text-light);margin-bottom:12px;">${items.length} resultados para "<strong>${q}</strong>"</div>
             ${items.map(r => `
-                <div style="padding:18px 20px;background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:10px;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.borderColor='rgba(37,99,235,0.3)'" onmouseout="this.style.borderColor='var(--border)'">
+                <a href="${r.href}" target="_blank" rel="noopener noreferrer" style="display:block;padding:18px 20px;background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:10px;cursor:pointer;transition:all 0.2s;text-decoration:none;color:inherit;" onmouseover="this.style.borderColor='rgba(37,99,235,0.3)'" onmouseout="this.style.borderColor='var(--border)'">
                     <div style="font-size:15px;font-weight:600;color:var(--accent);margin-bottom:4px;">${r.title}</div>
                     <div style="font-size:13px;color:var(--text-light);line-height:1.5;margin-bottom:6px;">${r.body}</div>
                     <div style="font-size:11px;color:var(--primary);word-break:break-all;">${r.href}</div>
-                </div>
+                </a>
             `).join('')}
         `;
         loadSearchHistory();

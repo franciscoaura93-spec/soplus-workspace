@@ -241,6 +241,7 @@
         <div class="tab" data-tab="prompts" onclick="switchTab('prompts')">🖼️ Prompts Imagens</div>
         <div class="tab" data-tab="pedidos" onclick="switchTab('pedidos')" style="position:relative;">🛒 Pedidos <span id="pedidos-badge" style="display:none;background:var(--danger);color:#fff;font-size:10px;padding:2px 6px;border-radius:10px;margin-left:4px;font-weight:700;"></span></div>
         <div class="tab" data-tab="database" onclick="switchTab('database')">📊 Base de Dados</div>
+        <div class="tab" data-tab="moodle" onclick="switchTab('moodle')">🔗 Moodle</div>
     </div>
 
     <div class="editor-area" id="editor-content"></div>
@@ -345,6 +346,7 @@ function renderTab() {
         case 'extensions': renderExtensions(area); break;
         case 'pedidos': renderPedidos(area); break;
         case 'database': renderDatabase(area); break;
+        case 'moodle': renderMoodle(area); break;
     }
 }
 
@@ -1170,6 +1172,203 @@ async function updatePedidosBadge() {
     } else {
         badge.style.display = 'none';
     }
+}
+
+// ════════════════════════════════════════════════════════════
+//   MOODLE INTEGRATION — Config + Teste + Sincronização
+// ════════════════════════════════════════════════════════════
+
+let moodleConfig = { url: '', token: '', devKey: 'soplus-moodle-dev-key-2026' };
+
+function renderMoodle(area) {
+    const c = moodleConfig;
+    area.innerHTML = `
+        <div class="section-block">
+            <h3>🔗 Configuração Moodle</h3>
+            <p style="font-size:13px;color:var(--text-dim);margin-bottom:16px;">Liga a app ao teu servidor Moodle. Preenche o URL e o token de web service.</p>
+            <div class="field"><label>URL do Moodle</label><input id="moodle-url" value="${esc(c.url)}" placeholder="https://moodle.escola.pt" onchange="moodleConfig.url=this.value"></div>
+            <div class="field"><label>Token Web Service</label><input id="moodle-token" value="${esc(c.token)}" placeholder="Token gerado no Moodle > Admin > Web Services" onchange="moodleConfig.token=this.value"></div>
+            <div class="field"><label>Chave Dev (autorização)</label><input id="moodle-devkey" value="${esc(c.devKey)}" onchange="moodleConfig.devKey=this.value"></div>
+            <div style="display:flex;gap:10px;margin-top:16px;">
+                <button class="btn btn-primary" onclick="saveMoodleConfig()">💾 Guardar</button>
+                <button class="btn btn-success" onclick="testMoodle()">🧪 Testar Ligação</button>
+            </div>
+        </div>
+
+        <div class="section-block">
+            <h3>📊 Estado da Ligação</h3>
+            <div id="moodle-status" style="font-size:13px;color:var(--text-dim);padding:12px;">Clica em "Testar Ligação" para verificar.</div>
+        </div>
+
+        <div class="section-block">
+            <h3>🔄 Sincronização Manual</h3>
+            <p style="font-size:13px;color:var(--text-dim);margin-bottom:16px;">Puxa dados do Moodle para o Firebase ou envia dados da app para o Moodle.</p>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                <button class="btn btn-outline" onclick="moodleSync('courses')">📚 Cursos</button>
+                <button class="btn btn-outline" onclick="moodleSync('grades')">📝 Notas</button>
+                <button class="btn btn-outline" onclick="moodleSync('assignments')">📋 Testes</button>
+                <button class="btn btn-outline" onclick="moodleSync('events')">📅 Eventos</button>
+            </div>
+            <div id="moodle-sync-result" style="margin-top:16px;font-size:13px;"></div>
+        </div>
+
+        <div class="section-block">
+            <h3>📤 Enviar Dados para Moodle</h3>
+            <p style="font-size:13px;color:var(--text-dim);margin-bottom:16px;">Cria testes, registos ou cursos no Moodle diretamente daqui.</p>
+            <div class="field"><label>Course ID Moodle</label><input id="moodle-push-course" placeholder="ID do curso no Moodle"></div>
+            <div class="field"><label>Nome do Teste/Trabalho</label><input id="moodle-push-name" placeholder="Ex: Teste de Matemática"></div>
+            <div class="field"><label>Descrição</label><textarea id="moodle-push-desc" placeholder="Descrição do teste..."></textarea></div>
+            <div style="display:flex;gap:10px;">
+                <button class="btn btn-primary" onclick="moodlePushAssignment()">📝 Criar Teste</button>
+                <button class="btn btn-outline" onclick="moodlePushQuiz()">❓ Criar Quiz</button>
+            </div>
+            <div id="moodle-push-result" style="margin-top:16px;font-size:13px;"></div>
+        </div>
+
+        <div class="section-block">
+            <h3>📜 Log de Atividade</h3>
+            <div id="moodle-log" style="font-size:12px;color:var(--text-dim);padding:12px;background:var(--card);border-radius:8px;max-height:300px;overflow-y:auto;">Sem atividade registada.</div>
+        </div>
+    `;
+    loadMoodleConfig();
+    loadMoodleLog();
+}
+
+async function loadMoodleConfig() {
+    try {
+        const snap = await db.ref('admin_config/moodle').once('value');
+        const cfg = snap.val();
+        if (cfg) {
+            moodleConfig.url = cfg.url || '';
+            moodleConfig.token = cfg.token || '';
+            moodleConfig.devKey = cfg.devKey || 'soplus-moodle-dev-key-2026';
+            document.getElementById('moodle-url').value = moodleConfig.url;
+            document.getElementById('moodle-token').value = moodleConfig.token;
+            document.getElementById('moodle-devkey').value = moodleConfig.devKey;
+        }
+    } catch(e) {}
+}
+
+function saveMoodleConfig() {
+    db.ref('admin_config/moodle').set({
+        url: moodleConfig.url,
+        token: moodleConfig.token,
+        devKey: moodleConfig.devKey,
+        updatedAt: Date.now()
+    });
+    showToast('Configuração Moodle guardada!');
+}
+
+async function testMoodle() {
+    const el = document.getElementById('moodle-status');
+    el.innerHTML = '<div style="color:var(--text-dim);">⏳ A testar ligação ao Moodle...</div>';
+    try {
+        const r = await fetch('/api/moodle/test', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ auth: moodleConfig.devKey })
+        });
+        const data = await r.json();
+        if (data.ok) {
+            el.innerHTML = `
+                <div style="padding:16px;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);border-radius:10px;">
+                    <div style="font-size:14px;font-weight:600;color:#22c55e;margin-bottom:8px;">✅ Ligação com sucesso!</div>
+                    <div style="font-size:13px;">Site: <strong>${data.site || 'N/A'}</strong></div>
+                    <div style="font-size:13px;">User ID: <strong>${data.userid || 'N/A'}</strong></div>
+                </div>`;
+        } else {
+            el.innerHTML = `<div style="padding:16px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:10px;color:#ef4444;">❌ ${data.erro || 'Erro desconhecido'}</div>`;
+        }
+    } catch(e) {
+        el.innerHTML = `<div style="padding:16px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:10px;color:#ef4444;">❌ Erro de ligação: ${e.message}</div>`;
+    }
+}
+
+async function moodleSync(type) {
+    const el = document.getElementById('moodle-sync-result');
+    el.innerHTML = '<div style="color:var(--text-dim);">⏳ A sincronizar ' + type + '...</div>';
+    try {
+        let url, body;
+        if (type === 'courses') { url = '/api/moodle/courses'; body = {}; }
+        else if (type === 'grades') { url = '/api/moodle/grades'; body = {}; }
+        else if (type === 'assignments') { url = '/api/moodle/assignments'; body = {}; }
+        else if (type === 'events') { url = '/api/moodle/events'; body = {}; }
+
+        const r = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ auth: moodleConfig.devKey, ...body })
+        });
+        const data = await r.json();
+        if (data.erro) {
+            el.innerHTML = `<div style="color:#ef4444;">❌ ${data.erro}</div>`;
+        } else {
+            const path = `moodle_sync/${type}`;
+            db.ref(path).set({ data: data, syncedAt: Date.now() });
+            el.innerHTML = `<div style="color:#22c55e;">✅ ${type} sincronizado! Guardado em ${path}</div>
+                <details style="margin-top:8px;font-size:12px;color:var(--text-dim);"><summary>Ver dados</summary><pre style="margin-top:8px;padding:12px;background:var(--card);border-radius:8px;overflow-x:auto;max-height:300px;">${JSON.stringify(data, null, 2)}</pre></details>`;
+        }
+    } catch(e) {
+        el.innerHTML = `<div style="color:#ef4444;">❌ ${e.message}</div>`;
+    }
+    addMoodleLog('sync_' + type);
+}
+
+async function moodlePushAssignment() {
+    const el = document.getElementById('moodle-push-result');
+    const courseid = document.getElementById('moodle-push-course').value.trim();
+    const name = document.getElementById('moodle-push-name').value.trim();
+    const desc = document.getElementById('moodle-push-desc').value.trim();
+    if (!courseid || !name) { el.innerHTML = '<div style="color:#f59e0b;">⚠️ Preenche Course ID e Nome</div>'; return; }
+    el.innerHTML = '<div style="color:var(--text-dim);">⏳ A criar teste no Moodle...</div>';
+    try {
+        const r = await fetch('/api/moodle/assignments/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ auth: moodleConfig.devKey, courseid: parseInt(courseid), name, description: desc })
+        });
+        const data = await r.json();
+        if (data.erro) el.innerHTML = `<div style="color:#ef4444;">❌ ${data.erro}</div>`;
+        else el.innerHTML = `<div style="color:#22c55e;">✅ Teste "${name}" criado no Moodle!</div><pre style="margin-top:8px;padding:12px;background:var(--card);border-radius:8px;font-size:12px;overflow-x:auto;">${JSON.stringify(data, null, 2)}</pre>`;
+    } catch(e) { el.innerHTML = `<div style="color:#ef4444;">❌ ${e.message}</div>`; }
+    addMoodleLog('push_assignment');
+}
+
+async function moodlePushQuiz() {
+    const el = document.getElementById('moodle-push-result');
+    const courseid = document.getElementById('moodle-push-course').value.trim();
+    const name = document.getElementById('moodle-push-name').value.trim();
+    const desc = document.getElementById('moodle-push-desc').value.trim();
+    if (!courseid || !name) { el.innerHTML = '<div style="color:#f59e0b;">⚠️ Preenche Course ID e Nome</div>'; return; }
+    el.innerHTML = '<div style="color:var(--text-dim);">⏳ A criar quiz no Moodle...</div>';
+    try {
+        const r = await fetch('/api/moodle/quiz/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ auth: moodleConfig.devKey, courseid: parseInt(courseid), name, description: desc })
+        });
+        const data = await r.json();
+        if (data.erro) el.innerHTML = `<div style="color:#ef4444;">❌ ${data.erro}</div>`;
+        else el.innerHTML = `<div style="color:#22c55e;">✅ Quiz "${name}" criado no Moodle!</div><pre style="margin-top:8px;padding:12px;background:var(--card);border-radius:8px;font-size:12px;overflow-x:auto;">${JSON.stringify(data, null, 2)}</pre>`;
+    } catch(e) { el.innerHTML = `<div style="color:#ef4444;">❌ ${e.message}</div>`; }
+    addMoodleLog('push_quiz');
+}
+
+function addMoodleLog(action) {
+    dbRef.push(`admin_config/moodle_log`, { action, timestamp: Date.now() });
+}
+
+async function loadMoodleLog() {
+    const el = document.getElementById('moodle-log');
+    if (!el) return;
+    const snap = await db.ref('admin_config/moodle_log').orderByChild('timestamp').limitToLast(20).once('value');
+    const entries = [];
+    snap.forEach(child => entries.unshift(child.val()));
+    if (entries.length === 0) { el.innerHTML = 'Sem atividade registada.'; return; }
+    el.innerHTML = entries.map(e => {
+        const t = new Date(e.timestamp).toLocaleString('pt-PT');
+        return `<div style="padding:4px 0;border-bottom:1px solid var(--border);">[${t}] ${e.action}</div>`;
+    }).join('');
 }
 
 function showToast(msg) {

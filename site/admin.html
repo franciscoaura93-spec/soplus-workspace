@@ -77,6 +77,7 @@
         .editor-area {
             max-width: 900px; margin: 0 auto; padding: 32px 24px;
         }
+        .editor-area.wide { max-width: 1100px; }
         .section-block {
             background: var(--surface); border: 1px solid var(--border);
             border-radius: 14px; padding: 28px; margin-bottom: 20px;
@@ -169,6 +170,35 @@
         .empty-state { text-align: center; padding: 40px; color: var(--text-dim); }
         .empty-state .icon { font-size: 40px; margin-bottom: 12px; }
 
+        .db-search-box { display:flex; gap:10px; margin-bottom:20px; }
+        .db-search-box input { flex:1; padding:12px 16px; background:var(--card); border:1px solid var(--border); border-radius:10px; color:var(--text); font-size:14px; font-family:inherit; outline:none; }
+        .db-search-box input:focus { border-color:var(--primary); }
+        .db-search-box button { padding:12px 20px; background:var(--primary); color:#fff; border:none; border-radius:10px; font-weight:600; cursor:pointer; font-family:inherit; white-space:nowrap; }
+        .db-ai-response { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px 20px; margin-bottom:20px; font-size:13px; line-height:1.6; color:var(--text); display:none; }
+        .db-ai-response pre { background:var(--surface); padding:12px; border-radius:8px; margin-top:8px; overflow-x:auto; font-size:12px; white-space:pre-wrap; }
+        .db-stats { display:flex; gap:12px; margin-bottom:20px; flex-wrap:wrap; }
+        .db-stat { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px 20px; flex:1; min-width:140px; }
+        .db-stat .label { font-size:11px; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px; }
+        .db-stat .value { font-size:20px; font-weight:700; color:var(--primary); }
+        .db-tree { font-family:'Fira Code',monospace; font-size:13px; }
+        .db-node { margin-left:20px; border-left:1px solid var(--border); padding-left:12px; margin-top:4px; }
+        .db-node-header { display:flex; align-items:center; gap:8px; padding:6px 10px; border-radius:6px; cursor:pointer; transition:background 0.15s; }
+        .db-node-header:hover { background:var(--card); }
+        .db-node-key { font-weight:600; color:var(--accent); }
+        .db-node-type { font-size:10px; padding:2px 8px; border-radius:10px; font-weight:600; text-transform:uppercase; }
+        .db-type-string { background:rgba(34,197,94,0.15); color:#22c55e; }
+        .db-type-number { background:rgba(59,130,246,0.15); color:#3b82f6; }
+        .db-type-boolean { background:rgba(245,158,11,0.15); color:#f59e0b; }
+        .db-type-object { background:rgba(168,85,247,0.15); color:#a855f7; }
+        .db-type-array { background:rgba(236,72,153,0.15); color:#ec4899; }
+        .db-type-null { background:rgba(113,113,122,0.15); color:#71717a; }
+        .db-node-value { font-size:12px; color:var(--text-dim); max-width:400px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+        .db-node-meta { font-size:10px; color:var(--text-dim); margin-left:auto; white-space:nowrap; }
+        .db-edit-btn { font-size:10px; padding:2px 8px; background:var(--primary); color:#fff; border:none; border-radius:4px; cursor:pointer; opacity:0; transition:opacity 0.15s; }
+        .db-node-header:hover .db-edit-btn { opacity:1; }
+        .db-edit-input { background:var(--card); border:1px solid var(--primary); border-radius:6px; color:var(--text); font-size:13px; font-family:inherit; padding:4px 8px; outline:none; }
+        .db-root-toggle { font-size:12px; padding:4px 10px; background:var(--surface); border:1px solid var(--border); border-radius:6px; cursor:pointer; color:var(--text-dim); margin-bottom:12px; display:inline-block; }
+
         input[type="file"] { display: none; }
 
         @media (max-width: 700px) {
@@ -210,6 +240,7 @@
         <div class="tab" data-tab="codigos" onclick="switchTab('codigos')">🔑 Códigos</div>
         <div class="tab" data-tab="prompts" onclick="switchTab('prompts')">🖼️ Prompts Imagens</div>
         <div class="tab" data-tab="pedidos" onclick="switchTab('pedidos')" style="position:relative;">🛒 Pedidos <span id="pedidos-badge" style="display:none;background:var(--danger);color:#fff;font-size:10px;padding:2px 6px;border-radius:10px;margin-left:4px;font-weight:700;"></span></div>
+        <div class="tab" data-tab="database" onclick="switchTab('database')">📊 Base de Dados</div>
     </div>
 
     <div class="editor-area" id="editor-content"></div>
@@ -313,6 +344,7 @@ function renderTab() {
         case 'prompts': renderPrompts(area); break;
         case 'extensions': renderExtensions(area); break;
         case 'pedidos': renderPedidos(area); break;
+        case 'database': renderDatabase(area); break;
     }
 }
 
@@ -889,6 +921,212 @@ async function rejectPurchase(id) {
 
 function listenPedidos() {
     db.ref('extension_purchases').on('value', () => updatePedidosBadge());
+}
+
+// ════════════════════════════════════════════════════════════
+//   DATABASE EXPLORER — IA + Árvore + Edição
+// ════════════════════════════════════════════════════════════
+
+const GEMINI_MODEL = 'gemini-3.1-flash-lite';
+let dbTreeData = {};
+let dbExpandedPaths = new Set();
+
+function renderDatabase(area) {
+    area.innerHTML = `
+        <div class="section-block">
+            <h3>🤖 Assistente IA da Base de Dados</h3>
+            <p style="font-size:13px;color:var(--text-dim);margin-bottom:12px;">Pergunta em linguagem natural sobre os dados do Firebase. Ex: "quantos utilizadores existem?", "mostra os pedidos pendentes", "quais são os códigos de professor?"</p>
+            <div class="db-search-box">
+                <input id="db-ai-input" placeholder="Pergunta à IA sobre a base de dados..." onkeydown="if(event.key==='Enter')askDBAI()">
+                <button onclick="askDBAI()">🤖 Perguntar</button>
+            </div>
+            <div class="db-ai-response" id="db-ai-response"></div>
+        </div>
+        <div class="section-block">
+            <h3>📊 Resumo da Base de Dados</h3>
+            <div class="db-stats" id="db-stats"></div>
+        </div>
+        <div class="section-block">
+            <h3>🌳 Explorador de Dados <button class="btn btn-outline" onclick="refreshDBTree()" style="margin-left:auto;font-size:11px;">🔄 Atualizar</button></h3>
+            <p style="font-size:13px;color:var(--text-dim);margin-bottom:12px;">Clica para expandir/colapsar. Clica no ícone ✏️ para editar. Alterações são guardadas imediatamente no Firebase.</p>
+            <div class="db-tree" id="db-tree"><div style="color:var(--text-dim);padding:20px;">A carregar...</div></div>
+        </div>
+    `;
+    refreshDBTree();
+}
+
+async function askDBAI() {
+    const input = document.getElementById('db-ai-input');
+    const resp = document.getElementById('db-ai-response');
+    const q = input.value.trim();
+    if (!q) return;
+    resp.style.display = 'block';
+    resp.innerHTML = '<div style="color:var(--text-dim);">⏳ A analisar a base de dados...</div>';
+
+    let dbSummary = '';
+    try {
+        const snap = await db.ref('/').once('value');
+        dbSummary = summarizeForAI(snap.val(), '', 0);
+    } catch(e) {
+        resp.innerHTML = `<div style="color:var(--danger);">Erro ao ler dados: ${e.message}</div>`;
+        return;
+    }
+
+    try {
+        const r = await fetch('/api/admin/ai-query', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt: `Tu és o assistente de administração de uma base de dados Firebase. Aqui está a estrutura e dados:\n\n${dbSummary}\n\n---\n\nPergunta do admin: "${q}"\n\nResponde de forma clara e organizada. Usa emojis e formatação. Se a pergunta for sobre dados específicos, mostra os valores. Se pedir uma ação, explica o que fazer.` })
+        });
+        const data = await r.json();
+        if (data.erro) { resp.innerHTML = `<div style="color:var(--danger);">❌ ${data.erro}</div>`; return; }
+        const txt = data.resposta || 'Sem resposta.';
+        resp.innerHTML = `<div style="white-space:pre-wrap;line-height:1.7;">${txt.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/`([^`]+)`/g, '<pre>$1</pre>')}</div>`;
+    } catch(e) {
+        resp.innerHTML = `<div style="color:var(--danger);">Erro de ligação: ${e.message}</div>`;
+    }
+}
+
+function summarizeForAI(val, path, depth) {
+    if (depth > 3) return '';
+    if (val === null) return '';
+    if (typeof val !== 'object') return `${path}: ${val}\n`;
+    let out = '';
+    const keys = Object.keys(val).slice(0, 50);
+    for (const k of keys) {
+        const v = val[k];
+        const p = path ? `${path}.${k}` : k;
+        if (typeof v === 'object' && v !== null) {
+            const childCount = Object.keys(v).length;
+            out += `${p} {${childCount} campos}\n`;
+            if (childCount < 20) out += summarizeForAI(v, p, depth + 1);
+        } else {
+            out += `${p}: ${v}\n`;
+        }
+    }
+    return out;
+}
+
+async function refreshDBTree() {
+    const tree = document.getElementById('db-tree');
+    tree.innerHTML = '<div style="color:var(--text-dim);padding:10px;">🔄 A carregar...</div>';
+    try {
+        const snap = await db.ref('/').once('value');
+        dbTreeData = snap.val() || {};
+        renderDBStats(dbTreeData);
+        tree.innerHTML = renderDBNode(dbTreeData, 'root', '', 0);
+    } catch(e) {
+        tree.innerHTML = `<div style="color:var(--danger);padding:10px;">Erro: ${e.message}</div>`;
+    }
+}
+
+function renderDBStats(data) {
+    const stats = document.getElementById('db-stats');
+    const count = countNodes(data);
+    const topLevel = Object.keys(data).length;
+    const totalStr = JSON.stringify(data).length;
+    stats.innerHTML = `
+        <div class="db-stat"><div class="label">Nós totais</div><div class="value">${count}</div></div>
+        <div class="db-stat"><div class="label">Top Level</div><div class="value">${topLevel}</div></div>
+        <div class="db-stat"><div class="label">Tamanho</div><div class="value">${formatBytes(totalStr.length)}</div></div>
+        <div class="db-stat"><div class="label">Caminhos expandidos</div><div class="value">${dbExpandedPaths.size}</div></div>
+    `;
+}
+
+function countNodes(obj) {
+    if (!obj || typeof obj !== 'object') return 1;
+    let c = 1;
+    for (const k of Object.keys(obj)) c += countNodes(obj[k]);
+    return c;
+}
+
+function formatBytes(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / 1048576).toFixed(1) + ' MB';
+}
+
+function getDataType(val) {
+    if (val === null) return 'null';
+    if (Array.isArray(val)) return 'array';
+    return typeof val;
+}
+
+function renderDBNode(val, key, parentPath, depth) {
+    const path = parentPath ? `${parentPath}/${key}` : key;
+    const type = getDataType(val);
+
+    if (type === 'object' && val !== null) {
+        const isExpanded = dbExpandedPaths.has(path);
+        const childKeys = Object.keys(val);
+        const preview = childKeys.slice(0, 3).join(', ');
+        return `
+            <div class="db-node">
+                <div class="db-node-header" onclick="toggleDBNode('${path.replace(/'/g, "\\'")}')">
+                    <span style="font-size:12px;color:var(--text-dim);">${isExpanded ? '▼' : '▶'}</span>
+                    <span class="db-node-key">${key}</span>
+                    <span class="db-node-type db-type-object">objeto</span>
+                    <span class="db-node-value">${childKeys.length} campos: ${preview}${childKeys.length > 3 ? '...' : ''}</span>
+                    <span class="db-node-meta">${childKeys.length} filhos</span>
+                    <button class="db-edit-btn" onclick="event.stopPropagation();deleteDBNode('${path.replace(/'/g, "\\'")}')">🗑️</button>
+                </div>
+                ${isExpanded ? `<div class="db-tree">${childKeys.map(k => renderDBNode(val[k], k, path, depth + 1)).join('')}</div>` : ''}
+            </div>`;
+    }
+
+    const displayVal = val === null ? 'null' : typeof val === 'string' ? `"${val.substring(0, 100)}${val.length > 100 ? '...' : ''}"` : JSON.stringify(val);
+    return `
+        <div class="db-node">
+            <div class="db-node-header">
+                <span style="width:12px;"></span>
+                <span class="db-node-key">${key}</span>
+                <span class="db-node-type db-type-${type}">${type}</span>
+                <span class="db-node-value" id="val-${path.replace(/[^a-zA-Z0-9]/g, '_')}">${displayVal}</span>
+                <button class="db-edit-btn" onclick="event.stopPropagation();editDBNode('${path.replace(/'/g, "\\'")}', this)">✏️</button>
+                <button class="db-edit-btn" onclick="event.stopPropagation();deleteDBNode('${path.replace(/'/g, "\\'")}')">🗑️</button>
+            </div>
+        </div>`;
+}
+
+function toggleDBNode(path) {
+    if (dbExpandedPaths.has(path)) dbExpandedPaths.delete(path);
+    else dbExpandedPaths.add(path);
+    refreshDBTree();
+}
+
+async function editDBNode(path, btn) {
+    const current = await db.ref(path).once('value');
+    const val = current.val();
+    const display = typeof val === 'string' ? val : JSON.stringify(val);
+    const row = btn.closest('.db-node-header');
+    const valSpan = row.querySelector('.db-node-value');
+    const origHTML = valSpan.innerHTML;
+    valSpan.innerHTML = `<input class="db-edit-input" value="${display.replace(/"/g, '&quot;')}" onkeydown="if(event.key==='Enter')saveDBNode('${path.replace(/'/g, "\\'")}', this)" onblur="saveDBNode('${path.replace(/'/g, "\\'")}', this)">`;
+    valSpan.querySelector('input').focus();
+}
+
+async function saveDBNode(path, input) {
+    let val = input.value;
+    try { val = JSON.parse(val); } catch(e) { /* string */ }
+    try {
+        await db.ref(path).set(val);
+        showToast(`✅ ${path} atualizado`);
+        refreshDBTree();
+    } catch(e) {
+        showToast(`❌ Erro: ${e.message}`);
+    }
+}
+
+async function deleteDBNode(path) {
+    if (!confirm(`Eliminar "${path}" e todos os seus dados?`)) return;
+    try {
+        await db.ref(path).remove();
+        dbExpandedPaths.delete(path);
+        showToast(`🗑️ ${path} eliminado`);
+        refreshDBTree();
+    } catch(e) {
+        showToast(`❌ Erro: ${e.message}`);
+    }
 }
 
 async function updatePedidosBadge() {

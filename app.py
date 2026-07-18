@@ -31,19 +31,22 @@ app = Flask(__name__, static_folder='static', template_folder='templates')
 app.config['SECRET_KEY'] = 'soplus-firebase-2026'
 
 GEMINI_KEY = os.environ.get("GEMINI_KEY", "")
+ADMIN_AI_KEY = os.environ.get("ADMIN_AI_KEY", "")
 GEMINI_MODEL = "gemini-3.1-flash-lite"
 API_URL = "https://generativelanguage.googleapis.com/v1beta"
 HEADERS = {"Content-Type": "application/json", "x-goog-api-key": GEMINI_KEY}
 
 
-def gemini_post(model, payload, timeout=30):
+def gemini_post(model, payload, timeout=30, api_key=None):
+    key = api_key or GEMINI_KEY
+    headers = {"Content-Type": "application/json", "x-goog-api-key": key}
     ctx = ssl.create_default_context()
     ctx.check_hostname = False
     ctx.verify_mode = ssl.CERT_NONE
     body = json.dumps(payload)
     conn = http.client.HTTPSConnection('generativelanguage.googleapis.com', timeout=timeout, context=ctx)
     conn.request('POST', f'/v1beta/models/{model}:generateContent',
-                 body=body, headers=HEADERS)
+                 body=body, headers=headers)
     resp = conn.getresponse()
     data = resp.read().decode()
     conn.close()
@@ -219,6 +222,25 @@ def send_email():
             server.login(SMTP_USER, SMTP_PASS)
             server.sendmail(SMTP_FROM, to, msg.as_string())
         return jsonify({'ok': True})
+    except Exception as e:
+        return jsonify({'erro': str(e)}), 500
+
+@app.route('/api/admin/ai-query', methods=['POST'])
+def admin_ai_query():
+    prompt = request.json.get('prompt', '')
+    if not prompt:
+        return jsonify({'erro': 'Sem prompt'}), 400
+    if not ADMIN_AI_KEY:
+        return jsonify({'erro': 'ADMIN_AI_KEY não configurada'}), 500
+    try:
+        data = gemini_post(GEMINI_MODEL, {
+            'contents': [{'parts': [{'text': prompt}]}],
+            'generationConfig': {'temperature': 0.3, 'maxOutputTokens': 2048}
+        }, timeout=30, api_key=ADMIN_AI_KEY)
+        if 'error' in data:
+            return jsonify({'erro': data['error'].get('message', 'Erro API')})
+        txt = data['candidates'][0]['content']['parts'][0]['text']
+        return jsonify({'resposta': txt})
     except Exception as e:
         return jsonify({'erro': str(e)}), 500
 

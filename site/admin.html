@@ -201,7 +201,8 @@
     </div>
 
     <div class="tabs" id="admin-tabs">
-        <div class="tab active" data-tab="hero" onclick="switchTab('hero')">🏠 Hero</div>
+        <div class="tab" data-tab="hero" onclick="switchTab('hero')">🏠 Hero</div>
+        <div class="tab" data-tab="design" onclick="switchTab('design')">🎨 Design</div>
         <div class="tab" data-tab="features" onclick="switchTab('features')">✨ Funcionalidades</div>
         <div class="tab" data-tab="extensions" onclick="switchTab('extensions')">🧩 Extensões</div>
         <div class="tab" data-tab="gallery" onclick="switchTab('gallery')">🖼️ Galeria</div>
@@ -304,6 +305,7 @@ function renderTab() {
     const area = document.getElementById('editor-content');
         switch(currentTab) {
         case 'hero': renderHeroEditor(area); break;
+        case 'design': renderDesignEditor(area); break;
         case 'features': renderFeaturesEditor(area); break;
         case 'gallery': renderGalleryEditor(area); break;
         case 'footer': renderFooterEditor(area); break;
@@ -328,6 +330,77 @@ function renderHeroEditor(area) {
             <div class="field"><label>Link Botão Secundário</label><input value="${esc(h.secondaryLink)}" onchange="siteData.hero.secondaryLink=this.value"></div>
         </div>
     `;
+}
+
+function renderDesignEditor(area) {
+    const d = siteData.design || {};
+    area.innerHTML = `
+        <div class="section-block">
+            <h3>🎨 Ícone do Site (Favicon)</h3>
+            <p style="font-size:13px;color:var(--text-dim);margin-bottom:12px;">Aparece na aba do browser e no ícone do atalho.</p>
+            <div style="display:flex;gap:16px;align-items:start;">
+                <div style="flex:1;">
+                    <div class="field"><label>URL da imagem (HTTPS)</label><input id="favicon-url" value="${esc(d.favicon || '')}" placeholder="https://exemplo.com/logo.png" onchange="siteData.design.favicon=this.value"></div>
+                    <div style="margin-top:8px;"><button class="btn btn-outline" onclick="uploadDesignImage('favicon')">📤 Ou fazer upload</button></div>
+                </div>
+                <div id="favicon-preview" style="width:64px;height:64px;border:1px solid var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;background:var(--surface);overflow:hidden;">
+                    ${d.favicon ? `<img src="${d.favicon}" style="width:100%;height:100%;object-fit:contain;">` : '<span style="font-size:24px;">🌐</span>'}
+                </div>
+            </div>
+        </div>
+        <div class="section-block">
+            <h3>🖼️ Logo Principal</h3>
+            <p style="font-size:13px;color:var(--text-dim);margin-bottom:12px;">Aparece na sidebar, ecrã de login e loading.</p>
+            <div style="display:flex;gap:16px;align-items:start;">
+                <div style="flex:1;">
+                    <div class="field"><label>URL da imagem (HTTPS)</label><input id="logo-url" value="${esc(d.logo || '')}" placeholder="https://exemplo.com/logo.png" onchange="siteData.design.logo=this.value"></div>
+                    <div style="margin-top:8px;"><button class="btn btn-outline" onclick="uploadDesignImage('logo')">📤 Ou fazer upload</button></div>
+                </div>
+                <div id="logo-preview" style="width:120px;height:64px;border:1px solid var(--border);border-radius:8px;display:flex;align-items:center;justify-content:center;background:var(--surface);overflow:hidden;">
+                    ${d.logo ? `<img src="${d.logo}" style="max-width:100%;max-height:100%;object-fit:contain;">` : '<span style="font-size:24px;">🏢</span>'}
+                </div>
+            </div>
+        </div>
+        <div class="section-block">
+            <h3>🎨 Cor de Destaque</h3>
+            <p style="font-size:13px;color:var(--text-dim);margin-bottom:12px;">Cor principal usada em botões, links e destaques.</p>
+            <div class="field"><label>Cor Hex</label>
+                <div style="display:flex;gap:12px;align-items:center;">
+                    <input type="color" value="${d.accentColor || '#6366f1'}" onchange="siteData.design.accentColor=this.value;this.nextElementSibling.value=this.value" style="width:50px;height:40px;border:none;cursor:pointer;">
+                    <input value="${esc(d.accentColor || '#6366f1')}" onchange="siteData.design.accentColor=this.value;this.previousElementSibling.value=this.value" style="flex:1;">
+                </div>
+            </div>
+        </div>
+        <div class="section-block">
+            <h3>⬇️ Link Download Instalador</h3>
+            <div class="field"><label>URL do .exe</label><input value="${esc(d.downloadUrl || '')}" placeholder="https://github.com/.../releases/..." onchange="siteData.design.downloadUrl=this.value"></div>
+        </div>
+    `;
+}
+
+function uploadDesignImage(field) {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = () => {
+        const file = input.files[0];
+        if (!file) return;
+        if (file.size > 500000) { alert('Imagem muito grande (máx 500KB). Comprime-a primeiro.'); return; }
+        const reader = new FileReader();
+        reader.onload = () => {
+            siteData.design = siteData.design || {};
+            siteData.design[field] = reader.result;
+            if (field === 'favicon') {
+                document.getElementById('favicon-preview').innerHTML = `<img src="${reader.result}" style="width:100%;height:100%;object-fit:contain;">`;
+                document.getElementById('favicon-url').value = reader.result.substring(0, 50) + '...';
+            } else {
+                document.getElementById('logo-preview').innerHTML = `<img src="${reader.result}" style="max-width:100%;max-height:100%;object-fit:contain;">`;
+                document.getElementById('logo-url').value = reader.result.substring(0, 50) + '...';
+            }
+        };
+        reader.readAsDataURL(file);
+    };
+    input.click();
 }
 
 function renderFeaturesEditor(area) {

@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#09090b"/>
+      <stop offset="100%" style="stop-color:#18181b"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#6366f1"/>
+      <stop offset="100%" style="stop-color:#a78bfa"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg2)"/>
+  <!-- Top bar -->
+  <rect width="1200" height="48" fill="#12121a" opacity="0.8"/>
+  <circle cx="24" cy="24" r="6" fill="#ef4444"/>
+  <circle cx="44" cy="24" r="6" fill="#eab308"/>
+  <circle cx="64" cy="24" r="6" fill="#22c55e"/>
+  <text x="600" y="28" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" fill="#64748b">localhost:5000</text>
+  <!-- Sidebar -->
+  <rect x="0" y="48" width="220" height="582" fill="#12121a"/>
+  <rect x="16" y="68" width="188" height="36" rx="8" fill="#1e1e24"/>
+  <text x="110" y="90" text-anchor="middle" font-family="Inter, sans-serif" font-size="12" font-weight="600" fill="#a78bfa">🏠 Dashboard</text>
+  <rect x="16" y="114" width="188" height="32" rx="8" fill="transparent"/>
+  <text x="48" y="134" font-family="Inter, sans-serif" font-size="11" fill="#71717a">🗓️ Horários</text>
+  <rect x="16" y="150" width="188" height="32" rx="8" fill="transparent"/>
+  <text x="48" y="170" font-family="Inter, sans-serif" font-size="11" fill="#71717a">📊 Notas</text>
+  <rect x="16" y="186" width="188" height="32" rx="8" fill="transparent"/>
+  <text x="48" y="206" font-family="Inter, sans-serif" font-size="11" fill="#71717a">📝 Provas</text>
+  <rect x="16" y="222" width="188" height="32" rx="8" fill="transparent"/>
+  <text x="48" y="242" font-family="Inter, sans-serif" font-size="11" fill="#71717a">💬 Chat</text>
+  <rect x="16" y="258" width="188" height="32" rx="8" fill="transparent"/>
+  <text x="48" y="278" font-family="Inter, sans-serif" font-size="11" fill="#71717a">📹 Sala Vídeo</text>
+  <rect x="16" y="294" width="188" height="32" rx="8" fill="transparent"/>
+  <text x="48" y="314" font-family="Inter, sans-serif" font-size="11" fill="#71717a">🎵 Estudar</text>
+  <rect x="16" y="330" width="188" height="32" rx="8" fill="rgba(99,102,241,0.15)"/>
+  <text x="48" y="350" font-family="Inter, sans-serif" font-size="11" font-weight="600" fill="#a78bfa">🤖 Estúdio IA</text>
+  <rect x="16" y="366" width="188" height="32" rx="8" fill="transparent"/>
+  <text x="48" y="386" font-family="Inter, sans-serif" font-size="11" fill="#71717a">💻 IDE Código</text>
+  <!-- Main content - Dashboard -->
+  <rect x="240" y="68" width="280" height="100" rx="12" fill="#1e1e24"/>
+  <text x="260" y="96" font-family="Inter, sans-serif" font-size="12" fill="#71717a">📊 Notas</text>
+  <text x="260" y="130" font-family="Inter, sans-serif" font-size="36" font-weight="700" fill="#e2e8f0">24</text>
+  <rect x="540" y="68" width="280" height="100" rx="12" fill="#1e1e24"/>
+  <text x="560" y="96" font-family="Inter, sans-serif" font-size="12" fill="#71717a">📝 Provas</text>
+  <text x="560" y="130" font-family="Inter, sans-serif" font-size="36" font-weight="700" fill="#e2e8f0">8</text>
+  <rect x="840" y="68" width="280" height="100" rx="12" fill="#1e1e24"/>
+  <text x="860" y="96" font-family="Inter, sans-serif" font-size="12" fill="#71717a">📊 Média</text>
+  <text x="860" y="130" font-family="Inter, sans-serif" font-size="36" font-weight="700" fill="#22c55e">15.4</text>
+  <!-- Chart area -->
+  <rect x="240" y="188" width="880" height="250" rx="12" fill="#1e1e24"/>
+  <text x="260" y="216" font-family="Inter, sans-serif" font-size="14" font-weight="600" fill="#e2e8f0">📈 Gráfico Geral</text>
+  <!-- Bar chart -->
+  <rect x="300" y="360" width="40" height="40" rx="4" fill="#6366f1" opacity="0.8"/>
+  <rect x="380" y="330" width="40" height="70" rx="4" fill="#6366f1" opacity="0.8"/>
+  <rect x="460" y="300" width="40" height="100" rx="4" fill="#22c55e" opacity="0.8"/>
+  <rect x="540" y="340" width="40" height="60" rx="4" fill="#6366f1" opacity="0.8"/>
+  <rect x="620" y="280" width="40" height="120" rx="4" fill="#22c55e" opacity="0.8"/>
+  <rect x="700" y="320" width="40" height="80" rx="4" fill="#6366f1" opacity="0.8"/>
+  <rect x="780" y="290" width="40" height="110" rx="4" fill="#22c55e" opacity="0.8"/>
+  <rect x="860" y="350" width="40" height="50" rx="4" fill="#ef4444" opacity="0.8"/>
+  <rect x="940" y="270" width="40" height="130" rx="4" fill="#22c55e" opacity="0.8"/>
+  <line x1="280" y1="400" x2="1080" y2="400" stroke="#333" stroke-width="1"/>
+  <!-- Recent items -->
+  <rect x="240" y="458" width="430" height="150" rx="12" fill="#1e1e24"/>
+  <text x="260" y="486" font-family="Inter, sans-serif" font-size="14" font-weight="600" fill="#e2e8f0">📊 Notas Recentes</text>
+  <text x="260" y="516" font-family="Inter, sans-serif" font-size="12" fill="#71717a">Matemática (Teste)</text>
+  <text x="630" y="516" text-anchor="end" font-family="Inter, sans-serif" font-size="13" font-weight="600" fill="#22c55e">17/20</text>
+  <text x="260" y="544" font-family="Inter, sans-serif" font-size="12" fill="#71717a">Português (Projeto)</text>
+  <text x="630" y="544" text-anchor="end" font-family="Inter, sans-serif" font-size="13" font-weight="600" fill="#22c55e">14/20</text>
+  <text x="260" y="572" font-family="Inter, sans-serif" font-size="12" fill="#71717a">Física (Mini-Teste)</text>
+  <text x="630" y="572" text-anchor="end" font-family="Inter, sans-serif" font-size="13" font-weight="600" fill="#ef4444">9/20</text>
+  <!-- Upcoming -->
+  <rect x="690" y="458" width="430" height="150" rx="12" fill="#1e1e24"/>
+  <text x="710" y="486" font-family="Inter, sans-serif" font-size="14" font-weight="600" fill="#e2e8f0">📝 Próximas Provas</text>
+  <text x="710" y="516" font-family="Inter, sans-serif" font-size="12" fill="#71717a">História — Exame</text>
+  <text x="710" y="540" font-family="Inter, sans-serif" font-size="11" fill="#a78bfa">18 Jul • 60min • 10A</text>
+  <text x="710" y="572" font-family="Inter, sans-serif" font-size="12" fill="#71717a">Inglês — Teste</text>
+  <text x="710" y="596" font-family="Inter, sans-serif" font-size="11" fill="#a78bfa">22 Jul • 45min • 10B</text>
+</svg>

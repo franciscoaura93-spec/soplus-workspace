@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0a0a0f"/>
+      <stop offset="50%" style="stop-color:#12121a"/>
+      <stop offset="100%" style="stop-color:#0a0a0f"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#6366f1"/>
+      <stop offset="100%" style="stop-color:#8b5cf6"/>
+    </linearGradient>
+    <radialGradient id="orb" cx="50%" cy="45%" r="35%">
+      <stop offset="0%" style="stop-color:#6366f1;stop-opacity:0.3"/>
+      <stop offset="100%" style="stop-color:#6366f1;stop-opacity:0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <circle cx="600" cy="280" r="300" fill="url(#orb)"/>
+  <circle cx="600" cy="280" r="120" fill="none" stroke="url(#glow)" stroke-width="3" opacity="0.4"/>
+  <circle cx="600" cy="280" r="160" fill="none" stroke="url(#glow)" stroke-width="1.5" opacity="0.2"/>
+  <circle cx="600" cy="280" r="200" fill="none" stroke="url(#glow)" stroke-width="1" opacity="0.1"/>
+  <text x="600" y="265" text-anchor="middle" font-family="Inter, -apple-system, sans-serif" font-size="52" font-weight="800" fill="url(#glow)">S&amp;O+</text>
+  <text x="600" y="310" text-anchor="middle" font-family="Inter, -apple-system, sans-serif" font-size="18" font-weight="500" fill="#64748b">Ultra Workspace</text>
+  <text x="600" y="480" text-anchor="middle" font-family="Inter, -apple-system, sans-serif" font-size="22" font-weight="600" fill="#e2e8f0">O Workspace Escolar definitivo</text>
+  <text x="600" y="520" text-anchor="middle" font-family="Inter, -apple-system, sans-serif" font-size="15" fill="#64748b">Notas • Chat • IA • IDE • Videochamadas • Office</text>
+  <rect x="480" y="560" width="240" height="44" rx="12" fill="url(#glow)" opacity="0.9"/>
+  <text x="600" y="588" text-anchor="middle" font-family="Inter, -apple-system, sans-serif" font-size="15" font-weight="600" fill="#ffffff">Descarregar Grátis</text>
+</svg>

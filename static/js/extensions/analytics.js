@@ -19,7 +19,7 @@ async function loadAnalytics() {
     const worksSnap=await dbGet('works');
     const myWorks=worksSnap?Object.values(worksSnap).filter(w=>w.userId===currentUser.uid):[];
     const notesCount=notesSnap?Object.keys(notesSnap).length:0;
-    const avg=notesSnap?Object.values(notesSnap).reduce((s,n)=>s+(parseFloat(n.nota)||0),0)/notesCount:0;
+    const avg=notesSnap?Object.values(notesSnap).reduce((s,n)=>s+(parseFloat(n.valor)||0),0)/notesCount:0;
     el.innerHTML=`
         <div style="padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:10px;text-align:center;"><div style="font-size:24px;font-weight:700;color:var(--accent);">${notesCount}</div><div style="font-size:11px;color:var(--text-light);margin-top:4px;">Notas Registadas</div></div>
         <div style="padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:10px;text-align:center;"><div style="font-size:24px;font-weight:700;color:${avg>=10?'var(--success)':'var(--danger)'};">${avg>0?avg.toFixed(1):'-'}</div><div style="font-size:11px;color:var(--text-light);margin-top:4px;">Média Geral</div></div>

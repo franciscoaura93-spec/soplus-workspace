@@ -3,10 +3,33 @@
    ════════════════════════════════════════════════════════════ */
 
 let currentUser = null;
+function escapeHTML(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 let userProfile = null;
 let currentPage = null;
 let jitsiApi = null;
 let chartInstance = null;
+let deviceInfo = { ip: '', mac: '' };
+
+// ─── DEVICE DETECTION ─────────────────────────────────────
+async function detectDeviceInfo() {
+    try {
+        const r = await fetch('/api/ai/detect-device', { method: 'POST' });
+        const data = await r.json();
+        deviceInfo.ip = data.ip || '';
+        deviceInfo.mac = data.mac || '';
+    } catch(e) {
+        console.warn('Device detection failed:', e);
+    }
+}
+
+function aiBody(q) {
+    return JSON.stringify({
+        q,
+        email: userProfile?.email || currentUser?.email || '',
+        ip: deviceInfo.ip,
+        mac: deviceInfo.mac
+    });
+}
 
 // ─── AUTH STATE ───────────────────────────────────────────
 auth.onAuthStateChanged(async user => {
@@ -19,10 +42,13 @@ auth.onAuthStateChanged(async user => {
         }
         document.getElementById('loading-screen').style.display = 'none';
         document.getElementById('app').style.display = 'flex';
+        loadSavedLanguage();
         await loadUserExtensions();
         buildNav();
         navigateTo('dashboard');
         updateUI();
+        detectDeviceInfo();
+        setTimeout(() => checkGifts(), 2000);
     } else {
         window.location.href = '/';
     }
@@ -30,7 +56,9 @@ auth.onAuthStateChanged(async user => {
 
 function updateUI() {
     document.getElementById('user-name').textContent = userProfile?.nome || 'Convidado';
-    document.getElementById('user-role').textContent = userProfile?.role || 'aluno';
+    const role = userProfile?.role || 'aluno';
+    const roleLabels = { aluno: t('student'), professor: t('professor'), admin: t('admin_role') };
+    document.getElementById('user-role').textContent = roleLabels[role] || role;
     document.getElementById('user-avatar').textContent = (userProfile?.nome || '?')[0].toUpperCase();
 }
 
@@ -94,7 +122,7 @@ function buildNav() {
     nav.innerHTML = PAGES
         .filter(p => !p.profOnly || userProfile?.role === 'professor' || userProfile?.role === 'admin')
         .map(p => `<a class="nav-item" id="nav-${p.id}" onclick="navigateTo('${p.id}')">
-            <span class="icon">${p.icon}</span><span class="label">${p.label}</span>
+            <span class="icon">${p.icon}</span><span class="label">${t('nav_' + p.id) || p.label}</span>
         </a>`).join('');
 }
 
@@ -181,11 +209,11 @@ function renderDashboard(area) {
     const isProf = userProfile?.role === 'professor';
     const turmaDisplay = isProf ? (userProfile?.turmas || 'Sem turmas') : (userProfile?.turma || '—');
     area.innerHTML = `
-        <div class="page-header"><h2>Olá, ${userProfile?.nome || 'Convidado'} 👋</h2><p>Bem-vindo ao S&O+ Ultra Workspace</p></div>
+        <div class="page-header"><h2>${t('dashboard_welcome')}, ${userProfile?.nome || 'Convidado'} 👋</h2><p>${t('dashboard_subtitle')}</p></div>
         <div class="stat-grid" id="dash-stats"></div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
-            <div class="card"><div class="card-title">📊 Notas Recentes</div><div id="dash-notas"><div class="empty-state" style="padding:20px;"><p>Sem notas</p></div></div></div>
-            <div class="card"><div class="card-title">📝 Próximas Provas</div><div id="dash-provas"><div class="empty-state" style="padding:20px;"><p>Sem provas</p></div></div></div>
+            <div class="card"><div class="card-title">📊 ${t('nav_notas')} Recentes</div><div id="dash-notas"><div class="empty-state" style="padding:20px;"><p>${t('no_data')}</p></div></div></div>
+            <div class="card"><div class="card-title">📝 ${t('provas_title')}</div><div id="dash-provas"><div class="empty-state" style="padding:20px;"><p>${t('no_data')}</p></div></div></div>
         </div>
         <div class="card"><div class="card-title">📈 Gráfico Geral</div><canvas id="dashChart" style="max-height:280px;"></canvas></div>
     `;
@@ -222,10 +250,10 @@ async function loadDashboardStats() {
     const totalAlunos = isProf ? profTurmas.length : 0;
 
     document.getElementById('dash-stats').innerHTML = `
-        <div class="stat-card"><div class="stat-icon">📚</div><div class="stat-value">${notas.length}</div><div class="stat-label">${isProf ? 'Notas dadas' : 'Notas'}</div></div>
-        <div class="stat-card"><div class="stat-icon">📝</div><div class="stat-value">${provas.length}</div><div class="stat-label">Provas</div></div>
-        <div class="stat-card"><div class="stat-icon">📊</div><div class="stat-value">${media}</div><div class="stat-label">Média${isProf ? ' geral' : ''}</div></div>
-        <div class="stat-card"><div class="stat-icon">🎓</div><div class="stat-value">${isProf ? profTurmas.join(', ') || '—' : (userProfile?.turma || '—')}</div><div class="stat-label">${isProf ? 'Turmas' : 'Turma'}</div></div>
+        <div class="stat-card"><div class="stat-icon">📚</div><div class="stat-value">${notas.length}</div><div class="stat-label">${isProf ? 'Notas dadas' : t('nav_notas')}</div></div>
+        <div class="stat-card"><div class="stat-icon">📝</div><div class="stat-value">${provas.length}</div><div class="stat-label">${t('nav_provas')}</div></div>
+        <div class="stat-card"><div class="stat-icon">📊</div><div class="stat-value">${media}</div><div class="stat-label">${t('notas_average')}${isProf ? ' geral' : ''}</div></div>
+        <div class="stat-card"><div class="stat-icon">🎓</div><div class="stat-value">${isProf ? profTurmas.join(', ') || '—' : (userProfile?.turma || '—')}</div><div class="stat-label">${isProf ? 'Turmas' : t('perfil_turma')}</div></div>
     `;
 
     if (notas.length > 0) {
@@ -737,7 +765,7 @@ function loadChatMessages() {
         const mine = m.autorId === currentUser.uid;
         const div = document.createElement('div');
         div.className = `chat-bubble ${mine ? 'mine' : 'theirs'}`;
-        div.innerHTML = `${!mine ? `<div class="author">${m.autorNome}</div>` : ''}<div>${m.texto}</div><div class="time">${new Date(m.timestamp).toLocaleTimeString('pt-PT', {hour:'2-digit', minute:'2-digit'})}</div>`;
+        div.innerHTML = `${!mine ? `<div class="author">${escapeHTML(m.autorNome || '')}</div>` : ''}<div>${escapeHTML(m.texto || '')}</div><div class="time">${new Date(m.timestamp).toLocaleTimeString('pt-PT', {hour:'2-digit', minute:'2-digit'})}</div>`;
         box.appendChild(div);
         box.scrollTop = box.scrollHeight;
     });
@@ -837,9 +865,9 @@ function renderEstudar(area) {
                     <div class="form-group"><label>Como te sentes?</label>
                         <div style="display:flex;gap:8px;flex-wrap:wrap;" id="study-mood">
                             <button class="btn btn-sm" onclick="setStudyMood(this,'focado')" style="background:rgba(37,99,235,.15);border:1px solid rgba(37,99,235,.3);">🧠 Focado</button>
-                            <button class="btn btn-sm" onclick="setStudyMood(this,' cansado')" style="background:rgba(251,191,36,.15);border:1px solid rgba(251,191,36,.3);">😴 Cansado</button>
-                            <button class="btn btn-sm" onclick="setStudyMood(this,' ansioso')" style="background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);">😰 Ansioso</button>
-                            <button class="btn btn-sm" onclick="setStudyMood(this,' motivado')" style="background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.3);">🔥 Motivado</button>
+                            <button class="btn btn-sm" onclick="setStudyMood(this,'cansado')" style="background:rgba(251,191,36,.15);border:1px solid rgba(251,191,36,.3);">😴 Cansado</button>
+                            <button class="btn btn-sm" onclick="setStudyMood(this,'ansioso')" style="background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);">😰 Ansioso</button>
+                            <button class="btn btn-sm" onclick="setStudyMood(this,'motivado')" style="background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.3);">🔥 Motivado</button>
                         </div>
                     </div>
                     <button class="btn btn-ai" onclick="getStudyRecommendation()" style="width:100%;">🎵 Pedir Recomendação</button>
@@ -872,11 +900,11 @@ async function getStudyRecommendation() {
     try {
         const r = await fetch('/api/ai/chat', {
             method: 'POST', headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({ q: `Estou a estudar ${subject} e estou ${studyMood}. Recomenda-me 5 músicas ou playlists do Spotify perfeitas para este momento. Dá nomes das músicas, artistas e porquê são boas para estudar. Formato: 1. 🎵 Nome - Artista (razão)` })
+            body: aiBody(`Estou a estudar ${subject} e estou ${studyMood}. Recomenda-me 5 músicas ou playlists do Spotify perfeitas para este momento. Dá nomes das músicas, artistas e porquê são boas para estudar. Formato: 1. 🎵 Nome - Artista (razão)`)
         });
         const data = await r.json();
-        result.innerHTML = `<div style="color:var(--text);line-height:1.8;font-size:13px;white-space:pre-wrap;">${data.resposta || data.erro}</div>`;
-    } catch(e) { result.innerHTML = `<span style="color:var(--danger)">${e.message}</span>`; }
+        result.textContent = data.resposta || data.erro || 'Erro';
+    } catch(e) { result.textContent = e.message; }
 }
 
 // ── ESTÚDIO IA (EXPANDIDO) ──
@@ -1041,11 +1069,11 @@ async function sendIAChat() {
     msgs.innerHTML += `<div style="margin-bottom:8px;"><span style="background:rgba(139,92,246,.1);padding:8px 14px;border-radius:12px 12px 12px 2px;font-size:13px;display:inline-block;animation:pulse 1.5s infinite;color:var(--ai);">A pensar...</span></div>`;
     msgs.scrollTop = msgs.scrollHeight;
     try {
-        const r = await fetch('/api/ai/chat', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({q}) });
+        const r = await fetch('/api/ai/chat', { method:'POST', headers:{'Content-Type':'application/json'}, body: aiBody(q) });
         const data = await r.json();
         const lastTyping = msgs.lastElementChild;
-        lastTyping.innerHTML = `<span style="background:rgba(139,92,246,.1);padding:8px 14px;border-radius:12px 12px 12px 2px;font-size:13px;display:inline-block;max-width:80%;white-space:pre-wrap;">${data.resposta || data.erro}</span>`;
-    } catch(e) { msgs.lastElementChild.innerHTML = `<span style="color:var(--danger)">${e.message}</span>`; }
+        lastTyping.textContent = data.resposta || data.erro || 'Erro';
+    } catch(e) { msgs.lastElementChild.textContent = 'Erro: ' + e.message; }
     msgs.scrollTop = msgs.scrollHeight;
 }
 
@@ -1055,7 +1083,7 @@ async function gerarEscrita() {
     const result = document.getElementById('escrita-result');
     if (!prompt) return showToast('Escreve o que queres', 'error');
     result.innerHTML = '<span style="color:var(--ai);animation:pulse 1.5s infinite;">✍️ A escrever...</span>';
-    const r = await fetch('/api/ai/chat', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({q:`Escreve um(a) ${tipo} sobre: ${prompt}. Usa português correcto e bem estruturado.`})});
+    const r = await fetch('/api/ai/chat', { method:'POST', headers:{'Content-Type':'application/json'}, body: aiBody(`Escreve um(a) ${tipo} sobre: ${prompt}. Usa português correcto e bem estruturado.`) });
     const data = await r.json();
     result.textContent = data.resposta || data.erro;
 }
@@ -1070,7 +1098,7 @@ async function analisarFoto() {
     reader.onload = async () => {
         const base64 = reader.result.split(',')[1];
         try {
-            const r = await fetch('/api/ai/chat', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({q: `[Análise de imagem] ${pergunta}. Nota: o utilizador enviou uma imagem mas esta funcionalidade requer suporte multimodal que será implementado em breve. Por agora descreve o que pediste: ${pergunta}`})});
+            const r = await fetch('/api/ai/chat', { method:'POST', headers:{'Content-Type':'application/json'}, body: aiBody(`[Análise de imagem] ${pergunta}. Nota: o utilizador enviou uma imagem mas esta funcionalidade requer suporte multimodal que será implementado em breve. Por agora descreve o que pediste: ${pergunta}`) });
             const data = await r.json();
             result.textContent = data.resposta || data.erro;
         } catch(e) { result.textContent = e.message; }
@@ -1088,7 +1116,7 @@ async function analisarFicheiro() {
     reader.onload = async () => {
         const conteudo = reader.result.substring(0, 8000);
         try {
-            const r = await fetch('/api/ai/chat', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({q:`Analisa este ficheiro. Pergunta/Tarefa: ${pergunta}\n\nConteúdo do ficheiro:\n${conteudo}`})});
+            const r = await fetch('/api/ai/chat', { method:'POST', headers:{'Content-Type':'application/json'}, body: aiBody(`Analisa este ficheiro. Pergunta/Tarefa: ${pergunta}\n\nConteúdo do ficheiro:\n${conteudo}`) });
             const data = await r.json();
             result.textContent = data.resposta || data.erro;
         } catch(e) { result.textContent = e.message; }
@@ -1108,7 +1136,7 @@ async function ajudarPPT() {
         dicas: `Dá-me 10 dicas profissionais para uma apresentação sobre: ${tema}.`,
         design: `Sugere cores, fontes e layout ideal para uma apresentação sobre: ${tema}.`
     };
-    const r = await fetch('/api/ai/chat', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({q: prompts[tipo]})});
+    const r = await fetch('/api/ai/chat', { method:'POST', headers:{'Content-Type':'application/json'}, body: aiBody(prompts[tipo]) });
     const data = await r.json();
     result.textContent = data.resposta || data.erro;
 }
@@ -1121,7 +1149,7 @@ async function ajudarCodigo() {
     if (!prompt) return showToast('Escreve a descrição ou cola o código', 'error');
     result.innerHTML = '<span style="color:var(--ai);animation:pulse 1.5s infinite;">💻 A processar código...</span>';
     const actions = { escrever: 'Escreve', explicar: 'Explica detalhadamente', corrigir: 'Corrige os erros e explica', otimizar: 'Otimiza e explica as melhorias' };
-    const r = await fetch('/api/ai/chat', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({q:`${actions[action]} código em ${lang}. ${prompt}. Mostra sempre o código formatado.`})});
+    const r = await fetch('/api/ai/chat', { method:'POST', headers:{'Content-Type':'application/json'}, body: aiBody(`${actions[action]} código em ${lang}. ${prompt}. Mostra sempre o código formatado.`) });
     const data = await r.json();
     result.textContent = data.resposta || data.erro;
 }
@@ -1132,7 +1160,7 @@ async function gerarResumo() {
     const result = document.getElementById('resumo-result');
     if (!texto) return showToast('Cola o texto', 'error');
     result.innerHTML = '<span style="color:var(--ai);animation:pulse 1.5s infinite;">📋 A resumir...</span>';
-    const r = await fetch('/api/ai/chat', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({q:`Faz um resumo ${tipo} deste texto:\n\n${texto.substring(0,6000)}`})});
+    const r = await fetch('/api/ai/chat', { method:'POST', headers:{'Content-Type':'application/json'}, body: aiBody(`Faz um resumo ${tipo} deste texto:\n\n${texto.substring(0,6000)}`) });
     const data = await r.json();
     result.textContent = data.resposta || data.erro;
 }
@@ -1144,7 +1172,7 @@ async function traduzir() {
     const result = document.getElementById('trad-result');
     if (!texto) return showToast('Escreve o texto', 'error');
     result.innerHTML = '<span style="color:var(--ai);animation:pulse 1.5s infinite;">🌐 A traduzir...</span>';
-    const r = await fetch('/api/ai/chat', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({q:`Traduz de ${de} para ${para}: ${texto}`})});
+    const r = await fetch('/api/ai/chat', { method:'POST', headers:{'Content-Type':'application/json'}, body: aiBody(`Traduz de ${de} para ${para}: ${texto}`) });
     const data = await r.json();
     result.textContent = data.resposta || data.erro;
 }
@@ -1210,41 +1238,55 @@ async function loadRecursosStats() {
 // ── PERFIL ──
 function renderPerfil(area) {
     const isProf = userProfile?.role === 'professor';
+    const langList = getLanguageList();
     area.innerHTML = `
-        <div class="page-header"><h2>⚙️ Perfil</h2></div>
+        <div class="page-header"><h2>⚙️ ${t('perfil_title')}</h2></div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
             <div class="card">
-                <div class="card-title">👤 Informações</div>
+                <div class="card-title">👤 ${t('perfil_subtitle')}</div>
                 <form id="form-perfil">
-                    <div class="form-group"><label>Nome</label><input class="form-input" name="nome" value="${userProfile?.nome || ''}" required></div>
-                    <div class="form-group"><label>Email</label><input class="form-input" value="${currentUser?.email || 'Anónimo'}" disabled style="opacity:0.5;"></div>
-                    <div class="form-group"><label>Função</label><input class="form-input" value="${isProf ? '👨‍🏫 Professor' : '🎓 Aluno'}" disabled style="opacity:0.5;"></div>
+                    <div class="form-group"><label>${t('perfil_name')}</label><input class="form-input" name="nome" value="${userProfile?.nome || ''}" required></div>
+                    <div class="form-group"><label>${t('perfil_email')}</label><input class="form-input" value="${currentUser?.email || 'Anónimo'}" disabled style="opacity:0.5;"></div>
+                    <div class="form-group"><label>${t('perfil_role')}</label><input class="form-input" value="${isProf ? '👨‍🏫 ' + t('professor') : '🎓 ' + t('student')}" disabled style="opacity:0.5;"></div>
                     ${isProf ? `
                     <div class="form-group">
                         <label>As Minhas Turmas</label>
                         <p style="font-size:11px;color:var(--text-light);margin-bottom:6px;">Separa as turmas por vírgula (ex: 10A, 10B, 11A)</p>
                         <input class="form-input" name="turmas" value="${userProfile?.turmas || ''}" placeholder="Ex: 10A, 10B, 11A">
                     </div>` : `
-                    <div class="form-group"><label>Turma</label><input class="form-input" name="turma" value="${userProfile?.turma || ''}"></div>`}
+                    <div class="form-group"><label>${t('perfil_turma')}</label><input class="form-input" name="turma" value="${userProfile?.turma || ''}"></div>`}
                     ${!isProf ? `
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                         <div class="form-group"><label>Ano</label><input type="number" class="form-input" name="ano" value="${userProfile?.ano || ''}" min="1" max="12"></div>
                         <div class="form-group"><label>Idade</label><input type="number" class="form-input" name="idade" value="${userProfile?.idade || ''}" min="8" max="25"></div>
                     </div>` : ''}
-                    <button type="submit" class="btn btn-primary" style="width:100%;">💾 Guardar</button>
+                    <button type="submit" class="btn btn-primary" style="width:100%;">💾 ${t('perfil_save')}</button>
                 </form>
             </div>
             <div class="card">
-                <div class="card-title">ℹ️ Conta</div>
-                <div style="font-size:13px;color:var(--text-light);line-height:2;">
-                    <div><strong>UID:</strong> <code style="font-size:11px;">${currentUser?.uid || ''}</code></div>
-                    <div><strong>Email:</strong> ${currentUser?.email || 'Anónimo'}</div>
-                    <div><strong>Tipo:</strong> ${currentUser?.isAnonymous ? 'Convidado' : 'Registado'}</div>
-                    ${isProf ? `<div><strong>Turmas:</strong> ${userProfile?.turmas || 'Não definidas'}</div>` : `<div><strong>Turma:</strong> ${userProfile?.turma || 'Não definida'}</div>`}
-                    <div><strong>Membro desde:</strong> ${new Date(userProfile?.createdAt || Date.now()).toLocaleDateString('pt-PT')}</div>
+                <div class="card-title">🌐 ${t('perfil_lang')}</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:20px;">
+                    ${langList.map(l => `
+                        <button class="btn ${currentLang === l.code ? 'btn-primary' : 'btn-outline'}" 
+                            onclick="changeProfileLang('${l.code}')" 
+                            style="display:flex;align-items:center;gap:8px;padding:10px 14px;font-size:13px;">
+                            <span style="font-size:18px;">${l.flag}</span> ${l.name}
+                        </button>
+                    `).join('')}
                 </div>
-                <div style="margin-top:30px;border-top:1px solid var(--border);padding-top:20px;">
-                    <button class="btn btn-danger" style="width:100%;" onclick="doLogout()">🚪 Terminar Sessão</button>
+
+                <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:8px;">
+                    <div class="card-title" style="margin-bottom:12px;">ℹ️ Conta</div>
+                    <div style="font-size:13px;color:var(--text-light);line-height:2;">
+                        <div><strong>UID:</strong> <code style="font-size:11px;">${currentUser?.uid || ''}</code></div>
+                        <div><strong>Email:</strong> ${currentUser?.email || 'Anónimo'}</div>
+                        <div><strong>Tipo:</strong> ${currentUser?.isAnonymous ? t('guest') : t('register')}</div>
+                        ${isProf ? `<div><strong>Turmas:</strong> ${userProfile?.turmas || 'Não definidas'}</div>` : `<div><strong>${t('perfil_turma')}:</strong> ${userProfile?.turma || 'Não definida'}</div>`}
+                        <div><strong>Membro desde:</strong> ${new Date(userProfile?.createdAt || Date.now()).toLocaleDateString('pt-PT')}</div>
+                    </div>
+                </div>
+                <div style="margin-top:20px;border-top:1px solid var(--border);padding-top:16px;">
+                    <button class="btn btn-danger" style="width:100%;" onclick="doLogout()">🚪 ${t('perfil_logout')}</button>
                 </div>
             </div>
         </div>
@@ -1263,8 +1305,15 @@ function renderPerfil(area) {
         await updateUserProfile(currentUser.uid, update);
         userProfile = await getUserProfile(currentUser.uid);
         updateUI();
-        showToast('Perfil atualizado!', 'success');
+        showToast(t('success') + '!', 'success');
     };
+}
+
+function changeProfileLang(lang) {
+    setLanguage(lang);
+    buildNav();
+    navigateTo('perfil');
+    showToast(t('perfil_lang') + ': ' + (LANGUAGES[lang]?._name || lang), 'success');
 }
 
 async function doLogout() {
@@ -1298,11 +1347,11 @@ async function askAI() {
     try {
         const r = await fetch('/api/ai/chat', {
             method: 'POST', headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ q })
+            body: aiBody(q)
         });
         const data = await r.json();
         document.getElementById('ai-typing')?.remove();
-        box.innerHTML += `<div class="ai-msg">${(data.resposta || data.erro || 'Erro').replace(/\n/g, '<br>')}</div>`;
+        const div = document.createElement('div'); div.className = 'ai-msg'; div.textContent = data.resposta || data.erro || 'Erro'; box.appendChild(div);
     } catch(e) {
         document.getElementById('ai-typing')?.remove();
         box.innerHTML += `<div class="ai-msg" style="border-color:var(--danger);">Erro de ligação.</div>`;
@@ -1389,7 +1438,7 @@ async function runCode() {
     try {
         const r = await fetch('/api/ai/chat', {
             method: 'POST', headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({ q: `Executa este código ${lang} e mostra o output. Se houver erros, explica. Código:\n\`\`\`${lang}\n${code}\n\`\`\`` })
+            body: aiBody(`Executa este código ${lang} e mostra o output. Se houver erros, explica. Código:\n\`\`\`${lang}\n${code}\n\`\`\``)
         });
         const data = await r.json();
         output.textContent = data.resposta || data.erro || 'Sem output';
@@ -1410,10 +1459,10 @@ async function askCodeHelp() {
     try {
         const r = await fetch('/api/ai/chat', {
             method: 'POST', headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({ q: `No contexto deste código:\n\`\`\`\n${code}\n\`\`\`\n\nPergunta: ${q}` })
+            body: aiBody(`No contexto deste código:\n\`\`\`\n${code}\n\`\`\`\n\nPergunta: ${q}`)
         });
         const data = await r.json();
-        resp.innerHTML = (data.resposta || data.erro || '').replace(/\n/g, '<br>');
+        resp.textContent = data.resposta || data.erro || 'Sem resposta';
     } catch(e) {
         resp.innerHTML = '<span style="color:var(--danger);">Erro de ligação</span>';
     }
@@ -1919,7 +1968,7 @@ async function aiDrawingHelp() {
     try {
         const r = await fetch('/api/ai/chat', {
             method: 'POST', headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({ q: `Sou um aluno a desenhar. ${prompt_text}. Dá-me dicas práticas de como desenhar isto, passo a passo, em português.` })
+            body: aiBody(`Sou um aluno a desenhar. ${prompt_text}. Dá-me dicas práticas de como desenhar isto, passo a passo, em português.`)
         });
         const data = await r.json();
         alert(data.resposta || data.erro || 'Sem sugestão');
@@ -2063,7 +2112,7 @@ async function callAI(q) {
     const r = await fetch('/api/ai/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ q })
+        body: aiBody(q)
     });
     const data = await r.json();
     if (data.erro) throw new Error(data.erro);
@@ -2154,7 +2203,7 @@ function renderExtPage(area, extId) {
     }
     const ext = allExtensions[extId] || {};
     const pageType = ext.pageType || 'generic';
-    const renderFn = 'render' + pageType.charAt(0).toUpperCase() + pageType.slice(1);
+    const renderFn = 'render' + pageType.split('_').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join('');
 
     if (typeof window[renderFn] === 'function') {
         window[renderFn](area, ext);
@@ -2179,4 +2228,83 @@ function renderGenericExt(area, ext) {
         <div class="page-header"><h2>${ext.icon} ${ext.name}</h2><p>${ext.desc}</p></div>
         <div class="card"><div class="empty-state" style="padding:40px;"><div class="icon">🚧</div><h3>Em construção</h3><p>Esta extensão está a ser desenvolvida.</p></div></div>
     `;
+}
+
+// ════════════════════════════════════════════════════════════
+//   PRESENTES — Verificar e mostrar presentes pendentes
+// ════════════════════════════════════════════════════════════
+
+async function checkGifts() {
+    if (!currentUser) return;
+    try {
+        const r = await fetch('/api/gifts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId: currentUser.uid })
+        });
+        const data = await r.json();
+        if (data.gifts && data.gifts.length > 0) {
+            showGiftModal(data.gifts[0]);
+        }
+    } catch(e) {
+        console.warn('Erro ao verificar presentes:', e);
+    }
+}
+
+function showGiftModal(gift) {
+    const extInfo = allExtensions[gift.extId] || {};
+    const extIcon = extInfo.icon || '🧩';
+    const extName = extInfo.name || gift.extId;
+
+    const modal = document.createElement('div');
+    modal.id = 'gift-modal';
+    modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:10000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.8);animation:fadeIn 0.3s;';
+    modal.innerHTML = `
+        <div style="background:linear-gradient(135deg,#1e1b4b,#312e81);border:2px solid #a78bfa;border-radius:20px;padding:40px;max-width:480px;width:90%;text-align:center;animation:scaleIn 0.4s;position:relative;">
+            <button onclick="claimGift('${gift.id}')" style="position:absolute;top:16px;right:16px;background:none;border:none;color:var(--text-dim);font-size:20px;cursor:pointer;">✕</button>
+            
+            <div style="font-size:64px;margin-bottom:16px;">🎁</div>
+            <h2 style="color:#fff;font-size:24px;margin-bottom:8px;">Tens um presente!</h2>
+            
+            <div style="background:rgba(255,255,255,0.1);border-radius:12px;padding:20px;margin:20px 0;">
+                <div style="font-size:40px;margin-bottom:8px;">${extIcon}</div>
+                <div style="font-size:18px;font-weight:700;color:#e0e7ff;">${extName}</div>
+            </div>
+
+            ${gift.message ? `
+                <div style="background:rgba(255,255,255,0.05);border-radius:12px;padding:16px;margin:16px 0;text-align:left;">
+                    <div style="font-size:12px;color:var(--text-dim);margin-bottom:6px;">📝 Mensagem do admin:</div>
+                    <div style="font-size:14px;color:var(--text);line-height:1.5;font-style:italic;">"${escapeHTML(gift.message)}"</div>
+                </div>
+            ` : ''}
+
+            ${gift.image ? `
+                <div style="margin:16px 0;">
+                    <img src="${escapeHTML(gift.image)}" style="max-width:100%;max-height:250px;border-radius:12px;border:2px solid rgba(255,255,255,0.1);">
+                </div>
+            ` : ''}
+
+            <button onclick="claimGift('${gift.id}')" style="margin-top:20px;padding:14px 40px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border:none;border-radius:12px;color:#fff;font-size:16px;font-weight:700;cursor:pointer;transition:transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+                🎉 Aceitar Presente
+            </button>
+        </div>
+    `;
+    document.body.appendChild(modal);
+}
+
+async function claimGift(giftId) {
+    try {
+        await fetch('/api/gifts/claim', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ giftId })
+        });
+        const modal = document.getElementById('gift-modal');
+        if (modal) modal.remove();
+        await loadUserExtensions();
+        buildNav();
+        showToast('🎁 Presente recebido! Extensão ativada.', 'success');
+    } catch(e) {
+        console.warn('Erro ao reclamar presente:', e);
+    }
 }

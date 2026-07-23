@@ -27,6 +27,7 @@ Write-Host "✓ Python encontrado" -ForegroundColor Green
 Write-Host "[2/3] A instalar dependências..." -ForegroundColor Yellow
 & python -m pip install --user --break-system-packages flask requests 2>&1 | Out-Null
 & python -m pip install --user --break-system-packages -r (Join-Path $PSScriptRoot "requirements.txt") 2>&1 | Out-Null
+& python -m pip install --user --break-system-packages ddgs 2>&1 | Out-Null
 Write-Host "✓ Dependências instaladas" -ForegroundColor Green
 
 # Criar atalho no desktop

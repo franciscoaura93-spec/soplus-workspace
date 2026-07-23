@@ -4,10 +4,10 @@ function renderTrabalhos(area, ext) {
         <div class="page-header"><h2>${ext.icon} ${ext.name}</h2><p>${ext.desc}</p></div>
         <div class="card" style="margin-bottom:16px;">
             <h3 style="margin-bottom:12px;">📤 Submeter Trabalho</h3>
-            <div class="field"><label>Nome do Trabalho</label><input id="work-name" placeholder="Ex: Relatório de Ciências"></div>
-            <div class="field"><label>Disciplina</label><input id="work-subject" placeholder="Ex: Ciências Naturais"></div>
-            <div class="field"><label>Descrição</label><textarea id="work-desc" placeholder="Descreve o trabalho..."></textarea></div>
-            <div class="field"><label>Anexar ficheiro</label><input type="file" id="work-file" accept=".pdf,.doc,.docx,.txt,.ppt,.pptx,.xls,.xlsx,.zip"></div>
+            <div class="form-group"><label>Nome do Trabalho</label><input id="work-name" placeholder="Ex: Relatório de Ciências"></div>
+            <div class="form-group"><label>Disciplina</label><input id="work-subject" placeholder="Ex: Ciências Naturais"></div>
+            <div class="form-group"><label>Descrição</label><textarea id="work-desc" placeholder="Descreve o trabalho..."></textarea></div>
+            <div class="form-group"><label>Anexar ficheiro</label><input type="file" id="work-file" accept=".pdf,.doc,.docx,.txt,.ppt,.pptx,.xls,.xlsx,.zip"></div>
             <button class="btn btn-primary" onclick="submitWork()">📤 Submeter</button>
         </div>
         <div class="card">

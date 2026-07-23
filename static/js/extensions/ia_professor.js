@@ -4,10 +4,10 @@ function renderIAProfessor(area, ext) {
         <div class="page-header"><h2>${ext.icon} ${ext.name}</h2><p>${ext.desc}</p></div>
         <div class="card" style="margin-bottom:16px;">
             <h3 style="margin-bottom:12px;">🤖 Correção Automática</h3>
-            <div class="field"><label>Disciplina</label><input id="prof-subject" placeholder="Ex: Português"></div>
-            <div class="field"><label>Pergunta / Enunciado</label><textarea id="prof-question" placeholder="Ex: Qual é a capital de Portugal?"></textarea></div>
-            <div class="field"><label>Resposta do Aluno</label><textarea id="prof-answer" placeholder="Ex: Lisboa"></textarea></div>
-            <div class="field"><label>Resposta Correta</label><input id="prof-correct" placeholder="Ex: Lisboa"></div>
+            <div class="form-group"><label>Disciplina</label><input id="prof-subject" placeholder="Ex: Português"></div>
+            <div class="form-group"><label>Pergunta / Enunciado</label><textarea id="prof-question" placeholder="Ex: Qual é a capital de Portugal?"></textarea></div>
+            <div class="form-group"><label>Resposta do Aluno</label><textarea id="prof-answer" placeholder="Ex: Lisboa"></textarea></div>
+            <div class="form-group"><label>Resposta Correta</label><input id="prof-correct" placeholder="Ex: Lisboa"></div>
             <button class="btn btn-primary" onclick="correctAnswer()">📝 Corrigir com IA</button>
         </div>
         <div id="prof-result"></div>

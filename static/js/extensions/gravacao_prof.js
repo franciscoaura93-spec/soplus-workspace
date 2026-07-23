@@ -5,7 +5,7 @@ function renderGravacaoProf(area, ext) {
         <div class="card" style="margin-bottom:16px;">
             <h3 style="margin-bottom:12px;">🎤 Gravação de Áudio</h3>
             <p style="font-size:13px;color:var(--text-light);margin-bottom:16px;">Grava explicações e feedback em áudio para os teus alunos.</p>
-            <div class="field"><label>Título da Gravação</label><input id="audio-title" placeholder="Ex: Explicação Capítulo 5"></div>
+            <div class="form-group"><label>Título da Gravação</label><input id="audio-title" placeholder="Ex: Explicação Capítulo 5"></div>
             <div style="display:flex;gap:10px;margin-bottom:16px;">
                 <button class="btn btn-primary" id="audio-rec-btn" onclick="startAudioRec()">⏺️ Iniciar</button>
                 <button class="btn btn-danger" id="audio-stop-btn" onclick="stopAudioRec()" style="display:none;">⏹️ Parar</button>

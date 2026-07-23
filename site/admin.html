@@ -240,6 +240,8 @@
         <div class="tab" data-tab="codigos" onclick="switchTab('codigos')">🔑 Códigos</div>
         <div class="tab" data-tab="prompts" onclick="switchTab('prompts')">🖼️ Prompts Imagens</div>
         <div class="tab" data-tab="pedidos" onclick="switchTab('pedidos')" style="position:relative;">🛒 Pedidos <span id="pedidos-badge" style="display:none;background:var(--danger);color:#fff;font-size:10px;padding:2px 6px;border-radius:10px;margin-left:4px;font-weight:700;"></span></div>
+        <div class="tab" data-tab="presentes" onclick="switchTab('presentes')">🎁 Presentear</div>
+        <div class="tab" data-tab="ai-rules" onclick="switchTab('ai-rules')">🧠 Regras IA</div>
         <div class="tab" data-tab="database" onclick="switchTab('database')">📊 Base de Dados</div>
         <div class="tab" data-tab="moodle" onclick="switchTab('moodle')">🔗 Moodle</div>
     </div>
@@ -272,11 +274,11 @@ let uploadCallback = null;
 
 const DEFAULT_DATA = {
     hero: {
-        badge: "v2.0 — 2026",
+        badge: "v2.2 — 2026",
         title: "O Workspace Escolar\ndefinitivo",
         subtitle: "Notas, provas, chat, videochamadas, IDE, editor de documentos, desenho, IA integrada e muito mais — tudo num só sítio.",
         ctaText: "Descarregar para Windows",
-        ctaLink: "#download",
+        ctaLink: "https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v2.2/S+O-Workspace-Instalador.exe",
         secondaryText: "Saber mais",
         secondaryLink: "#features"
     },
@@ -295,8 +297,8 @@ const DEFAULT_DATA = {
         copyright: "S&O+ Ultra Workspace © 2026 • Feito com ❤️ para escolas portuguesas",
         downloadText: "Pronto para começar?",
         downloadSub: "Descarrega o instalador e tem o workspace a funcionar em menos de 1 minuto.",
-        downloadBtn: "Descarregar v2.0 (~2MB)",
-        downloadLink: "https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v2.0/S%2BO-Workspace-Instalador.exe",
+        downloadBtn: "Descarregar v2.2 (~2MB)",
+        downloadLink: "https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v2.2/S+O-Workspace-Instalador.exe",
         downloadInfo: "Windows 10/11 • Python instalado automaticamente • Grátis para sempre"
     }
 };
@@ -345,6 +347,8 @@ function renderTab() {
         case 'prompts': renderPrompts(area); break;
         case 'extensions': renderExtensions(area); break;
         case 'pedidos': renderPedidos(area); break;
+        case 'presentes': renderPresentes(area); break;
+        case 'ai-rules': renderAIRules(area); break;
         case 'database': renderDatabase(area); break;
         case 'moodle': renderMoodle(area); break;
     }
@@ -962,17 +966,8 @@ function listenPedidos() {
 //   DATABASE EXPLORER — IA + Árvore + Edição
 // ════════════════════════════════════════════════════════════
 
-const GEMINI_MODEL = 'gemini-3.1-flash-lite';
 let dbTreeData = {};
 let dbExpandedPaths = new Set();
-let adminAIKey = '';
-let adminAIModel = '';
-
-db.ref('admin_config').once('value').then(snap => {
-    const cfg = snap.val() || {};
-    adminAIKey = cfg.ai_key || '';
-    adminAIModel = cfg.ai_model || GEMINI_MODEL;
-});
 
 function renderDatabase(area) {
     area.innerHTML = `
@@ -1015,19 +1010,17 @@ async function askDBAI() {
         return;
     }
 
-    if (!adminAIKey) { resp.innerHTML = '<div style="color:var(--danger);">❌ Chave IA não configurada no Firebase (admin_config/ai_key)</div>'; return; }
     try {
-        const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${adminAIModel}:generateContent?key=${adminAIKey}`, {
+        const r = await fetch('/api/admin/ai-query', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                contents: [{ parts: [{ text: `Tu és o assistente de administração de uma base de dados Firebase. Aqui está a estrutura e dados:\n\n${dbSummary}\n\n---\n\nPergunta do admin: "${q}"\n\nResponde de forma clara e organizada. Usa emojis e formatação. Se a pergunta for sobre dados específicos, mostra os valores. Se pedir uma ação, explica o que fazer.` }] }],
-                generationConfig: { temperature: 0.3, maxOutputTokens: 2048 }
+                prompt: `Tu és o assistente de administração de uma base de dados Firebase. Aqui está a estrutura e dados:\n\n${dbSummary}\n\n---\n\nPergunta do admin: "${q}"\n\nResponde de forma clara e organizada. Usa emojis e formatação. Se a pergunta for sobre dados específicos, mostra os valores. Se pedir uma ação, explica o que fazer.`
             })
         });
         const data = await r.json();
-        if (data.error) { resp.innerHTML = `<div style="color:var(--danger);">❌ ${data.error.message}</div>`; return; }
-        const txt = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Sem resposta.';
+        if (data.erro) { resp.innerHTML = `<div style="color:var(--danger);">❌ ${data.erro}</div>`; return; }
+        const txt = data.resposta || 'Sem resposta.';
         resp.innerHTML = `<div style="white-space:pre-wrap;line-height:1.7;">${txt.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/`([^`]+)`/g, '<pre>$1</pre>')}</div>`;
     } catch(e) {
         resp.innerHTML = `<div style="color:var(--danger);">Erro de ligação: ${e.message}</div>`;
@@ -1185,6 +1178,305 @@ async function updatePedidosBadge() {
         badge.style.display = 'inline';
     } else {
         badge.style.display = 'none';
+    }
+}
+
+// ════════════════════════════════════════════════════════════
+//   PRESENTEAR — Enviar extensão + mensagem + imagem
+// ════════════════════════════════════════════════════════════
+
+let allUsersList = [];
+let allExtsList = [];
+
+async function renderPresentes(area) {
+    const [usersSnap, extsSnap, giftsSnap] = await Promise.all([
+        db.ref('users').once('value'),
+        db.ref('extensions').once('value'),
+        db.ref('admin_gifts').orderByChild('createdAt').limitToLast(50).once('value')
+    ]);
+
+    const users = usersSnap.val() || {};
+    allUsersList = Object.entries(users).map(([id, u]) => ({ id, ...u }));
+
+    const exts = extsSnap.val() || {};
+    const siteExts = siteData.extensions || [];
+    allExtsList = siteExts.map(e => ({
+        id: Object.keys(exts).find(k => exts[k].name === e.name) || e.name.toLowerCase().replace(/\s+/g, '_'),
+        icon: e.icon,
+        name: e.name,
+        price: e.price
+    }));
+
+    const gifts = giftsSnap.val() || {};
+    const giftsList = Object.entries(gifts).map(([id, g]) => ({ id, ...g })).sort((a,b) => (b.createdAt||0) - (a.createdAt||0));
+
+    const statusColors = { pending:'#eab308', delivered:'#22c55e' };
+    const statusLabels = { pending:'⏳ Pendente', delivered:'✅ Entregue' };
+
+    area.innerHTML = `
+        <div class="section-block">
+            <h3>🎁 Enviar Presente</h3>
+            <p style="font-size:13px;color:var(--text-dim);margin-bottom:16px;">Presenteia um utilizador com uma extensão, mensagem e imagem personalizada.</p>
+            
+            <div class="field">
+                <label>Utilizador</label>
+                <select id="gift-user" style="width:100%;padding:10px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;">
+                    <option value="">Selecione um utilizador...</option>
+                    ${allUsersList.map(u => `<option value="${u.id}">${u.nome || 'Sem nome'} (${u.email || u.id})</option>`).join('')}
+                </select>
+            </div>
+
+            <div class="field">
+                <label>Extensão</label>
+                <select id="gift-ext" style="width:100%;padding:10px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;">
+                    <option value="">Selecione uma extensão...</option>
+                    ${allExtsList.map(e => `<option value="${e.id}">${e.icon} ${e.name} (${e.price})</option>`).join('')}
+                </select>
+            </div>
+
+            <div class="field">
+                <label>Mensagem (opcional)</label>
+                <textarea id="gift-message" rows="3" placeholder="Ex: Parabéns pelo teu esforço! Esta extensão é para ti..." style="width:100%;padding:10px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;resize:vertical;"></textarea>
+            </div>
+
+            <div class="field">
+                <label>Imagem URL (opcional)</label>
+                <input id="gift-image" placeholder="https://exemplo.com/imagen-de-parabens.png" style="width:100%;padding:10px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;">
+            </div>
+
+            <button class="btn btn-primary" onclick="sendGift()" style="margin-top:8px;padding:12px 24px;font-size:14px;">🎁 Enviar Presente</button>
+            <div id="gift-status" style="margin-top:12px;font-size:13px;"></div>
+        </div>
+
+        <div class="section-block">
+            <h3>📋 Histórico de Presentes</h3>
+            <p style="font-size:13px;color:var(--text-dim);margin-bottom:16px;">Últimos 50 presentes enviados.</p>
+            ${giftsList.length === 0 ? '<div class="empty-state"><p style="color:var(--text-dim);">Nenhum presente enviado ainda.</p></div>' :
+            `<div style="display:flex;flex-direction:column;gap:10px;">
+                ${giftsList.map(g => {
+                    const user = allUsersList.find(u => u.id === g.userId) || {};
+                    const ext = allExtsList.find(e => e.id === g.extId) || {};
+                    return `
+                    <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;${g.status !== 'pending' ? 'opacity:0.5;' : ''}">
+                        <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px;">
+                            <div>
+                                <div style="font-weight:700;font-size:14px;">${ext.icon || '🧩'} ${ext.name || g.extId}</div>
+                                <div style="font-size:12px;color:var(--text-dim);margin-top:2px;">Para: ${user.nome || g.userId}</div>
+                            </div>
+                            <span style="padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700;background:${statusColors[g.status] || '#71717a'}20;color:${statusColors[g.status] || '#71717a'};">${statusLabels[g.status] || g.status}</span>
+                        </div>
+                        ${g.message ? `<div style="font-size:12px;color:var(--text-dim);margin-top:6px;font-style:italic;">"${esc(g.message)}"</div>` : ''}
+                        ${g.image ? `<div style="margin-top:8px;"><img src="${esc(g.image)}" style="max-width:200px;border-radius:8px;border:1px solid var(--border);"></div>` : ''}
+                        <div style="font-size:11px;color:var(--text-dim);margin-top:8px;">${new Date(g.createdAt).toLocaleString('pt-PT')}</div>
+                    </div>`;
+                }).join('')}
+            </div>`}
+        </div>
+    `;
+}
+
+async function sendGift() {
+    const userId = document.getElementById('gift-user').value;
+    const extId = document.getElementById('gift-ext').value;
+    const message = document.getElementById('gift-message').value.trim();
+    const image = document.getElementById('gift-image').value.trim();
+    const statusEl = document.getElementById('gift-status');
+
+    if (!userId) { statusEl.innerHTML = '<span style="color:var(--danger);">❌ Selecione um utilizador</span>'; return; }
+    if (!extId) { statusEl.innerHTML = '<span style="color:var(--danger);">❌ Selecione uma extensão</span>'; return; }
+
+    statusEl.innerHTML = '<span style="color:var(--text-dim);">⏳ A enviar presente...</span>';
+
+    try {
+        const r = await fetch('/api/admin/gift', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId, extId, message, image })
+        });
+        const data = await r.json();
+        if (data.ok) {
+            statusEl.innerHTML = '<span style="color:var(--success);">✅ Presente enviado com sucesso!</span>';
+            document.getElementById('gift-message').value = '';
+            document.getElementById('gift-image').value = '';
+            showToast('🎁 Presente enviado!');
+            renderPresentes(document.getElementById('editor-content'));
+        } else {
+            statusEl.innerHTML = `<span style="color:var(--danger);">❌ ${data.erro}</span>`;
+        }
+    } catch(e) {
+        statusEl.innerHTML = `<span style="color:var(--danger);">❌ Erro: ${e.message}</span>`;
+    }
+}
+
+// ════════════════════════════════════════════════════════════
+//   REGRAS IA — Personalização por email, IP, MAC, grupo
+// ════════════════════════════════════════════════════════════
+
+let aiRules = [];
+
+async function renderAIRules(area) {
+    const snap = await fetch('/api/admin/ai-rules');
+    const data = await snap.json();
+    aiRules = Object.values(data.rules || {});
+
+    const typeLabels = { email:'📧 Email', ip:'🌐 IP', mac:'🔌 MAC', group:'👥 Grupo' };
+    const typeColors = { email:'#3b82f6', ip:'#22c55e', mac:'#f59e0b', group:'#a855f7' };
+
+    area.innerHTML = `
+        <div class="section-block">
+            <h3>🧠 Regras de Personalização IA</h3>
+            <p style="font-size:13px;color:var(--text-dim);margin-bottom:20px;">Define como a IA responde consoante o utilizador. Podes personalizar por email, IP, MAC ou grupo de utilizadores.</p>
+            
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:20px;">
+                <h4 style="margin-bottom:12px;">➕ Criar Nova Regra</h4>
+                <div class="field">
+                    <label>Nome da Regra</label>
+                    <input id="rule-name" placeholder="Ex: Escola Secundária X - Tom formal">
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                    <div class="field">
+                        <label>Tipo de Correspondência</label>
+                        <select id="rule-type">
+                            <option value="email">📧 Email específico</option>
+                            <option value="ip">🌐 Endereço IP</option>
+                            <option value="mac">🔌 MAC Address</option>
+                            <option value="group">👥 Grupo de utilizadores</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label>Alvo (target)</label>
+                        <input id="rule-target" placeholder="ex: aluno@escola.pt / 192.168.1.100 / AA:BB:CC:DD:EE:FF">
+                    </div>
+                </div>
+                <div class="field">
+                    <label>System Prompt (instrução à IA)</label>
+                    <textarea id="rule-prompt" rows="3" placeholder="Ex: Responde sempre de forma formal. Usa o termo 'Vossa Excelência'. Não uses linguagem informal."></textarea>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                    <div class="field">
+                        <label>Tom de Voz</label>
+                        <select id="rule-tone">
+                            <option value="">Padrão</option>
+                            <option value="formal">Formal</option>
+                            <option value="informal">Informal</option>
+                            <option value="amigável">Amigável</option>
+                            <option value="profissional">Profissional</option>
+                            <option value="académico">Académico</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label>Idioma</label>
+                        <select id="rule-lang">
+                            <option value="português">Português</option>
+                            <option value="inglês">Inglês</option>
+                            <option value="espanhol">Espanhol</option>
+                            <option value="francês">Francês</option>
+                            <option value="alemão">Alemão</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="field">
+                    <label>Restrições (opcional)</label>
+                    <input id="rule-restrictions" placeholder="Ex: Não falar de política. Máximo 200 palavras.">
+                </div>
+                <div class="field">
+                    <label>Descrição (opcional)</label>
+                    <input id="rule-desc" placeholder="Notas internas sobre esta regra">
+                </div>
+                <button class="btn btn-primary" onclick="saveAIRule()" style="margin-top:8px;">💾 Guardar Regra</button>
+                <div id="rule-status" style="margin-top:8px;font-size:13px;"></div>
+            </div>
+        </div>
+
+        <div class="section-block">
+            <h3>📋 Regras Ativas (${aiRules.length})</h3>
+            ${aiRules.length === 0 ? '<div class="empty-state"><p style="color:var(--text-dim);">Nenhuma regra criada ainda.</p></div>' :
+            `<div style="display:flex;flex-direction:column;gap:10px;">
+                ${aiRules.map(r => `
+                    <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;${r.active === false ? 'opacity:0.4;' : ''}">
+                        <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:8px;">
+                            <div>
+                                <div style="font-weight:700;font-size:14px;">${esc(r.name)}</div>
+                                <div style="font-size:12px;color:var(--text-dim);margin-top:2px;">
+                                    <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;background:${typeColors[r.type] || '#71717a'}20;color:${typeColors[r.type] || '#71717a'};">${typeLabels[r.type] || r.type}</span>
+                                    ${esc(r.target)}
+                                </div>
+                            </div>
+                            <div style="display:flex;gap:6px;">
+                                <button class="btn btn-outline" onclick="toggleAIRule('${r.id}', ${r.active !== false ? false : true})" style="font-size:11px;padding:4px 10px;">${r.active !== false ? '⏸ Pausar' : '▶ Ativar'}</button>
+                                <button class="btn btn-danger" onclick="deleteAIRule('${r.id}')" style="font-size:11px;padding:4px 10px;">🗑️</button>
+                            </div>
+                        </div>
+                        ${r.system_prompt ? `<div style="font-size:12px;color:var(--text-dim);margin-top:6px;background:var(--surface);padding:8px 12px;border-radius:6px;border-left:3px solid var(--primary);font-style:italic;">"${esc(r.system_prompt.substring(0, 150))}${r.system_prompt.length > 150 ? '...' : ''}"</div>` : ''}
+                        <div style="font-size:11px;color:var(--text-dim);margin-top:8px;display:flex;gap:12px;">
+                            ${r.tone ? `<span>🎭 ${r.tone}</span>` : ''}
+                            ${r.language ? `<span>🌍 ${r.language}</span>` : ''}
+                            ${r.restrictions ? `<span>🚫 ${esc(r.restrictions.substring(0, 50))}</span>` : ''}
+                        </div>
+                    </div>
+                `).join('')}
+            </div>`}
+        </div>
+    `;
+}
+
+async function saveAIRule() {
+    const statusEl = document.getElementById('rule-status');
+    const name = document.getElementById('rule-name').value.trim();
+    const type = document.getElementById('rule-type').value;
+    const target = document.getElementById('rule-target').value.trim();
+    const prompt = document.getElementById('rule-prompt').value.trim();
+    const tone = document.getElementById('rule-tone').value;
+    const lang = document.getElementById('rule-lang').value;
+    const restrictions = document.getElementById('rule-restrictions').value.trim();
+    const desc = document.getElementById('rule-desc').value.trim();
+
+    if (!name) { statusEl.innerHTML = '<span style="color:var(--danger);">❌ Nome obrigatório</span>'; return; }
+    if (!target) { statusEl.innerHTML = '<span style="color:var(--danger);">❌ Alvo obrigatório</span>'; return; }
+
+    statusEl.innerHTML = '<span style="color:var(--text-dim);">⏳ A guardar...</span>';
+
+    try {
+        const r = await fetch('/api/admin/ai-rules', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, type, target, system_prompt: prompt, tone, language: lang, restrictions, description: desc, active: true })
+        });
+        const data = await r.json();
+        if (data.ok) {
+            statusEl.innerHTML = '<span style="color:var(--success);">✅ Regra guardada!</span>';
+            showToast('🧠 Regra IA criada!');
+            renderAIRules(document.getElementById('editor-content'));
+        } else {
+            statusEl.innerHTML = `<span style="color:var(--danger);">❌ ${data.erro}</span>`;
+        }
+    } catch(e) {
+        statusEl.innerHTML = `<span style="color:var(--danger);">❌ ${e.message}</span>`;
+    }
+}
+
+async function toggleAIRule(id, active) {
+    try {
+        await fetch('/api/admin/ai-rules', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id, active })
+        });
+        showToast(active ? '▶ Regra ativada' : '⏸ Regra pausada');
+        renderAIRules(document.getElementById('editor-content'));
+    } catch(e) {
+        showToast('❌ Erro: ' + e.message);
+    }
+}
+
+async function deleteAIRule(id) {
+    if (!confirm('Eliminar esta regra de IA?')) return;
+    try {
+        await fetch(`/api/admin/ai-rules/${id}`, { method: 'DELETE' });
+        showToast('🗑️ Regra eliminada');
+        renderAIRules(document.getElementById('editor-content'));
+    } catch(e) {
+        showToast('❌ Erro: ' + e.message);
     }
 }
 
@@ -1369,7 +1661,7 @@ async function moodlePushQuiz() {
 }
 
 function addMoodleLog(action) {
-    dbRef.push(`admin_config/moodle_log`, { action, timestamp: Date.now() });
+    db.ref('admin_config/moodle_log').push({ action, timestamp: Date.now() });
 }
 
 async function loadMoodleLog() {

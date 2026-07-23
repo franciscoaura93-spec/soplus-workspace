@@ -1,6 +1,6 @@
 [Setup]
 AppName=S+O Ultra Workspace
-AppVersion=1.0
+AppVersion=2.2
 AppPublisher=S+O+
 DefaultDirName={autopf}\S+O Workspace
 DefaultGroupName=S+O Ultra Workspace
@@ -12,13 +12,22 @@ Compression=lzma2/ultra64
 SolidCompression=yes
 PrivilegesRequired=lowest
 DisableProgramGroupPage=yes
+VersionInfoVersion=2.2.0.0
+VersionInfoDescription=S.O+ Ultra Workspace Installer
 
 [Languages]
 Name: "portuguese"; MessagesFile: "compiler:Languages\Portuguese.isl"
 Name: "english"; MessagesFile: "compiler:Default.isl"
+Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"
+Name: "french"; MessagesFile: "compiler:Languages\French.isl"
+Name: "german"; MessagesFile: "compiler:Languages\German.isl"
+Name: "italian"; MessagesFile: "compiler:Languages\Italian.isl"
+Name: "dutch"; MessagesFile: "compiler:Languages\Dutch.isl"
+Name: "polish"; MessagesFile: "compiler:Languages\Polish.isl"
+Name: "brazilian"; MessagesFile: "compiler:Languages\BrazilianPortuguese.isl"
 
 [Tasks]
-Name: "desktopicon"; Description: "Criar atalho no Desktop"; GroupDescription: "Atalhos:"
+Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}:"
 
 [Files]
 Source: "app.py"; DestDir: "{app}"; Flags: ignoreversion

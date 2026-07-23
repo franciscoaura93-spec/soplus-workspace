@@ -5,8 +5,8 @@ function renderAudicao(area, ext) {
         <div class="card" style="margin-bottom:16px;">
             <h3 style="margin-bottom:12px;">🎧 Exercícios de Audição</h3>
             <p style="font-size:13px;color:var(--text-light);margin-bottom:16px;">A IA gera exercícios de audição e compreensão oral.</p>
-            <div class="field"><label>Disciplina</label><select id="aud-subject" class="form-input"><option value="Português">Português</option><option value="Inglês">Inglês</option><option value="Espanhol">Espanhol</option><option value="Francês">Francês</option></select></div>
-            <div class="field"><label>Nível</label><select id="aud-level" class="form-input"><option value="facil">Fácil</option><option value="medio">Médio</option><option value="dificil">Difícil</option></select></div>
+            <div class="form-group"><label>Disciplina</label><select id="aud-subject" class="form-input"><option value="Português">Português</option><option value="Inglês">Inglês</option><option value="Espanhol">Espanhol</option><option value="Francês">Francês</option></select></div>
+            <div class="form-group"><label>Nível</label><select id="aud-level" class="form-input"><option value="facil">Fácil</option><option value="medio">Médio</option><option value="dificil">Difícil</option></select></div>
             <button class="btn btn-primary" onclick="generateAudition()">🎧 Gerar Exercício</button>
         </div>
         <div id="aud-exercise" style="margin-top:12px;"></div>

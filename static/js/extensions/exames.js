@@ -4,9 +4,9 @@ function renderExames(area, ext) {
         <div class="page-header"><h2>${ext.icon} ${ext.name}</h2><p>${ext.desc}</p></div>
         <div class="card" style="margin-bottom:16px;">
             <h3 style="margin-bottom:12px;">📚 Gerar Exame com IA</h3>
-            <div class="field"><label>Disciplina</label><input id="exam-subject" placeholder="Ex: Matemática"></div>
-            <div class="field"><label>Tema</label><input id="exam-topic" placeholder="Ex: Equações do 2º grau"></div>
-            <div class="field"><label>Nº de Questões</label><select id="exam-num" class="form-input"><option>5</option><option>10</option><option>15</option><option>20</option></select></div>
+            <div class="form-group"><label>Disciplina</label><input id="exam-subject" placeholder="Ex: Matemática"></div>
+            <div class="form-group"><label>Tema</label><input id="exam-topic" placeholder="Ex: Equações do 2º grau"></div>
+            <div class="form-group"><label>Nº de Questões</label><select id="exam-num" class="form-input"><option>5</option><option>10</option><option>15</option><option>20</option></select></div>
             <button class="btn btn-primary" onclick="generateExam()">📝 Gerar Exame</button>
         </div>
         <div id="exam-result"></div>

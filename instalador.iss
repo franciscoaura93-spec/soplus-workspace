@@ -12,7 +12,7 @@ Compression=lzma2/ultra64
 SolidCompression=yes
 PrivilegesRequired=lowest
 DisableProgramGroupPage=yes
-VersionInfoVersion=2.2.0.0
+VersionInfoVersion=2.4.0.0
 VersionInfoDescription=S.O+ Ultra Workspace Installer
 
 [Languages]

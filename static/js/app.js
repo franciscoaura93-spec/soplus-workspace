@@ -74,6 +74,8 @@ const PAGES = [
     { id: 'estudar', icon: '🎵', label: 'Estudar' },
     { id: 'estudio-ia', icon: '🤖', label: 'Estúdio IA' },
     { id: 'recursos', icon: '🎓', label: 'Recursos', profOnly: true },
+    { id: 'faltas', icon: '📋', label: 'Faltas' },
+    { id: 'sumarios', icon: '📖', label: 'Sumários' },
     { id: 'perfil', icon: '⚙️', label: 'Perfil' },
     { id: 'ide', icon: '💻', label: 'IDE Código' },
     { id: 'colaboracao', icon: '👥', label: 'Colab.' },
@@ -186,6 +188,8 @@ function renderPage(page) {
         case 'word': renderWord(area); break;
         case 'powerpoint': renderPowerPoint(area); break;
         case 'desenho': renderDesenho(area); break;
+        case 'faltas': renderFaltas(area); break;
+        case 'sumarios': renderSumarios(area); break;
         case 'loja': renderLoja(area); break;
         default:
             if (PAGES.find(p => p.id === page && p.extPage)) {
@@ -1235,6 +1239,377 @@ async function loadRecursosStats() {
           '</table></div>';
 }
 
+// ═══════════════════════════════════════════════════════════════
+//   FALTAS — Aluno vê, Professor marca
+// ═══════════════════════════════════════════════════════════════
+
+async function renderFaltas(area) {
+    const isProf = userProfile?.role === 'professor';
+
+    if (isProf) {
+        const usersSnap = await dbGet('users') || {};
+        const profTurmas = (userProfile?.turmas || '').split(',').map(s => s.trim()).filter(Boolean);
+        const alunos = Object.entries(usersSnap).filter(([k,v]) => profTurmas.includes(v.turma) && v.role === 'aluno');
+
+        area.innerHTML = `
+            <div class="page-header"><h2>📋 ${t('nav_faltas')}</h2><p>Regista faltas dos teus alunos</p></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+                <div class="card">
+                    <div class="card-title">➕ Registar Falta</div>
+                    <div class="form-group"><label>Aluno</label><select id="falta-aluno" class="form-input">
+                        <option value="">Seleciona aluno...</option>
+                        ${alunos.map(([id, u]) => `<option value="${id}">${u.nome} (${u.turma})</option>`).join('')}
+                    </select></div>
+                    <div class="form-group"><label>Tipo</label><select id="falta-tipo" class="form-input">
+                        <option value="atraso">⏰ Atraso</option>
+                        <option value="presenca">🚫 Falta de Presença</option>
+                        <option value="disciplinar">⚡ Falta Disciplinar</option>
+                    </select></div>
+                    <div class="form-group"><label>Data</label><input type="date" id="falta-data" class="form-input" value="${new Date().toISOString().split('T')[0]}"></div>
+                    <div class="form-group"><label>Hora</label><input type="time" id="falta-hora" class="form-input" value="${new Date().toTimeString().slice(0,5)}"></div>
+                    <div class="form-group" id="falta-sev-wrap" style="display:none;"><label>Gravidade (1-5)</label>
+                        <select id="falta-sev" class="form-input">
+                            <option value="1">1 — Leve</option>
+                            <option value="2">2 — Moderada</option>
+                            <option value="3">3 — Grave</option>
+                            <option value="4">4 — Muito Grave</option>
+                            <option value="5">5 — Crítica (bloqueio)</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label>Nota (opcional)</label><input id="falta-nota" class="form-input" placeholder="Motivo..."></div>
+                    <button class="btn btn-primary" style="width:100%;" onclick="addFalta()">📋 Registar Falta</button>
+                </div>
+                <div class="card">
+                    <div class="card-title">📊 Resumo de Faltas</div>
+                    <div id="faltas-resumo"><div class="empty-state" style="padding:20px;"><p>Seleciona um aluno</p></div></div>
+                </div>
+            </div>
+            <div class="card" style="margin-top:20px;">
+                <div class="card-title">📜 Histórico Recente</div>
+                <div id="faltas-historico"><div class="empty-state" style="padding:20px;"><p>Sem faltas registadas</p></div></div>
+            </div>
+        `;
+        document.getElementById('falta-tipo').onchange = function() {
+            document.getElementById('falta-sev-wrap').style.display = this.value === 'disciplinar' ? 'block' : 'none';
+        };
+        document.getElementById('falta-aluno').onchange = function() {
+            if (this.value) loadFaltaResumo(this.value);
+        };
+        loadAllFaltasHistory(profTurmas);
+    } else {
+        const snap = await dbGet(`faltas/${currentUser.uid}`);
+        const faltas = snap ? Object.values(snap).sort((a,b) => (b.createdAt||0) - (a.createdAt||0)) : [];
+
+        const tipos = { atraso: '⏰ Atraso', presenca: '🚫 Falta de Presença', disciplinar: '⚡ Disciplinar' };
+        const tipoCores = { atraso: '#f59e0b', presenca: '#ef4444', disciplinar: '#dc2626' };
+
+        const totalAtraso = faltas.filter(f => f.tipo === 'atraso').length;
+        const totalPresenca = faltas.filter(f => f.tipo === 'presenca').length;
+        const totalDisc = faltas.reduce((s, f) => s + (f.tipo === 'disciplinar' ? (f.severidade || 1) : 0), 0);
+
+        area.innerHTML = `
+            <div class="page-header"><h2>📋 ${t('nav_faltas')}</h2><p>Visualiza as tuas faltas</p></div>
+            <div class="stat-grid">
+                <div class="stat-card"><div class="stat-icon">⏰</div><div class="stat-value">${totalAtraso}</div><div class="stat-label">Atrasos</div></div>
+                <div class="stat-card"><div class="stat-icon">🚫</div><div class="stat-value">${totalPresenca}</div><div class="stat-label">Faltas de Presença</div></div>
+                <div class="stat-card"><div class="stat-icon">⚡</div><div class="stat-value">${totalDisc}</div><div class="stat-label">Pontos Disciplinares</div></div>
+            </div>
+            ${totalDisc >= 5 ? `
+            <div style="background:rgba(239,68,68,0.1);border:2px solid rgba(239,68,68,0.4);border-radius:16px;padding:30px;text-align:center;margin:20px 0;">
+                <div style="font-size:48px;margin-bottom:12px;">🔒</div>
+                <h3 style="color:#ef4444;margin-bottom:8px;">Conta Bloqueada</h3>
+                <p style="color:var(--text-light);margin-bottom:16px;">Tencost ${totalDisc} pontos disciplinares. A tua conta está bloqueada.</p>
+                <p style="color:var(--text-light);font-size:13px;">Contacta o teu encarregado de educação ou professor para desbloquear.</p>
+            </div>` : ''}
+            <div class="card" style="margin-top:20px;">
+                <div class="card-title">📜 Histórico</div>
+                ${faltas.length === 0 ? '<div class="empty-state" style="padding:20px;"><p>🎉 Sem faltas registadas!</p></div>' :
+                `<div style="display:flex;flex-direction:column;gap:8px;">
+                    ${faltas.map(f => `
+                        <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--surface);border:1px solid var(--border);border-radius:10px;">
+                            <div style="display:flex;align-items:center;gap:12px;">
+                                <span style="font-size:20px;">${tipos[f.tipo]?.split(' ')[0] || '📋'}</span>
+                                <div>
+                                    <div style="font-weight:600;font-size:13px;">${tipos[f.tipo] || f.tipo}</div>
+                                    <div style="font-size:11px;color:var(--text-light);">${f.data || '—'} ${f.hora || ''} ${f.nota ? '• ' + f.nota : ''}</div>
+                                </div>
+                            </div>
+                            <div style="text-align:right;">
+                                ${f.tipo === 'disciplinar' ? `<span style="padding:3px 10px;border-radius:6px;font-size:11px;font-weight:700;background:${tipoCores[f.tipo]}20;color:${tipoCores[f.tipo]};">-${f.severidade || 1} pt</span>` : ''}
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>`}
+            </div>
+        `;
+    }
+}
+
+async function addFalta() {
+    const alunoId = document.getElementById('falta-aluno').value;
+    const tipo = document.getElementById('falta-tipo').value;
+    const data = document.getElementById('falta-data').value;
+    const hora = document.getElementById('falta-hora').value;
+    const severidade = tipo === 'disciplinar' ? parseInt(document.getElementById('falta-sev').value) : 0;
+    const nota = document.getElementById('falta-nota').value.trim();
+
+    if (!alunoId) return showToast('Seleciona um aluno', 'error');
+
+    await dbPush(`faltas/${alunoId}`, {
+        tipo, data, hora, severidade, nota,
+        professor: userProfile.nome,
+        professorId: currentUser.uid,
+        createdAt: Date.now()
+    });
+
+    if (tipo === 'disciplinar' && severidade >= 1) {
+        const snap = await dbGet(`faltas/${alunoId}`);
+        const faltas = snap ? Object.values(snap) : [];
+        const totalDisc = faltas.reduce((s, f) => s + (f.tipo === 'disciplinar' ? (f.severidade || 1) : 0), 0);
+        if (totalDisc >= 5) {
+            await db.ref(`users/${alunoId}`).update({ blocked: true, blockedReason: '5+ pontos disciplinares' });
+            const unlockCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+            await db.ref(`users/${alunoId}`).update({ unlockCode });
+            const alunoSnap = await dbGet(`users/${alunoId}`);
+            if (alunoSnap?.email) {
+                fetch('/api/admin/send-email', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        to: alunoSnap.email,
+                        subject: 'Conta Bloqueada — S&O+ Ultra Workspace',
+                        body: `Olá ${alunoSnap.nome},\n\nA tua conta foi bloqueada por acumular ${totalDisc} pontos disciplinares.\n\nCódigo de desbloqueio: ${unlockCode}\n\nO teu encarregado de educação deve usar este código para desbloquear a conta.\n\nEquipa S&O+`
+                    })
+                }).catch(() => {});
+            }
+            showToast('🔒 Conta do aluno bloqueada! Email enviado ao encarregado.', 'error');
+        }
+    }
+
+    showToast('✅ Falta registada!', 'success');
+    renderFaltas(document.getElementById('content-area'));
+}
+
+async function loadFaltaResumo(alunoId) {
+    const snap = await dbGet(`faltas/${alunoId}`);
+    const faltas = snap ? Object.values(snap) : [];
+    const el = document.getElementById('faltas-resumo');
+    const atraso = faltas.filter(f => f.tipo === 'atraso').length;
+    const presenca = faltas.filter(f => f.tipo === 'presenca').length;
+    const disc = faltas.reduce((s, f) => s + (f.tipo === 'disciplinar' ? (f.severidade || 1) : 0), 0);
+    el.innerHTML = `
+        <div style="display:flex;gap:16px;margin-bottom:16px;">
+            <div style="flex:1;text-align:center;padding:12px;background:var(--surface);border-radius:10px;">
+                <div style="font-size:24px;font-weight:700;color:#f59e0b;">${atraso}</div>
+                <div style="font-size:11px;color:var(--text-light);">Atrasos</div>
+            </div>
+            <div style="flex:1;text-align:center;padding:12px;background:var(--surface);border-radius:10px;">
+                <div style="font-size:24px;font-weight:700;color:#ef4444;">${presenca}</div>
+                <div style="font-size:11px;color:var(--text-light);">Presença</div>
+            </div>
+            <div style="flex:1;text-align:center;padding:12px;background:var(--surface);border-radius:10px;">
+                <div style="font-size:24px;font-weight:700;color:${disc >= 5 ? '#dc2626' : '#a78bfa'};">${disc}/5</div>
+                <div style="font-size:11px;color:var(--text-light);">Disciplinar</div>
+            </div>
+        </div>
+    `;
+}
+
+async function loadAllFaltasHistory(profTurmas) {
+    const el = document.getElementById('faltas-historico');
+    const usersSnap = await dbGet('users') || {};
+    const allFaltas = [];
+    for (const [uid, u] of Object.entries(usersSnap)) {
+        if (!profTurmas.includes(u.turma)) continue;
+        const snap = await dbGet(`faltas/${uid}`);
+        if (snap) Object.entries(snap).forEach(([id, f]) => allFaltas.push({id, userId: uid, userName: u.nome, ...f}));
+    }
+    allFaltas.sort((a,b) => (b.createdAt||0) - (a.createdAt||0));
+    const recent = allFaltas.slice(0, 30);
+    if (recent.length === 0) { el.innerHTML = '<div class="empty-state" style="padding:20px;"><p>Sem faltas</p></div>'; return; }
+    const tipos = { atraso: '⏰ Atraso', presenca: '🚫 Presença', disciplinar: '⚡ Disciplinar' };
+    el.innerHTML = `<div style="display:flex;flex-direction:column;gap:6px;">
+        ${recent.map(f => `
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--surface);border-radius:8px;font-size:13px;">
+                <span><strong>${f.userName}</strong> — ${tipos[f.tipo] || f.tipo} ${f.nota ? '(' + f.nota + ')' : ''}</span>
+                <span style="color:var(--text-light);font-size:11px;">${f.data || ''} ${f.hora || ''} ${f.tipo === 'disciplinar' ? '• -' + (f.severidade||1) + ' pt' : ''}</span>
+            </div>
+        `).join('')}
+    </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//   SUMÁRIOS — Professor cria, público/privado para alunos
+// ═══════════════════════════════════════════════════════════════
+
+async function renderSumarios(area) {
+    const isProf = userProfile?.role === 'professor';
+
+    if (isProf) {
+        const snap = await dbGet('sumarios');
+        const sumarios = snap ? Object.entries(snap).filter(([k,v]) => v.professorId === currentUser.uid).sort((a,b) => (b[1].createdAt||0) - (a[1].createdAt||0)) : [];
+
+        area.innerHTML = `
+            <div class="page-header"><h2>📖 ${t('nav_sumarios')}</h2><p>Cria e gera sumários das aulas</p></div>
+            <div class="card" style="margin-bottom:20px;">
+                <div class="card-title">➕ Criar Sumário</div>
+                <div class="form-group"><label>Título</label><input id="sum-titulo" class="form-input" placeholder="Ex: Aula de Matemática — Equações"></div>
+                <div class="form-group"><label>Conteúdo</label><textarea id="sum-conteudo" class="form-input" rows="6" placeholder="Escreve o sumário da aula..."></textarea></div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                    <div class="form-group"><label>Turma</label><input id="sum-turma" class="form-input" placeholder="Ex: 10A"></div>
+                    <div class="form-group"><label>Disciplina</label><input id="sum-disc" class="form-input" placeholder="Ex: Matemática"></div>
+                </div>
+                <div class="form-group">
+                    <label>Visibilidade</label>
+                    <select id="sum-visibility" class="form-input">
+                        <option value="public">🌐 Público — Todos os alunos da turma veem</option>
+                        <option value="private">🔒 Privado — Só eu vejo</option>
+                    </select>
+                </div>
+                <button class="btn btn-primary" style="width:100%;" onclick="addSumario()">📖 Publicar Sumário</button>
+            </div>
+            <div class="card">
+                <div class="card-title">📜 Sumários Criados (${sumarios.length})</div>
+                ${sumarios.length === 0 ? '<div class="empty-state" style="padding:20px;"><p>Sem sumários ainda</p></div>' :
+                `<div style="display:flex;flex-direction:column;gap:8px;">
+                    ${sumarios.map(([id, s]) => `
+                        <div style="padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;">
+                            <div style="display:flex;justify-content:space-between;align-items:start;">
+                                <div>
+                                    <div style="font-weight:700;">${s.titulo || 'Sem título'}</div>
+                                    <div style="font-size:12px;color:var(--text-light);margin-top:2px;">${s.turma || '—'} • ${s.disciplina || '—'} • ${new Date(s.createdAt).toLocaleDateString('pt-PT')}</div>
+                                </div>
+                                <div style="display:flex;gap:6px;align-items:center;">
+                                    <span style="padding:3px 10px;border-radius:6px;font-size:11px;font-weight:600;background:${s.visibilidade === 'public' ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)'};color:${s.visibilidade === 'public' ? '#22c55e' : '#ef4444'};">${s.visibilidade === 'public' ? '🌐 Público' : '🔒 Privado'}</span>
+                                    <button class="btn btn-outline" onclick="toggleSumarioVis('${id}', '${s.visibilidade === 'public' ? 'private' : 'public'}')" style="font-size:10px;padding:3px 8px;">🔄</button>
+                                    <button class="btn btn-danger" onclick="deleteSumario('${id}')" style="font-size:10px;padding:3px 8px;">🗑️</button>
+                                </div>
+                            </div>
+                            <div style="font-size:13px;color:var(--text-light);margin-top:8px;white-space:pre-wrap;">${escapeHTML((s.conteudo || '').substring(0, 300))}${(s.conteudo || '').length > 300 ? '...' : ''}</div>
+                        </div>
+                    `).join('')}
+                </div>`}
+            </div>
+        `;
+    } else {
+        const turma = userProfile?.turma || '';
+        const snap = await dbGet('sumarios');
+        const sumarios = snap ? Object.entries(snap).filter(([k,v]) => v.visibilidade === 'public' && v.turma === turma).sort((a,b) => (b[1].createdAt||0) - (a[1].createdAt||0)) : [];
+
+        area.innerHTML = `
+            <div class="page-header"><h2>📖 ${t('nav_sumarios')}</h2><p>Sumários das tuas aulas</p></div>
+            ${sumarios.length === 0 ? '<div class="empty-state"><div class="icon">📖</div><h3>Sem sumários</h3><p>O teu professor ainda não publicou sumários.</p></div>' :
+            `<div style="display:flex;flex-direction:column;gap:12px;">
+                ${sumarios.map(([id, s]) => `
+                    <div class="card" style="cursor:pointer;" onclick="this.querySelector('.sum-content').style.display=this.querySelector('.sum-content').style.display==='none'?'block':'none'">
+                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                            <div>
+                                <div style="font-weight:700;font-size:15px;">${s.titulo || 'Sem título'}</div>
+                                <div style="font-size:12px;color:var(--text-light);margin-top:2px;">${s.disciplina || '—'} • ${s.professor || '—'} • ${new Date(s.createdAt).toLocaleDateString('pt-PT')}</div>
+                            </div>
+                            <span style="font-size:12px;color:var(--text-light);">▼ detalhes</span>
+                        </div>
+                        <div class="sum-content" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);font-size:13px;color:var(--text-light);white-space:pre-wrap;line-height:1.7;">${escapeHTML(s.conteudo || '')}</div>
+                    </div>
+                `).join('')}
+            </div>`}
+        `;
+    }
+}
+
+async function addSumario() {
+    const titulo = document.getElementById('sum-titulo').value.trim();
+    const conteudo = document.getElementById('sum-conteudo').value.trim();
+    const turma = document.getElementById('sum-turma').value.trim();
+    const disciplina = document.getElementById('sum-disc').value.trim();
+    const visibilidade = document.getElementById('sum-visibility').value;
+
+    if (!titulo || !conteudo) return showToast('Preenche título e conteúdo', 'error');
+
+    await dbPush('sumarios', {
+        titulo, conteudo, turma, disciplina, visibilidade,
+        professor: userProfile.nome,
+        professorId: currentUser.uid,
+        createdAt: Date.now()
+    });
+
+    showToast('📖 Sumário publicado!', 'success');
+    renderSumarios(document.getElementById('content-area'));
+}
+
+async function toggleSumarioVis(id, newVis) {
+    await db.ref(`sumarios/${id}`).update({ visibilidade: newVis });
+    showToast(newVis === 'public' ? '🌐 Agora público' : '🔒 Agora privado');
+    renderSumarios(document.getElementById('content-area'));
+}
+
+async function deleteSumario(id) {
+    if (!confirm('Eliminar este sumário?')) return;
+    await db.ref(`sumarios/${id}`).remove();
+    showToast('🗑️ Sumário eliminado');
+    renderSumarios(document.getElementById('content-area'));
+}
+
+// ═══════════════════════════════════════════════════════════════
+//   SUPORTE — Chat com admin
+// ═══════════════════════════════════════════════════════════════
+
+function renderSuporteModal() {
+    const existing = document.getElementById('suporte-modal');
+    if (existing) existing.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'suporte-modal';
+    modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:10000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.7);';
+    modal.innerHTML = `
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;width:90%;max-width:500px;max-height:80vh;display:flex;flex-direction:column;overflow:hidden;">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--border);">
+                <div>
+                    <div style="font-weight:700;font-size:16px;">💬 ${t('suporte_title')}</div>
+                    <div style="font-size:12px;color:var(--text-light);">${t('suporte_sub')}</div>
+                </div>
+                <button onclick="document.getElementById('suporte-modal').remove()" style="background:none;border:none;color:var(--text-light);font-size:20px;cursor:pointer;">✕</button>
+            </div>
+            <div id="suporte-messages" style="flex:1;overflow-y:auto;padding:16px 20px;display:flex;flex-direction:column;gap:10px;min-height:300px;max-height:50vh;">
+                <div style="background:var(--primary);color:#fff;padding:10px 14px;border-radius:12px 12px 12px 4px;font-size:13px;max-width:80%;align-self:flex-start;">${t('suporte_ola')}</div>
+            </div>
+            <div style="display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--border);">
+                <input id="suporte-input" class="form-input" placeholder="${t('suporte_placeholder')}" onkeypress="if(event.key==='Enter')sendSuporte()" style="flex:1;">
+                <button class="btn btn-primary" onclick="sendSuporte()">${t('suporte_send')}</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    loadSuporteMessages();
+    dbListen(`support/${currentUser.uid}/messages`, loadSuporteMessages);
+}
+
+async function loadSuporteMessages() {
+    const el = document.getElementById('suporte-messages');
+    if (!el) return;
+    const snap = await dbGet(`support/${currentUser.uid}/messages`);
+    const msgs = snap ? Object.values(snap).sort((a,b) => (a.createdAt||0) - (b.createdAt||0)) : [];
+    el.innerHTML = msgs.length === 0 ?
+        `<div style="background:var(--primary);color:#fff;padding:10px 14px;border-radius:12px 12px 12px 4px;font-size:13px;max-width:80%;align-self:flex-start;">${t('suporte_ola')}</div>` :
+        msgs.map(m => `
+            <div style="padding:10px 14px;border-radius:12px;font-size:13px;max-width:80%;${m.from === 'admin' ? 'background:var(--primary);color:#fff;align-self:flex-start;border-radius:12px 12px 12px 4px;' : 'background:var(--card);color:var(--text);align-self:flex-end;border-radius:12px 12px 4px 12px;border:1px solid var(--border);'}">
+                ${escapeHTML(m.text || '')}
+                <div style="font-size:10px;opacity:0.5;margin-top:4px;">${new Date(m.createdAt).toLocaleTimeString('pt-PT', {hour:'2-digit',minute:'2-digit'})}</div>
+            </div>
+        `).join('');
+    el.scrollTop = el.scrollHeight;
+}
+
+async function sendSuporte() {
+    const input = document.getElementById('suporte-input');
+    const text = input.value.trim();
+    if (!text) return;
+    input.value = '';
+    await dbPush(`support/${currentUser.uid}/messages`, {
+        from: 'user', userId: currentUser.uid, userName: userProfile?.nome || 'User', text, createdAt: Date.now()
+    });
+}
+
 // ── PERFIL ──
 function renderPerfil(area) {
     const isProf = userProfile?.role === 'professor';
@@ -1285,7 +1660,8 @@ function renderPerfil(area) {
                         <div><strong>Membro desde:</strong> ${new Date(userProfile?.createdAt || Date.now()).toLocaleDateString('pt-PT')}</div>
                     </div>
                 </div>
-                <div style="margin-top:20px;border-top:1px solid var(--border);padding-top:16px;">
+                <div style="margin-top:20px;border-top:1px solid var(--border);padding-top:16px;display:flex;flex-direction:column;gap:10px;">
+                    <button class="btn btn-primary" style="width:100%;background:linear-gradient(135deg,#7c3aed,#a78bfa);" onclick="renderSuporteModal()">💬 ${t('suporte_btn')}</button>
                     <button class="btn btn-danger" style="width:100%;" onclick="doLogout()">🚪 ${t('perfil_logout')}</button>
                 </div>
             </div>

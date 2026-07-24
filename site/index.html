@@ -140,7 +140,7 @@
     const db = firebase.database();
 
     const DEFAULT_DATA = {
-        hero: { badge:"v2.2 — 2026", title:"O Workspace Escolar\ndefinitivo", subtitle:"Notas, provas, chat, videochamadas, IDE, editor de documentos, desenho, IA integrada e muito mais — tudo num só sítio.", ctaText:"Descarregar para Windows", ctaLink:"https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v2.2/S+O-Workspace-Instalador.exe", secondaryText:"Saber mais", secondaryLink:"#features-section" },
+        hero: { badge:"v2.6 — 2026", title:"O Workspace Escolar\ndefinitivo", subtitle:"Notas, provas, chat, videochamadas, IDE, editor de documentos, desenho, IA integrada e muito mais — tudo num só sítio.", ctaText:"Descarregar para Windows", ctaLink:"https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v2.6/S+O-Workspace-Instalador.exe", secondaryText:"Saber mais", secondaryLink:"#features-section" },
         features: [
             { icon:"📊", title:"Notas e Provas", desc:"Regista notas, cria provas com questões, corrige automaticamente com IA e acompanha o teu desempenho." },
             { icon:"💬", title:"Chat e Videochamadas", desc:"Chat em tempo real com a turma e videochamadas integradas via Jitsi — sem contas extras." },
@@ -179,9 +179,9 @@
         const design = d.design || {};
 
         if (h.secondaryLink === '#features') h.secondaryLink = '#features-section';
-        if (h.ctaLink && h.ctaLink.includes('v2.0')) h.ctaLink = h.ctaLink.replace('v2.0', 'v2.2');
-        if (f.downloadLink && f.downloadLink.includes('v2.0')) f.downloadLink = f.downloadLink.replace('v2.0', 'v2.2');
-        if (f.downloadBtn && f.downloadBtn.includes('v2.0')) f.downloadBtn = f.downloadBtn.replace('v2.0', 'v2.2');
+        if (h.ctaLink && h.ctaLink.includes('v2.0')) h.ctaLink = h.ctaLink.replace('v2.0', 'v2.6');
+        if (f.downloadLink && f.downloadLink.includes('v2.0')) f.downloadLink = f.downloadLink.replace('v2.0', 'v2.6');
+        if (f.downloadBtn && f.downloadBtn.includes('v2.0')) f.downloadBtn = f.downloadBtn.replace('v2.0', 'v2.6');
 
         if (design.favicon) {
             let link = document.querySelector("link[rel~='icon']");

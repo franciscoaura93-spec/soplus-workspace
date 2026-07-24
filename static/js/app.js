@@ -90,18 +90,19 @@ let userExtensions = [];
 async function loadUserExtensions() {
     if (!currentUser) return;
     try {
-        const [extSnap, settingsSnap] = await Promise.all([
+        const [extSnap, settingsSnap, allExtSnap] = await Promise.all([
             dbGet(`user_extensions/${currentUser.uid}`),
-            dbGet('site_content/extensions_enabled')
+            dbGet('site_content/extensions_enabled'),
+            dbGet('extensions')
         ]);
         extensionsEnabled = settingsSnap !== false;
         userExtensions = extSnap ? Object.keys(extSnap).filter(k => extSnap[k]) : [];
-        const extDataSnap = await dbGet('extensions');
-        if (extDataSnap && userExtensions.length > 0) {
+        allExtensions = allExtSnap || {};
+        if (userExtensions.length > 0) {
             for (const extId of userExtensions) {
-                const ext = extDataSnap[extId];
+                const ext = allExtensions[extId];
                 if (ext && !PAGES.find(p => p.id === extId)) {
-                    PAGES.splice(PAGES.length - 1, 0, { id: extId, icon: ext.icon, label: ext.label, extPage: true });
+                    PAGES.splice(PAGES.length - 1, 0, { id: extId, icon: ext.icon || '🧩', label: ext.label || ext.name || extId, extPage: true });
                 }
             }
         }

@@ -1,6 +1,6 @@
 [Setup]
 AppName=S+O Ultra Workspace
-AppVersion=2.2
+AppVersion=2.4
 AppPublisher=S+O+
 DefaultDirName={autopf}\S+O Workspace
 DefaultGroupName=S+O Ultra Workspace

@@ -124,7 +124,7 @@ function buildNav() {
     nav.innerHTML = PAGES
         .filter(p => !p.profOnly || userProfile?.role === 'professor' || userProfile?.role === 'admin')
         .map(p => `<a class="nav-item" id="nav-${p.id}" onclick="navigateTo('${p.id}')">
-            <span class="icon">${p.icon}</span><span class="label">${t('nav_' + p.id) || p.label}</span>
+            <span class="icon">${p.icon}</span><span class="label">${(t('nav_' + p.id) !== ('nav_' + p.id)) ? t('nav_' + p.id) : p.label}</span>
         </a>`).join('');
 }
 

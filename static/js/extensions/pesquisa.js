@@ -62,8 +62,8 @@ async function loadSearchHistory() {
     if (!snap) { el.innerHTML = '<div style="font-size:13px;color:var(--text-light);padding:12px;">Sem histórico.</div>'; return; }
     const entries = Object.entries(snap).sort((a,b) => (b[1].timestamp||0) - (a[1].timestamp||0)).slice(0, 20);
     el.innerHTML = entries.map(([id, h]) => `
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:6px;cursor:pointer;transition:border-color 0.2s;" onmouseover="this.style.borderColor='rgba(37,99,235,0.3)'" onmouseout="this.style.borderColor='var(--border)'" onclick="document.getElementById('search-input').value='${h.query.replace(/'/g, "\\'")}';doWebSearch();">
-            <span style="font-size:13px;">🔍 ${h.query}</span>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:6px;cursor:pointer;transition:border-color 0.2s;" onmouseover="this.style.borderColor='rgba(37,99,235,0.3)'" onmouseout="this.style.borderColor='var(--border)'" data-query="${escapeHTML(h.query)}" onclick="document.getElementById('search-input').value=this.dataset.query;doWebSearch();">
+            <span style="font-size:13px;">🔍 ${escapeHTML(h.query)}</span>
             <span style="font-size:11px;color:var(--text-light);">${new Date(h.timestamp).toLocaleDateString('pt-PT')}</span>
         </div>
     `).join('');

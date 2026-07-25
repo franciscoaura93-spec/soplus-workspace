@@ -13,6 +13,8 @@ for _dir in [os.path.dirname(os.path.abspath(__file__)), os.getcwd()]:
 
 import json
 import ssl
+import time
+import math
 import smtplib
 import http.client
 import traceback
@@ -60,7 +62,10 @@ def openrouter_post(messages, model=None, max_tokens=2048, temperature=0.7, time
     resp = conn.getresponse()
     raw = resp.read().decode()
     conn.close()
-    data = json.loads(raw)
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError:
+        return None, f"Resposta inválida do OpenRouter (HTTP {resp.status})"
     if "error" in data:
         return None, data["error"].get("message", str(data["error"]))
     if "choices" in data and data["choices"]:
@@ -80,7 +85,10 @@ def gemini_post(model, payload, timeout=30, api_key=None):
     resp = conn.getresponse()
     data = resp.read().decode()
     conn.close()
-    return json.loads(data)
+    try:
+        return json.loads(data)
+    except json.JSONDecodeError:
+        return {"error": {"message": f"Resposta inválida do Gemini (HTTP {resp.status})", "code": 502}}
 
 
 def ai_post(user_prompt, system_prompt=None, model=None, max_tokens=2048, temperature=0.7, json_mode=False, timeout=30, ai_context=None):
@@ -112,7 +120,11 @@ def ai_post(user_prompt, system_prompt=None, model=None, max_tokens=2048, temper
     gen_config = {"temperature": temperature, "maxOutputTokens": max_tokens}
     if json_mode:
         gen_config["responseMimeType"] = "application/json"
-    payload = {"contents": [{"parts": [{"text": user_prompt}]}], "generationConfig": gen_config}
+    contents = []
+    if final_system:
+        contents.append({"role": "user", "parts": [{"text": f"[Instruções do sistema]: {final_system}"}]})
+    contents.append({"role": "user", "parts": [{"text": user_prompt}]})
+    payload = {"contents": contents, "generationConfig": gen_config}
     data = gemini_post(model or GEMINI_MODEL, payload, timeout=timeout)
     if "error" in data:
         return {"ok": False, "erro": f"OpenRouter: {err} | Gemini: {data['error'].get('message', 'Erro')}"}
@@ -125,6 +137,8 @@ def ai_post(user_prompt, system_prompt=None, model=None, max_tokens=2048, temper
 
 # ─── ROUTES ────────────────────────────────────────────────
 
+PROF_CODE = os.environ.get('PROF_CODE', 'professors&o')
+
 @app.route('/')
 def index():
     return render_template('login.html')
@@ -132,6 +146,13 @@ def index():
 @app.route('/app')
 def main_app():
     return render_template('app.html')
+
+
+@app.route('/api/verify-prof-code', methods=['POST'])
+def verify_prof_code():
+    data = request.json or {}
+    code = data.get('code', '')
+    return jsonify({'valid': code == PROF_CODE and len(PROF_CODE) > 0})
 
 
 @app.route('/api/ai/chat', methods=['POST'])
@@ -172,7 +193,7 @@ def ai_image():
             'generationConfig': {'responseModalities': ['TEXT', 'IMAGE']}
         }, timeout=60)
         if 'error' in data:
-            return jsonify({'erro': data['error'].get('message', 'Erro na API de imagens')})
+            return jsonify({'erro': data['error'].get('message', 'Erro na API de imagens')}), 500
         parts = data['candidates'][0]['content']['parts']
         for p in parts:
             if 'inlineData' in p:
@@ -306,8 +327,27 @@ def ai_news():
         return jsonify({'erro': str(e)}), 500
 
 
+def _require_admin():
+    """Verifica se o utilizador é admin via UID ou API key."""
+    admin_key = request.headers.get('X-Admin-Key', '')
+    if ADMIN_AI_KEY and admin_key == ADMIN_AI_KEY:
+        return None
+    uid = request.headers.get('X-User-UID', '')
+    if not uid:
+        return jsonify({'erro': 'Acesso negado'}), 401
+    try:
+        user_data = _fb_get(f'users/{uid}')
+        if not user_data or user_data.get('role') != 'admin':
+            return jsonify({'erro': 'Acesso negado'}), 403
+    except Exception:
+        return jsonify({'erro': 'Erro ao verificar admin'}), 500
+    return None
+
+
 @app.route('/api/admin/send-email', methods=['POST'])
 def send_email():
+    admin_err = _require_admin()
+    if admin_err: return admin_err
     data = request.json if request.is_json else {}
     to = data.get('to', '')
     subject = data.get('subject', '')
@@ -333,6 +373,8 @@ def send_email():
 
 @app.route('/api/admin/ai-query', methods=['POST'])
 def admin_ai_query():
+    admin_err = _require_admin()
+    if admin_err: return admin_err
     prompt = request.json.get('prompt', '') if request.is_json else ''
     if not prompt:
         return jsonify({'erro': 'Sem prompt'}), 400
@@ -368,33 +410,36 @@ def _moodle_check(auth=""):
 
 @app.route('/api/moodle/test', methods=['POST'])
 def moodle_test():
-    m, err = _moodle_check(request.json.get('auth', ''))
+    d = request.json or {}
+    m, err = _moodle_check(d.get('auth', ''))
     if err: return jsonify(err[0]), err[1]
     return jsonify(m.status())
 
 @app.route('/api/moodle/courses', methods=['POST'])
 def moodle_courses():
-    m, err = _moodle_check(request.json.get('auth', ''))
+    d = request.json or {}
+    m, err = _moodle_check(d.get('auth', ''))
     if err: return jsonify(err[0]), err[1]
     try:
-        return jsonify(m.cursos(request.json.get('userid')))
+        return jsonify(m.cursos(d.get('userid')))
     except (PermissionError, ValueError) as e:
         return jsonify({'erro': str(e)}), 403
 
 @app.route('/api/moodle/grades', methods=['POST'])
 def moodle_grades():
-    m, err = _moodle_check(request.json.get('auth', ''))
+    d = request.json or {}
+    m, err = _moodle_check(d.get('auth', ''))
     if err: return jsonify(err[0]), err[1]
     try:
-        return jsonify(m.notas(request.json.get('courseid'), request.json.get('userid')))
+        return jsonify(m.notas(d.get('courseid'), d.get('userid')))
     except (PermissionError, ValueError) as e:
         return jsonify({'erro': str(e)}), 403
 
 @app.route('/api/moodle/grades/push', methods=['POST'])
 def moodle_push_grade():
-    m, err = _moodle_check(request.json.get('auth', ''))
+    d = request.json or {}
+    m, err = _moodle_check(d.get('auth', ''))
     if err: return jsonify(err[0]), err[1]
-    d = request.json
     try:
         return jsonify(m.registar_nota(d['userid'], d['itemid'], d['grade'], d.get('feedback', '')))
     except (PermissionError, ValueError) as e:
@@ -402,18 +447,19 @@ def moodle_push_grade():
 
 @app.route('/api/moodle/assignments', methods=['POST'])
 def moodle_assignments():
-    m, err = _moodle_check(request.json.get('auth', ''))
+    d = request.json or {}
+    m, err = _moodle_check(d.get('auth', ''))
     if err: return jsonify(err[0]), err[1]
     try:
-        return jsonify(m.testes(request.json.get('courseids')))
+        return jsonify(m.testes(d.get('courseids')))
     except (PermissionError, ValueError) as e:
         return jsonify({'erro': str(e)}), 403
 
 @app.route('/api/moodle/assignments/submit', methods=['POST'])
 def moodle_submit_assign():
-    m, err = _moodle_check(request.json.get('auth', ''))
+    d = request.json or {}
+    m, err = _moodle_check(d.get('auth', ''))
     if err: return jsonify(err[0]), err[1]
-    d = request.json
     try:
         return jsonify(m.submeter_teste(d['assignid'], d['userid'], d.get('plugindata')))
     except (PermissionError, ValueError) as e:
@@ -421,9 +467,9 @@ def moodle_submit_assign():
 
 @app.route('/api/moodle/assignments/create', methods=['POST'])
 def moodle_create_assign():
-    m, err = _moodle_check(request.json.get('auth', ''))
+    d = request.json or {}
+    m, err = _moodle_check(d.get('auth', ''))
     if err: return jsonify(err[0]), err[1]
-    d = request.json
     try:
         return jsonify(m.criar_teste(d['courseid'], d['name'], d.get('description', ''), d.get('duedate', 0), d.get('grade', 100)))
     except (PermissionError, ValueError) as e:
@@ -431,9 +477,9 @@ def moodle_create_assign():
 
 @app.route('/api/moodle/schedule', methods=['POST'])
 def moodle_schedule():
-    m, err = _moodle_check(request.json.get('auth', ''))
+    d = request.json or {}
+    m, err = _moodle_check(d.get('auth', ''))
     if err: return jsonify(err[0]), err[1]
-    d = request.json
     try:
         return jsonify(m.horario(d['courseid']))
     except (PermissionError, ValueError) as e:
@@ -441,18 +487,19 @@ def moodle_schedule():
 
 @app.route('/api/moodle/events', methods=['POST'])
 def moodle_events():
-    m, err = _moodle_check(request.json.get('auth', ''))
+    d = request.json or {}
+    m, err = _moodle_check(d.get('auth', ''))
     if err: return jsonify(err[0]), err[1]
     try:
-        return jsonify(m.eventos(request.json.get('courseids')))
+        return jsonify(m.eventos(d.get('courseids')))
     except (PermissionError, ValueError) as e:
         return jsonify({'erro': str(e)}), 403
 
 @app.route('/api/moodle/users', methods=['POST'])
 def moodle_users():
-    m, err = _moodle_check(request.json.get('auth', ''))
+    d = request.json or {}
+    m, err = _moodle_check(d.get('auth', ''))
     if err: return jsonify(err[0]), err[1]
-    d = request.json
     try:
         return jsonify(m.utilizadores(d['userids']))
     except (PermissionError, ValueError) as e:
@@ -460,9 +507,9 @@ def moodle_users():
 
 @app.route('/api/moodle/quiz/create', methods=['POST'])
 def moodle_create_quiz():
-    m, err = _moodle_check(request.json.get('auth', ''))
+    d = request.json or {}
+    m, err = _moodle_check(d.get('auth', ''))
     if err: return jsonify(err[0]), err[1]
-    d = request.json
     try:
         return jsonify(m.criar_quiz(d['courseid'], d['name'], d.get('description', ''), d.get('timeopen', 0), d.get('timeclose', 0), d.get('grade', 100)))
     except (PermissionError, ValueError) as e:
@@ -470,9 +517,9 @@ def moodle_create_quiz():
 
 @app.route('/api/moodle/course/create', methods=['POST'])
 def moodle_create_course():
-    m, err = _moodle_check(request.json.get('auth', ''))
+    d = request.json or {}
+    m, err = _moodle_check(d.get('auth', ''))
     if err: return jsonify(err[0]), err[1]
-    d = request.json
     try:
         return jsonify(m.criar_curso(d['fullname'], d['shortname'], d.get('categoryid', 0)))
     except (PermissionError, ValueError) as e:
@@ -480,9 +527,9 @@ def moodle_create_course():
 
 @app.route('/api/moodle/course/update', methods=['POST'])
 def moodle_update_course():
-    m, err = _moodle_check(request.json.get('auth', ''))
+    d = request.json or {}
+    m, err = _moodle_check(d.get('auth', ''))
     if err: return jsonify(err[0]), err[1]
-    d = request.json
     try:
         return jsonify(m.atualizar_curso(d['courseid'], d.get('fullname'), d.get('shortname')))
     except (PermissionError, ValueError) as e:
@@ -492,6 +539,8 @@ def moodle_update_course():
 @app.route('/api/admin/gift', methods=['POST'])
 def admin_gift():
     """Admin presenteia um utilizador com uma extensão + mensagem opcional + imagem opcional."""
+    admin_err = _require_admin()
+    if admin_err: return admin_err
     data = request.json if request.is_json else {}
     userId = data.get('userId', '')
     extId = data.get('extId', '')
@@ -565,7 +614,7 @@ def _fb_put(path, value):
     import urllib.request
     url = f"https://s123o-f3e37-default-rtdb.asia-southeast1.firebasedatabase.app/{path}.json"
     req = urllib.request.Request(url, data=json.dumps(value).encode(), method='PUT')
-    with urllib.request.urlopen(req, context=SSL_CTX) as resp:
+    with urllib.request.urlopen(req, context=SSL_CTX, timeout=10) as resp:
         return json.loads(resp.read())
 
 
@@ -574,7 +623,7 @@ def _fb_get(path):
     import urllib.request
     url = f"https://s123o-f3e37-default-rtdb.asia-southeast1.firebasedatabase.app/{path}.json"
     req = urllib.request.Request(url)
-    with urllib.request.urlopen(req, context=SSL_CTX) as resp:
+    with urllib.request.urlopen(req, context=SSL_CTX, timeout=10) as resp:
         return json.loads(resp.read())
 
 
@@ -583,7 +632,7 @@ def _fb_delete(path):
     import urllib.request
     url = f"https://s123o-f3e37-default-rtdb.asia-southeast1.firebasedatabase.app/{path}.json"
     req = urllib.request.Request(url, method='DELETE')
-    with urllib.request.urlopen(req, context=SSL_CTX) as resp:
+    with urllib.request.urlopen(req, context=SSL_CTX, timeout=10) as resp:
         return json.loads(resp.read())
 
 
@@ -657,6 +706,8 @@ def build_ai_prompt_with_rules(user_prompt, base_system, rules_context):
 @app.route('/api/admin/ai-rules', methods=['GET'])
 def get_ai_rules():
     """Lista todas as regras de IA."""
+    admin_err = _require_admin()
+    if admin_err: return admin_err
     try:
         rules = _fb_get('ai_rules') or {}
         return jsonify({'rules': {k: {**v, 'id': k} for k, v in rules.items()}})
@@ -668,6 +719,8 @@ def get_ai_rules():
 @app.route('/api/admin/ai-rules', methods=['POST'])
 def save_ai_rule():
     """Cria ou atualiza uma regra de IA."""
+    admin_err = _require_admin()
+    if admin_err: return admin_err
     data = request.json if request.is_json else {}
     rule_id = data.pop('id', '')
     name = data.get('name', '')
@@ -685,12 +738,12 @@ def save_ai_rule():
         'language': data.get('language', 'português'),
         'restrictions': data.get('restrictions', ''),
         'description': data.get('description', ''),
-        'updatedAt': __import__('time').time() * 1000
+        'updatedAt': time.time() * 1000
     }
 
     try:
         if not rule_id:
-            rule_id = f"rule_{int(__import__('time').time() * 1000)}"
+            rule_id = f"rule_{int(time.time() * 1000)}"
             rule_data['createdAt'] = rule_data['updatedAt']
         _fb_put(f'ai_rules/{rule_id}', rule_data)
         return jsonify({'ok': True, 'id': rule_id})
@@ -702,9 +755,47 @@ def save_ai_rule():
 @app.route('/api/admin/ai-rules/<rule_id>', methods=['DELETE'])
 def delete_ai_rule(rule_id):
     """Elimina uma regra de IA."""
+    admin_err = _require_admin()
+    if admin_err: return admin_err
     try:
         _fb_delete(f'ai_rules/{rule_id}')
         return jsonify({'ok': True})
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'erro': str(e)}), 500
+
+
+@app.route('/api/admin/gh-release', methods=['POST'])
+def create_gh_release():
+    admin_err = _require_admin()
+    if admin_err: return admin_err
+    data = request.json or {}
+    tag = data.get('tag', '').strip()
+    name = data.get('name', '').strip()
+    body = data.get('body', '')
+    prerelease = data.get('prerelease', False)
+    if not tag or not name:
+        return jsonify({'erro': 'tag e name obrigatórios'}), 400
+    try:
+        conn = http.client.HTTPSConnection('api.github.com', timeout=15, context=SSL_CTX)
+        payload = json.dumps({
+            'tag_name': tag, 'name': name, 'body': body, 'draft': False, 'prerelease': prerelease
+        })
+        headers = {
+            'Authorization': f'token {os.environ.get("GITHUB_TOKEN", "")}',
+            'Accept': 'application/vnd.github.v3+json',
+            'User-Agent': 'SoplusBot',
+            'Content-Type': 'application/json',
+            'Content-Length': str(len(payload))
+        }
+        conn.request('POST', '/repos/franciscoaura93-spec/soplus-workspace/releases', body=payload, headers=headers)
+        resp = conn.getresponse()
+        result = json.loads(resp.read().decode())
+        conn.close()
+        if resp.status in (200, 201):
+            return jsonify({'ok': True, 'url': result.get('html_url', '')})
+        else:
+            return jsonify({'erro': result.get('message', f'HTTP {resp.status}')}), 400
     except Exception as e:
         traceback.print_exc()
         return jsonify({'erro': str(e)}), 500
@@ -751,8 +842,8 @@ def face_save():
     _fb_put(f'face_data/{uid}', {
         'descriptor': descriptor,
         'name': name,
-        'createdAt': _fb_get(f'face_data/{uid}/createdAt') or int(__import__('time').time() * 1000),
-        'updatedAt': int(__import__('time').time() * 1000)
+        'createdAt': _fb_get(f'face_data/{uid}/createdAt') or int(time.time() * 1000),
+        'updatedAt': int(time.time() * 1000)
     })
     return jsonify({'ok': True})
 
@@ -774,7 +865,7 @@ def face_owner():
         'name': data.get('name', ''),
         'uid': data.get('uid', ''),
         'verification_enabled': data.get('verification_enabled', False),
-        'updatedAt': int(__import__('time').time() * 1000)
+        'updatedAt': int(time.time() * 1000)
     })
     return jsonify({'ok': True})
 
@@ -798,7 +889,6 @@ def face_verify():
     stored_desc = stored['descriptor']
     if len(stored_desc) != len(descriptor):
         return jsonify({'match': False, 'reason': 'descriptor_mismatch'})
-    import math
     distance = math.sqrt(sum((a - b) ** 2 for a, b in zip(stored_desc, descriptor)))
     threshold = 0.55
     return jsonify({'match': distance < threshold, 'distance': round(distance, 4), 'threshold': threshold})
@@ -817,4 +907,4 @@ def face_all():
 if __name__ == '__main__':
     import webbrowser, threading
     threading.Timer(1.5, lambda: webbrowser.open('http://localhost:5000')).start()
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=False, host='0.0.0.0', port=5000)

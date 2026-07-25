@@ -25,13 +25,16 @@ async function submitWork() {
     const file=document.getElementById('work-file').files[0];
     const work={name,subject,desc,timestamp:Date.now(),userId:currentUser?.uid,userName:currentUser?.displayName||currentUser?.email||'Aluno'};
     if(file){
-        const reader=new FileReader();
-        reader.onload=()=>{work.fileName=file.name;work.fileData=reader.result;work.fileSize=file.size;dbPush('works',work);loadWorks();showToast('Trabalho submetido!');};
-        reader.readAsDataURL(file);
-    }else{dbPush('works',work);loadWorks();showToast('Trabalho submetido!');}
+        try{
+            const path=`works/${currentUser.uid}/${Date.now()}_${file.name}`;
+            const url=await uploadFile(file,path);
+            work.fileName=file.name;work.fileUrl=url;work.filePath=path;work.fileSize=file.size;
+        }catch(e){console.error('Erro upload trabalho:',e);}
+        await dbPush('works',work);loadWorks();showToast('Trabalho submetido!');
+    }else{await dbPush('works',work);loadWorks();showToast('Trabalho submetido!');}
 }
 async function loadWorks() {
     const snap=await dbGet('works');const el=document.getElementById('works-list');if(!snap){el.innerHTML='<p style="font-size:13px;color:var(--text-light);">Sem trabalhos ainda.</p>';return;}
     const entries=Object.entries(snap).sort((a,b)=>(b[1].timestamp||0)-(a[1].timestamp||0));
-    el.innerHTML=entries.map(([id,w])=>`<div style="padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:10px;"><div style="display:flex;justify-content:space-between;"><div><strong>📄 ${w.name}</strong><br><span style="font-size:12px;color:var(--text-light);">${w.subject} • ${w.userName} • ${new Date(w.timestamp).toLocaleDateString('pt-PT')}</span>${w.desc?`<p style="font-size:12px;color:var(--text-dim);margin-top:6px;">${w.desc}</p>`:''}${w.fileName?`<p style="font-size:11px;color:var(--accent);margin-top:4px;">📎 ${w.fileName}</p>`:''}</div>${w.fileData?`<a href="${w.fileData}" download="${w.fileName||'trabalho'}" class="btn btn-outline" style="height:fit-content;">⬇️</a>`:''}</div></div>`).join('');
+    el.innerHTML=entries.map(([id,w])=>`<div style="padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;margin-bottom:10px;"><div style="display:flex;justify-content:space-between;"><div><strong>📄 ${w.name}</strong><br><span style="font-size:12px;color:var(--text-light);">${w.subject} • ${w.userName} • ${new Date(w.timestamp).toLocaleDateString('pt-PT')}</span>${w.desc?`<p style="font-size:12px;color:var(--text-dim);margin-top:6px;">${w.desc}</p>`:''}${w.fileName?`<p style="font-size:11px;color:var(--accent);margin-top:4px;">📎 ${w.fileName}</p>`:''}</div>${w.fileUrl?`<a href="${w.fileUrl}" target="_blank" download="${w.fileName||'trabalho'}" class="btn btn-outline" style="height:fit-content;">⬇️</a>`:''}</div></div>`).join('');
 }

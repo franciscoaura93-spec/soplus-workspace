@@ -24,12 +24,19 @@ function startScreenRec() {
     navigator.mediaDevices.getDisplayMedia({video:true,audio:true}).then(stream=>{
         _screenChunks=[];_screenRec=new MediaRecorder(stream);
         _screenRec.ondataavailable=e=>{if(e.data.size>0)_screenChunks.push(e.data);};
-        _screenRec.onstop=()=>{
+        _screenRec.onstop=async()=>{
             const blob=new Blob(_screenChunks,{type:'video/webm'});
-            const url=URL.createObjectURL(blob);
-            const vid=document.getElementById('rec-preview');vid.src=url;vid.style.display='block';
-            if(currentUser){dbPush(`recordings/${currentUser.uid}`,{name:'Videoaula',url:url,size:blob.size,timestamp:Date.now()});}
+            const vid=document.getElementById('rec-preview');
+            vid.src=URL.createObjectURL(blob);vid.style.display='block';
             document.getElementById('rec-btn').style.display='';document.getElementById('stop-rec-btn').style.display='none';
+            document.getElementById('rec-status').innerHTML='⏳ A guardar na cloud...';
+            if(currentUser){
+                try{
+                    const path=`recordings/${currentUser.uid}/${Date.now()}_video.webm`;
+                    const url=await uploadFile(blob,path);
+                    await dbPush(`recordings/${currentUser.uid}`,{name:'Videoaula',url,path,size:blob.size,timestamp:Date.now()});
+                }catch(e){console.error('Erro upload video:',e);}
+            }
             document.getElementById('rec-status').innerHTML='✅ Gravação terminada!';
             loadRecordings();
         };
@@ -43,6 +50,6 @@ async function loadRecordings() {
     if(!currentUser)return;const snap=await dbGet(`recordings/${currentUser.uid}`);
     const el=document.getElementById('recordings-list');if(!snap){el.innerHTML='<p style="font-size:13px;color:var(--text-light);">Sem gravações ainda.</p>';return;}
     const entries=Object.entries(snap).sort((a,b)=>(b[1].timestamp||0)-(a[1].timestamp||0));
-    el.innerHTML=entries.map(([id,r])=>`<div style="padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;"><div><strong>${r.name}</strong><br><span style="font-size:11px;color:var(--text-light);">${new Date(r.timestamp).toLocaleDateString('pt-PT')}</span></div><button class="btn btn-outline" onclick="deleteRec('${id}')">🗑️</button></div>`).join('');
+    el.innerHTML=entries.map(([id,r])=>`<div style="padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;"><div><strong>${r.name}</strong><br><span style="font-size:11px;color:var(--text-light);">${new Date(r.timestamp).toLocaleDateString('pt-PT')}</span></div><div style="display:flex;gap:6px;">${r.url?`<a href="${r.url}" target="_blank" class="btn btn-outline" style="font-size:11px;padding:4px 8px;">▶ Ver</a>`:''}<button class="btn btn-outline" onclick="deleteRec('${id}')">🗑️</button></div></div>`).join('');
 }
 function deleteRec(id) {if(currentUser){dbRemove(`recordings/${currentUser.uid}/${id}`);loadRecordings();}}

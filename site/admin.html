@@ -246,6 +246,7 @@
         <div class="tab" data-tab="face-security" onclick="switchTab('face-security')">🔒 Segurança Facial</div>
         <div class="tab" data-tab="database" onclick="switchTab('database')">📊 Base de Dados</div>
         <div class="tab" data-tab="moodle" onclick="switchTab('moodle')">🔗 Moodle</div>
+        <div class="tab" data-tab="versions" onclick="switchTab('versions')">📦 Versões</div>
     </div>
 
     <div class="editor-area" id="editor-content"></div>
@@ -306,10 +307,13 @@ const DEFAULT_DATA = {
     }
 };
 
+let ADMIN_KEY = '';
+
 function doLogin() {
     const pass = document.getElementById('login-pass').value;
     const errEl = document.getElementById('login-err');
     if (pass === 's&oadm') {
+        ADMIN_KEY = 's&oadm';
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('admin-panel').style.display = 'block';
         loadAdmin();
@@ -356,6 +360,7 @@ function renderTab() {
         case 'face-security': renderFaceSecurity(area); break;
         case 'database': renderDatabase(area); break;
         case 'moodle': renderMoodle(area); break;
+        case 'versions': renderVersions(area); break;
     }
 }
 
@@ -928,7 +933,7 @@ async function approvePurchase(id) {
 
     fetch('/api/admin/send-email', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-Admin-Key': ADMIN_KEY },
         body: JSON.stringify({
             to: p.userEmail,
             subject: `Extensão "${p.extName}" ativada — S&O+ Ultra Workspace`,
@@ -950,7 +955,7 @@ async function rejectPurchase(id) {
 
     fetch('/api/admin/send-email', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'X-Admin-Key': ADMIN_KEY },
         body: JSON.stringify({
             to: p.userEmail,
             subject: `Pagamento não processado — S&O+ Ultra Workspace`,
@@ -1018,7 +1023,7 @@ async function askDBAI() {
     try {
         const r = await fetch('/api/admin/ai-query', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'X-Admin-Key': ADMIN_KEY },
             body: JSON.stringify({
                 prompt: `Tu és o assistente de administração de uma base de dados Firebase. Aqui está a estrutura e dados:\n\n${dbSummary}\n\n---\n\nPergunta do admin: "${q}"\n\nResponde de forma clara e organizada. Usa emojis e formatação. Se a pergunta for sobre dados específicos, mostra os valores. Se pedir uma ação, explica o que fazer.`
             })
@@ -1884,6 +1889,134 @@ async function loadMoodleLog() {
         const t = new Date(e.timestamp).toLocaleString('pt-PT');
         return `<div style="padding:4px 0;border-bottom:1px solid var(--border);">[${t}] ${e.action}</div>`;
     }).join('');
+}
+
+function renderVersions(area) {
+    const RELEASES_URL = 'https://github.com/franciscoaura93-spec/soplus-workspace/releases';
+    area.innerHTML = `
+        <div class="section-block">
+            <h3>📦 Gestão de Versões</h3>
+            <p style="font-size:13px;color:var(--text-dim);margin-bottom:20px;">Links de download que aparecem no landing page. O utilizador escolhe entre Estável e Beta.</p>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;">
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+                        <span style="padding:4px 10px;background:rgba(34,197,94,0.15);color:#22c55e;border-radius:6px;font-size:11px;font-weight:700;">ESTÁVEL</span>
+                        <span style="font-size:18px;font-weight:700;">v2.6</span>
+                    </div>
+                    <div class="field"><label>Link de Download</label><input id="ver-stable-url" value="https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v2.6/S+O-Workspace-Instalador.exe"></div>
+                    <div class="field"><label>Badge Texto</label><input id="ver-stable-badge" value="v2.6 — 2026"></div>
+                </div>
+
+                <div style="background:var(--card);border:1px solid rgba(234,179,8,0.3);border-radius:12px;padding:20px;">
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+                        <span style="padding:4px 10px;background:rgba(234,179,8,0.15);color:#eab308;border-radius:6px;font-size:11px;font-weight:700;">BETA</span>
+                        <span style="font-size:18px;font-weight:700;">v2.7</span>
+                    </div>
+                    <div class="field"><label>Link de Download</label><input id="ver-beta-url" value="https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v2.7-beta/S+O-Workspace-Instalador.exe"></div>
+                    <div class="field"><label>Badge Texto</label><input id="ver-beta-badge" value="v2.7 Beta"></div>
+                </div>
+            </div>
+
+            <div style="display:flex;gap:10px;margin-top:20px;">
+                <button class="btn btn-primary" onclick="saveVersions()">💾 Guardar Versões</button>
+                <a href="${RELEASES_URL}" target="_blank" class="btn btn-outline" style="text-decoration:none;">🔗 Ver Releases no GitHub</a>
+            </div>
+            <div id="versions-status" style="margin-top:12px;font-size:13px;"></div>
+        </div>
+
+        <div class="section-block">
+            <h3>📋 Versão Atual</h3>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                <div>
+                    <div class="field"><label>Versão Estável</label><input id="ver-current-stable" value="2.6"></div>
+                </div>
+                <div>
+                    <div class="field"><label>Versão Beta</label><input id="ver-current-beta" value="2.7"></div>
+                </div>
+            </div>
+            <div class="field"><label>Versão App (Inno Setup)</label><input id="ver-app-version" value="2.6" style="max-width:200px;"></div>
+            <button class="btn btn-primary" onclick="saveVersionNumbers()" style="margin-top:8px;">💾 Guardar Números</button>
+        </div>
+
+        <div class="section-block">
+            <h3>🔗 Release Notas (GitHub)</h3>
+            <p style="font-size:13px;color:var(--text-dim);margin-bottom:12px;">Cria automaticamente uma release no GitHub com as notas que escreveres.</p>
+            <div class="field"><label>Tag (ex: v2.7-beta)</label><input id="gh-release-tag" placeholder="v2.7-beta"></div>
+            <div class="field"><label>Nome</label><input id="gh-release-name" placeholder="v2.7 Beta"></div>
+            <div class="field"><label>Notas (Markdown)</label><textarea id="gh-release-body" rows="8" placeholder="## Novidades&#10;- Feature A&#10;- Feature B&#10;&#10;## Correções&#10;- Bug fix 1"></textarea></div>
+            <div style="display:flex;gap:10px;align-items:center;">
+                <label style="font-size:13px;color:var(--text-dim);display:flex;align-items:center;gap:6px;">
+                    <input type="checkbox" id="gh-release-prerelease" checked> Pré-release (Beta)
+                </label>
+                <button class="btn btn-primary" onclick="createGitHubRelease()">🚀 Criar Release</button>
+            </div>
+            <div id="gh-release-status" style="margin-top:12px;font-size:13px;"></div>
+        </div>
+    `;
+    loadVersions();
+}
+
+async function loadVersions() {
+    try {
+        const snap = await db.ref('admin_config/versions').once('value');
+        const v = snap.val();
+        if (v) {
+            if (v.stableUrl) document.getElementById('ver-stable-url').value = v.stableUrl;
+            if (v.stableBadge) document.getElementById('ver-stable-badge').value = v.stableBadge;
+            if (v.betaUrl) document.getElementById('ver-beta-url').value = v.betaUrl;
+            if (v.betaBadge) document.getElementById('ver-beta-badge').value = v.betaBadge;
+            if (v.currentStable) document.getElementById('ver-current-stable').value = v.currentStable;
+            if (v.currentBeta) document.getElementById('ver-current-beta').value = v.currentBeta;
+            if (v.appVersion) document.getElementById('ver-app-version').value = v.appVersion;
+        }
+    } catch(e) {}
+}
+
+function saveVersions() {
+    db.ref('admin_config/versions').set({
+        stableUrl: document.getElementById('ver-stable-url').value,
+        stableBadge: document.getElementById('ver-stable-badge').value,
+        betaUrl: document.getElementById('ver-beta-url').value,
+        betaBadge: document.getElementById('ver-beta-badge').value,
+        updatedAt: Date.now()
+    });
+    showToast('Links de versão guardados!');
+}
+
+function saveVersionNumbers() {
+    db.ref('admin_config/versions').update({
+        currentStable: document.getElementById('ver-current-stable').value,
+        currentBeta: document.getElementById('ver-current-beta').value,
+        appVersion: document.getElementById('ver-app-version').value,
+        updatedAt: Date.now()
+    });
+    showToast('Números de versão guardados!');
+}
+
+async function createGitHubRelease() {
+    const el = document.getElementById('gh-release-status');
+    const tag = document.getElementById('gh-release-tag').value.trim();
+    const name = document.getElementById('gh-release-name').value.trim();
+    const body = document.getElementById('gh-release-body').value.trim();
+    const prerelease = document.getElementById('gh-release-prerelease').checked;
+    if (!tag || !name) { el.innerHTML = '<span style="color:#f59e0b;">⚠️ Tag e Nome são obrigatórios</span>'; return; }
+    el.innerHTML = '<span style="color:var(--text-dim);">⏳ A criar release no GitHub...</span>';
+    try {
+        const r = await fetch('/api/admin/gh-release', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Admin-Key': ADMIN_KEY },
+            body: JSON.stringify({ tag, name, body, prerelease })
+        });
+        const data = await r.json();
+        if (data.ok) {
+            el.innerHTML = `<span style="color:#22c55e;">✅ Release criada: <a href="${data.url}" target="_blank" style="color:#a78bfa;">${data.url}</a></span>`;
+        } else {
+            el.innerHTML = `<span style="color:#ef4444;">❌ ${data.erro || 'Erro desconhecido'}</span>`;
+        }
+    } catch(e) {
+        el.innerHTML = `<span style="color:#ef4444;">❌ ${e.message}</span>`;
+    }
 }
 
 function showToast(msg) {

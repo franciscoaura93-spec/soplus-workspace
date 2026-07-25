@@ -82,6 +82,7 @@ function calcBack() { const d = document.getElementById('calc-display'); d.value
 function calcEquals() {
     try {
         const expr = window._calcExpr;
+        if (!/^[0-9+\-*/().%\s]+$/.test(expr)) throw new Error('Expressão inválida');
         const result = Function('"use strict";return (' + expr + ')')();
         const val = isFinite(result) ? parseFloat(result.toFixed(10)) : 'Erro';
         document.getElementById('calc-display').value = val;

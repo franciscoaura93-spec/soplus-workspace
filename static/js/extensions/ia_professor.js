@@ -1,5 +1,5 @@
 // S&O+ Extension: IA Professor
-function renderIAProfessor(area, ext) {
+function renderIaProfessor(area, ext) {
     area.innerHTML = `
         <div class="page-header"><h2>${ext.icon} ${ext.name}</h2><p>${ext.desc}</p></div>
         <div class="card" style="margin-bottom:16px;">

@@ -140,7 +140,8 @@ function navigateTo(page) {
         activeEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
     const pageInfo = PAGES.find(p => p.id === page);
-    document.getElementById('page-title').textContent = pageInfo?.label || page;
+    const i18nKey = 'nav_' + page.replace('-', '_');
+    document.getElementById('page-title').textContent = (t(i18nKey) !== i18nKey) ? t(i18nKey) : (pageInfo?.label || page);
 
     const area = document.getElementById('content-area');
     area.scrollTop = 0;
@@ -198,7 +199,7 @@ function renderPage(page) {
             if (PAGES.find(p => p.id === page && p.extPage)) {
                 renderExtPage(area, page);
             } else {
-                area.innerHTML = '<div class="empty-state"><div class="icon">🚧</div><h3>Em construção</h3></div>';
+                area.innerHTML = `<div class="empty-state"><div class="icon">🚧</div><h3>${t('nav_under_construction')}</h3></div>`;
             }
             break;
     }
@@ -238,15 +239,15 @@ async function loadDashboardStats() {
             dbGet('provas')
         ]);
         const alunos = usersSnap ? Object.entries(usersSnap).filter(([k,v]) => profTurmas.includes(v.turma) && v.role === 'aluno') : [];
-        for (const [uid] of alunos) {
-            const notasSnap = await dbGet(`notas/${uid}`);
+        for (const [uid, aluno] of alunos) {
+            const notasSnap = await dbGet(`notas/${aluno.turma || 'default'}/${uid}`);
             if (notasSnap) notas.push(...Object.values(notasSnap));
         }
         provas = provasSnap ? Object.entries(provasSnap).filter(([k,v]) => profTurmas.includes(v.turma) && v.ativa !== false).map(([k,v]) => ({id:k,...v})) : [];
     } else {
         const turma = userProfile?.turma || 'default';
         const [notasSnap, provasSnap] = await Promise.all([
-            dbGet(`notas/${currentUser.uid}`),
+            dbGet(`notas/${turma}/${currentUser.uid}`),
             dbGet(`provas`)
         ]);
         notas = notasSnap ? Object.values(notasSnap) : [];
@@ -330,10 +331,13 @@ function renderHorarios(area) {
 
 async function loadHorarios() {
     const snap = await dbGet('horarios');
-    const horarios = snap ? Object.entries(snap).map(([k,v]) => ({id:k,...v})) : [];
+    const turma = userProfile?.turma || '';
+    const isProf = userProfile?.role === 'professor' || userProfile?.role === 'admin';
+    const profTurmas = (userProfile?.turmas || '').split(',').map(s => s.trim()).filter(Boolean);
+    const horarios = snap ? Object.entries(snap).map(([k,v]) => ({id:k,...v}))
+        .filter(a => isProf ? profTurmas.includes(a.turma) : a.turma === turma) : [];
     const dias = ['Segunda','Terça','Quarta','Quinta','Sexta'];
     const horas = ['08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00'];
-    const isProf = userProfile?.role === 'professor';
 
     let html = '<div class="timetable-grid"><div class="tt-header" style="background:transparent;color:var(--text-light)">Hora</div>';
     dias.forEach(d => html += `<div class="tt-header">${d}</div>`);
@@ -384,7 +388,10 @@ function renderNotas(area) {
             e.preventDefault();
             const fd = new FormData(e.target);
             const uid = fd.get('aluno_uid');
-            await dbPush(`notas/${uid}`, {
+            const usersSnap = await dbGet('users') || {};
+            const aluno = usersSnap[uid];
+            const turma = aluno?.turma || 'default';
+            await dbPush(`notas/${turma}/${uid}`, {
                 disciplina: fd.get('disciplina'), valor: parseFloat(fd.get('valor')),
                 tipo: fd.get('tipo'), professor: userProfile.nome, createdAt: Date.now()
             });
@@ -419,7 +426,8 @@ async function loadNotas() {
         } else {
             html = '<div class="table-wrap"><table class="sheet-table"><tr><th>Aluno</th><th>Disciplina</th><th>Tipo</th><th>Nota</th></tr>';
             for (const [uid, aluno] of alunos) {
-                const notasSnap = await dbGet(`notas/${uid}`);
+                const turma = aluno.turma || 'default';
+                const notasSnap = await dbGet(`notas/${turma}/${uid}`);
                 const notas = notasSnap ? Object.values(notasSnap) : [];
                 notas.forEach(n => {
                     html += `<tr><td>${aluno.nome}</td><td>${n.disciplina}</td><td>${n.tipo}</td><td><strong>${n.valor}</strong>/20</td></tr>`;
@@ -428,7 +436,8 @@ async function loadNotas() {
             html += '</table></div>';
         }
     } else {
-        const notasSnap = await dbGet(`notas/${currentUser.uid}`);
+        const turma = userProfile?.turma || 'default';
+        const notasSnap = await dbGet(`notas/${turma}/${currentUser.uid}`);
         const notas = notasSnap ? Object.values(notasSnap) : [];
         if (notas.length === 0) {
             html = '<div class="empty-state"><div class="icon">📊</div><h3>Sem notas ainda</h3></div>';
@@ -679,8 +688,16 @@ async function deleteProva(id) {
 
 // ── FICHEIROS ──
 function renderFicheiros(area) {
+    const turma = getTurma();
+    const isProf = userProfile?.role === 'professor';
+    const turmas = isProf ? (userProfile?.turmas || '').split(',').map(s => s.trim()).filter(Boolean) : [];
+
     area.innerHTML = `
-        <div class="page-header"><h2>📁 Repositório Cloud</h2><p>Upload e download de ficheiros via Firebase Storage</p></div>
+        <div class="page-header"><h2>📁 Repositório Cloud</h2><p>${isProf ? 'Seleciona a turma' : 'Turma: ' + turma}</p></div>
+        ${isProf && turmas.length > 1 ? `
+        <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+            ${turmas.map((t, i) => `<button class="btn ${i === 0 ? 'btn-primary' : 'btn-outline'}" onclick="switchFileTurma('${t}', this)">${t}</button>`).join('')}
+        </div>` : ''}
         <div class="card"><div class="card-title">☁️ Upload</div>
             <div style="display:flex;gap:12px;align-items:end;">
                 <div class="form-group" style="flex:1;"><label>Ficheiro</label><input type="file" id="file-upload" class="form-input" style="padding:8px;"></div>
@@ -690,7 +707,16 @@ function renderFicheiros(area) {
         </div>
         <div class="card"><div class="card-title">📋 Ficheiros</div><div id="files-list"></div></div>
     `;
-    loadFicheiros();
+    currentFileTurma = turma;
+    loadFicheiros(turma);
+}
+
+let currentFileTurma = null;
+function switchFileTurma(turma, btn) {
+    currentFileTurma = turma;
+    document.querySelectorAll('.page-header + div .btn').forEach(b => { b.className = 'btn btn-outline'; });
+    if (btn) btn.className = 'btn btn-primary';
+    loadFicheiros(turma);
 }
 
 async function uploadFileFirebase() {
@@ -699,56 +725,78 @@ async function uploadFileFirebase() {
     if (!file) return showToast('Seleciona um ficheiro', 'error');
 
     document.getElementById('upload-progress').style.display = 'block';
-    const path = `files/${currentUser.uid}/${Date.now()}_${file.name}`;
+    const turma = currentFileTurma || getTurma();
+    const path = `files/${turma}/${currentUser.uid}/${Date.now()}_${file.name}`;
     try {
         const url = await uploadFile(file, path);
-        await dbPush('ficheiros', {
-            nome: file.name, url, path, tamanho: file.size,
+        await dbPush(`ficheiros/${turma}`, {
+            nome: file.name, url, path, turma, tamanho: file.size,
             tipo: file.type, autorId: currentUser.uid, autorNome: userProfile.nome,
             createdAt: Date.now()
         });
         showToast('Ficheiro enviado!', 'success');
         fileInput.value = '';
         document.getElementById('upload-progress').style.display = 'none';
-        loadFicheiros();
+        loadFicheiros(turma);
     } catch(e) {
         showToast('Erro no upload: ' + e.message, 'error');
         document.getElementById('upload-progress').style.display = 'none';
     }
 }
 
-async function loadFicheiros() {
-    const snap = await dbGet('ficheiros');
+async function loadFicheiros(turma) {
+    turma = turma || currentFileTurma || getTurma();
+    const snap = await dbGet(`ficheiros/${turma}`);
     const files = snap ? Object.entries(snap).map(([k,v]) => ({id:k,...v})).sort((a,b) => b.createdAt - a.createdAt) : [];
+    const list = document.getElementById('files-list');
+    if (!list) return;
     if (files.length === 0) {
-        document.getElementById('files-list').innerHTML = '<div class="empty-state"><div class="icon">📁</div><h3>Repositório vazio</h3></div>';
+        list.innerHTML = '<div class="empty-state"><div class="icon">📁</div><h3>Repositório vazio</h3></div>';
         return;
     }
     const iconMap = { pdf: '📄', jpg: '🖼️', png: '🖼️', py: '💻', js: '💻', html: '💻', zip: '📦', doc: '📝', xls: '📊' };
-    document.getElementById('files-list').innerHTML = files.map(f => {
+    list.innerHTML = files.map(f => {
         const ext = f.nome?.split('.').pop()?.toLowerCase() || '';
         const icon = iconMap[ext] || '📁';
         return `<div class="file-item">
             <div class="file-icon">${icon}</div>
             <div class="file-info"><div class="file-name">${f.nome}</div><div class="file-meta">${f.autorNome || ''} · ${new Date(f.createdAt).toLocaleDateString('pt-PT')}</div></div>
             <a href="${f.url}" target="_blank" class="btn btn-sm btn-primary">⬇ Baixar</a>
-            ${f.autorId === currentUser.uid ? `<button class="btn btn-sm btn-danger" onclick="deleteFicheiro('${f.id}','${f.path}')">✕</button>` : ''}
+            ${f.autorId === currentUser.uid ? `<button class="btn btn-sm btn-danger" onclick="deleteFicheiro('${f.id}','${f.path}','${turma}')">✕</button>` : ''}
         </div>`;
     }).join('');
 }
 
-async function deleteFicheiro(id, path) {
+async function deleteFicheiro(id, path, turma) {
+    turma = turma || currentFileTurma || getTurma();
     if (!confirm('Eliminar?')) return;
     try { await storage.ref(path).delete(); } catch(e) {}
-    await dbRemove('ficheiros/' + id);
-    loadFicheiros();
+    await dbRemove(`ficheiros/${turma}/${id}`);
+    loadFicheiros(turma);
     showToast('Eliminado', 'success');
 }
 
 // ── CHAT REAL-TIME ──
+function getTurma() {
+    const isProf = userProfile?.role === 'professor';
+    if (isProf) {
+        const turmas = (userProfile?.turmas || '').split(',').map(s => s.trim()).filter(Boolean);
+        return turmas[0] || 'geral';
+    }
+    return userProfile?.turma || 'geral';
+}
+
 function renderChat(area) {
+    const turma = getTurma();
+    const isProf = userProfile?.role === 'professor';
+    const turmas = isProf ? (userProfile?.turmas || '').split(',').map(s => s.trim()).filter(Boolean) : [];
+
     area.innerHTML = `
-        <div class="page-header"><h2>💬 Chat da Turma</h2><p>Real-time via Firebase RTDB</p></div>
+        <div class="page-header"><h2>💬 Chat da Turma</h2><p>${isProf ? 'Seleciona a turma' : 'Turma: ' + turma}</p></div>
+        ${isProf && turmas.length > 1 ? `
+        <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+            ${turmas.map((t, i) => `<button class="btn ${i === 0 ? 'btn-primary' : 'btn-outline'}" onclick="switchChatTurma('${t}', this)">${t}</button>`).join('')}
+        </div>` : ''}
         <div class="card" style="padding:0;overflow:hidden;">
             <div class="chat-container">
                 <div class="chat-messages" id="chat-box"></div>
@@ -759,12 +807,23 @@ function renderChat(area) {
             </div>
         </div>
     `;
-    loadChatMessages();
+    loadChatMessages(turma);
 }
 
-function loadChatMessages() {
+let currentChatTurma = null;
+function switchChatTurma(turma, btn) {
+    currentChatTurma = turma;
+    document.querySelectorAll('.page-header + div .btn').forEach(b => { b.className = 'btn btn-outline'; });
+    if (btn) btn.className = 'btn btn-primary';
+    document.getElementById('chat-box').innerHTML = '';
+    loadChatMessages(turma);
+}
+
+function loadChatMessages(turma) {
+    turma = turma || getTurma();
+    currentChatTurma = turma;
     dbStopListen('chat');
-    dbListenChild('chat', 'child_added', snap => {
+    dbListenChild(`chat/${turma}`, 'child_added', snap => {
         const m = snap.val();
         if (!m) return;
         const box = document.getElementById('chat-box');
@@ -783,9 +842,10 @@ async function sendChatMsg() {
     const txt = input.value.trim();
     if (!txt) return;
     input.value = '';
-    await dbPush('chat', {
+    const turma = currentChatTurma || getTurma();
+    await dbPush(`chat/${turma}`, {
         autorId: currentUser.uid, autorNome: userProfile?.nome || 'Anónimo',
-        texto: txt, timestamp: Date.now()
+        turma, texto: txt, timestamp: Date.now()
     });
 }
 
@@ -1449,8 +1509,13 @@ async function renderSumarios(area) {
     const isProf = userProfile?.role === 'professor';
 
     if (isProf) {
-        const snap = await dbGet('sumarios');
-        const sumarios = snap ? Object.entries(snap).filter(([k,v]) => v.professorId === currentUser.uid).sort((a,b) => (b[1].createdAt||0) - (a[1].createdAt||0)) : [];
+        const profTurmas = (userProfile?.turmas || '').split(',').map(s => s.trim()).filter(Boolean);
+        let allSumarios = [];
+        for (const t of profTurmas) {
+            const snap = await dbGet(`sumarios/${t}`);
+            if (snap) allSumarios.push(...Object.entries(snap).map(([k,v]) => [k, {...v, _turma: t}]));
+        }
+        const sumarios = allSumarios.filter(([k,v]) => v.professorId === currentUser.uid).sort((a,b) => (b[1].createdAt||0) - (a[1].createdAt||0));
 
         area.innerHTML = `
             <div class="page-header"><h2>📖 ${t('nav_sumarios')}</h2><p>Cria e gera sumários das aulas</p></div>
@@ -1484,8 +1549,8 @@ async function renderSumarios(area) {
                                 </div>
                                 <div style="display:flex;gap:6px;align-items:center;">
                                     <span style="padding:3px 10px;border-radius:6px;font-size:11px;font-weight:600;background:${s.visibilidade === 'public' ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)'};color:${s.visibilidade === 'public' ? '#22c55e' : '#ef4444'};">${s.visibilidade === 'public' ? '🌐 Público' : '🔒 Privado'}</span>
-                                    <button class="btn btn-outline" onclick="toggleSumarioVis('${id}', '${s.visibilidade === 'public' ? 'private' : 'public'}')" style="font-size:10px;padding:3px 8px;">🔄</button>
-                                    <button class="btn btn-danger" onclick="deleteSumario('${id}')" style="font-size:10px;padding:3px 8px;">🗑️</button>
+                                    <button class="btn btn-outline" onclick="toggleSumarioVis('${s._turma || s.turma}', '${id}', '${s.visibilidade === 'public' ? 'private' : 'public'}')" style="font-size:10px;padding:3px 8px;">🔄</button>
+                                    <button class="btn btn-danger" onclick="deleteSumario('${s._turma || s.turma}', '${id}')" style="font-size:10px;padding:3px 8px;">🗑️</button>
                                 </div>
                             </div>
                             <div style="font-size:13px;color:var(--text-light);margin-top:8px;white-space:pre-wrap;">${escapeHTML((s.conteudo || '').substring(0, 300))}${(s.conteudo || '').length > 300 ? '...' : ''}</div>
@@ -1496,8 +1561,8 @@ async function renderSumarios(area) {
         `;
     } else {
         const turma = userProfile?.turma || '';
-        const snap = await dbGet('sumarios');
-        const sumarios = snap ? Object.entries(snap).filter(([k,v]) => v.visibilidade === 'public' && v.turma === turma).sort((a,b) => (b[1].createdAt||0) - (a[1].createdAt||0)) : [];
+        const snap = await dbGet(`sumarios/${turma}`);
+        const sumarios = snap ? Object.entries(snap).filter(([k,v]) => v.visibilidade === 'public').sort((a,b) => (b[1].createdAt||0) - (a[1].createdAt||0)) : [];
 
         area.innerHTML = `
             <div class="page-header"><h2>📖 ${t('nav_sumarios')}</h2><p>Sumários das tuas aulas</p></div>
@@ -1529,7 +1594,7 @@ async function addSumario() {
 
     if (!titulo || !conteudo) return showToast('Preenche título e conteúdo', 'error');
 
-    await dbPush('sumarios', {
+    await dbPush(`sumarios/${turma}`, {
         titulo, conteudo, turma, disciplina, visibilidade,
         professor: userProfile.nome,
         professorId: currentUser.uid,
@@ -1540,15 +1605,15 @@ async function addSumario() {
     renderSumarios(document.getElementById('content-area'));
 }
 
-async function toggleSumarioVis(id, newVis) {
-    await db.ref(`sumarios/${id}`).update({ visibilidade: newVis });
+async function toggleSumarioVis(turma, id, newVis) {
+    await db.ref(`sumarios/${turma}/${id}`).update({ visibilidade: newVis });
     showToast(newVis === 'public' ? '🌐 Agora público' : '🔒 Agora privado');
     renderSumarios(document.getElementById('content-area'));
 }
 
-async function deleteSumario(id) {
+async function deleteSumario(turma, id) {
     if (!confirm('Eliminar este sumário?')) return;
-    await db.ref(`sumarios/${id}`).remove();
+    await db.ref(`sumarios/${turma}/${id}`).remove();
     showToast('🗑️ Sumário eliminado');
     renderSumarios(document.getElementById('content-area'));
 }
@@ -2358,14 +2423,14 @@ async function aiDrawingHelp() {
 
 // ─── UTILITIES ────────────────────────────────────────────
 function showToast(msg, type = 'success') {
-    const t = document.createElement('div');
-    t.className = 'toast ' + type;
-    t.textContent = msg;
-    document.body.appendChild(t);
+    const toastEl = document.createElement('div');
+    toastEl.className = 'toast ' + type;
+    toastEl.textContent = msg;
+    document.body.appendChild(toastEl);
     setTimeout(() => {
-        t.style.transition = 'all 0.5s cubic-bezier(0.16,1,0.3,1)';
-        t.style.transform = 'translateX(120%)'; t.style.opacity = '0';
-        setTimeout(() => t.remove(), 500);
+        toastEl.style.transition = 'all 0.5s cubic-bezier(0.16,1,0.3,1)';
+        toastEl.style.transform = 'translateX(120%)'; toastEl.style.opacity = '0';
+        setTimeout(() => toastEl.remove(), 500);
     }, 3500);
 }
 

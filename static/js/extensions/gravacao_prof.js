@@ -22,13 +22,20 @@ function startAudioRec() {
     navigator.mediaDevices.getUserMedia({audio:true}).then(stream=>{
         _audioChunks=[];_audioRec=new MediaRecorder(stream);_audioSeconds=0;
         _audioRec.ondataavailable=e=>{if(e.data.size>0)_audioChunks.push(e.data);};
-        _audioRec.onstop=()=>{
+        _audioRec.onstop=async()=>{
             const blob=new Blob(_audioChunks,{type:'audio/webm'});
             const title=document.getElementById('audio-title').value||'Áudio';
-            if(currentUser){dbPush(`audio_recordings/${currentUser.uid}`,{name:title,size:blob.size,timestamp:Date.now()});}
-            stream.getTracks().forEach(t=>t.stop());
             document.getElementById('audio-rec-btn').style.display='';document.getElementById('audio-stop-btn').style.display='none';
             document.getElementById('audio-timer').style.display='none';
+            document.getElementById('audio-status').innerHTML='⏳ A guardar na cloud...';
+            if(currentUser){
+                try{
+                    const path=`audio/${currentUser.uid}/${Date.now()}_audio.webm`;
+                    const url=await uploadFile(blob,path);
+                    await dbPush(`audio_recordings/${currentUser.uid}`,{name:title,url,path,size:blob.size,timestamp:Date.now()});
+                }catch(e){console.error('Erro upload audio:',e);}
+            }
+            stream.getTracks().forEach(t=>t.stop());
             document.getElementById('audio-status').innerHTML='✅ Gravação guardada!';loadAudioRecordings();
         };
         _audioRec.start();
@@ -42,5 +49,5 @@ async function loadAudioRecordings() {
     if(!currentUser)return;const snap=await dbGet(`audio_recordings/${currentUser.uid}`);
     const el=document.getElementById('audio-list');if(!snap){el.innerHTML='<p style="font-size:13px;color:var(--text-light);">Sem gravações.</p>';return;}
     const entries=Object.entries(snap).sort((a,b)=>(b[1].timestamp||0)-(a[1].timestamp||0));
-    el.innerHTML=entries.map(([id,r])=>`<div style="padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;"><div><strong>🎤 ${r.name}</strong><br><span style="font-size:11px;color:var(--text-light);">${new Date(r.timestamp).toLocaleDateString('pt-PT')}</span></div><button class="btn btn-outline" onclick="dbRemove('audio_recordings/${currentUser.uid}/${id}');loadAudioRecordings();">🗑️</button></div>`).join('');
+    el.innerHTML=entries.map(([id,r])=>`<div style="padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;"><div><strong>🎤 ${r.name}</strong><br><span style="font-size:11px;color:var(--text-light);">${new Date(r.timestamp).toLocaleDateString('pt-PT')}</span></div><div style="display:flex;gap:6px;">${r.url?`<a href="${r.url}" target="_blank" class="btn btn-outline" style="font-size:11px;padding:4px 8px;">▶ Ouvir</a>`:''}<button class="btn btn-outline" onclick="dbRemove('audio_recordings/${currentUser.uid}/${id}');loadAudioRecordings();">🗑️</button></div></div>`).join('');
 }

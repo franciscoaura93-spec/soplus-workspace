@@ -346,15 +346,19 @@ function musGetTotalBeats() { return musState.measures * musState.timeSig[0]; }
 function musBeatToX(beat) { return MEASURE_PAD_LEFT + beat * BEAT_WIDTH; }
 function musPitchToY(pitch, staffIdx) {
     const base = STAFF_MARGIN_TOP + staffIdx * (STAFF_HEIGHT + STAFF_GAP);
-    const stepsFromE4 = ['B','C','D','E','F','G','A'].indexOf(pitch.note%7===0?'C':(['C','D','E','F','G','A','B'][pitch.note%7]));
-    let octaveShift = pitch.octave - 4;
-    let linePos;
-    const noteMap = {0:6, 1:5, 2:4.5, 3:4, 4:3, 5:2, 6:1.5, 7:1};
     const noteIdx = pitch.note % 12;
-    const isSharp = [1,3,6,8,10].includes(noteIdx);
     const scalePos = [0,0,1,1,2,3,3,4,4,5,5,6][noteIdx];
-    linePos = 5 - (scalePos + (pitch.octave-4)*3.5 - 2.5);
-    return base + linePos * (STAFF_LINE_SPACE/1);
+    const linePos = 3 - (scalePos + (pitch.octave - 4) * 3.5 - 2.5);
+    return base + linePos * (STAFF_LINE_SPACE / 1);
+}
+
+function musYToMidi(relY) {
+    const totalSteps = Math.round((STAFF_HEIGHT - relY) / STAFF_LINE_SPACE) + 3;
+    const octave = Math.floor(totalSteps / 7);
+    const stepInOctave = ((totalSteps % 7) + 7) % 7;
+    const scaleSteps = [0, 2, 4, 5, 7, 9, 11];
+    const midi = 60 + scaleSteps[stepInOctave] + octave * 12;
+    return Math.max(36, Math.min(96, midi));
 }
 
 function musNoteInfo(noteNum) {
@@ -425,6 +429,12 @@ function musDrawNote(ctx, x, y, dur, isRest, isSharp) {
     ctx.ellipse(x, y, NOTE_HEAD_RX, NOTE_HEAD_RY, -0.2, 0, Math.PI*2);
     ctx.fill();
     ctx.stroke();
+    if(!d.fill) {
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.ellipse(x, y, 1.5, 1.5, 0, 0, Math.PI*2);
+        ctx.fill();
+    }
 
     if(d.stem) {
         const stemDir = stemUp ? -1 : 1;
@@ -515,17 +525,7 @@ function musSetupCanvas() {
 
         const staffY = STAFF_MARGIN_TOP + closestTrack * (STAFF_HEIGHT + STAFF_GAP);
         const relY = my - staffY;
-        const stepsPerUnit = 1;
-    const linePos = (relY / stepsPerUnit);
-    const closestLine = Math.round(linePos);
-
-    const scaleMap = [0,1,2,3,4,5,6];
-    const baseNote = scaleMap[Math.abs(closestLine) % 7] || 0;
-    const octaveShift = Math.floor(closestLine / 7);
-    let midi = 60 + baseNote + octaveShift * 7;
-    if(closestLine > 5) midi -= 7;
-    if(closestLine < 1) midi += 7;
-    midi = Math.max(36, Math.min(96, midi));
+        const midi = musYToMidi(relY);
 
         const existingIdx = musState.tracks[closestTrack].notes.findIndex(n => Math.abs(n.beat - snapBeat) < 0.1);
         if(existingIdx >= 0) {

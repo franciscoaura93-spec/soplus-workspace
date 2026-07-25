@@ -143,10 +143,22 @@ const INST_DB = [
 function renderEscritaMusical(el) {
     if(typeof Tone === 'undefined') {
         el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:60vh;"><div style="text-align:center;"><div class="spinner" style="margin:0 auto 16px;width:32px;height:32px;"></div><div style="color:var(--text-light);font-size:14px;">A carregar motor de áudio (Tone.js)...</div></div></div>';
+        const savedRequire = window.require;
+        const savedDefine = window.define;
+        window.define = undefined;
+        window.require = undefined;
         const s = document.createElement('script');
         s.src = 'https://cdn.jsdelivr.net/npm/tone@14.7.77/build/Tone.min.js';
-        s.onload = () => renderEscritaMusical(el);
-        s.onerror = () => { el.innerHTML = '<div class="empty-state"><div class="icon">⚠️</div><h3>Erro ao carregar Tone.js</h3><p>Verifica a ligação à internet.</p></div>'; };
+        s.onload = () => {
+            window.define = savedDefine;
+            window.require = savedRequire;
+            renderEscritaMusical(el);
+        };
+        s.onerror = () => {
+            window.define = savedDefine;
+            window.require = savedRequire;
+            el.innerHTML = '<div class="empty-state"><div class="icon">⚠️</div><h3>Erro ao carregar Tone.js</h3><p>Verifica a ligação à internet.</p></div>';
+        };
         document.head.appendChild(s);
         return;
     }

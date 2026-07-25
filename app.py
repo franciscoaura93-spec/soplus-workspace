@@ -736,6 +736,82 @@ def detect_device():
     return jsonify({'ip': ip, 'mac': mac})
 
 
+# ─── FACE RECOGNITION ───────────────────────────────────────
+
+@app.route('/api/face/save', methods=['POST'])
+def face_save():
+    data = request.json or {}
+    uid = data.get('uid', '')
+    descriptor = data.get('descriptor', [])
+    name = data.get('name', '')
+    if not uid or not descriptor:
+        return jsonify({'erro': 'uid e descriptor obrigatórios'}), 400
+    _fb_put(f'face_data/{uid}', {
+        'descriptor': descriptor,
+        'name': name,
+        'createdAt': _fb_get(f'face_data/{uid}/createdAt') or int(__import__('time').time() * 1000),
+        'updatedAt': int(__import__('time').time() * 1000)
+    })
+    return jsonify({'ok': True})
+
+
+@app.route('/api/face/status', methods=['GET'])
+def face_status():
+    uid = request.args.get('uid', '')
+    face_data = _fb_get(f'face_data/{uid}')
+    owner_data = _fb_get('face_owner')
+    if not face_data:
+        return jsonify({'registered': False, 'verification_required': bool(owner_data and owner_data.get('verification_enabled'))})
+    return jsonify({'registered': True, 'verification_required': bool(owner_data and owner_data.get('verification_enabled'))})
+
+
+@app.route('/api/face/owner', methods=['POST'])
+def face_owner():
+    data = request.json or {}
+    _fb_put('face_owner', {
+        'name': data.get('name', ''),
+        'uid': data.get('uid', ''),
+        'verification_enabled': data.get('verification_enabled', False),
+        'updatedAt': int(__import__('time').time() * 1000)
+    })
+    return jsonify({'ok': True})
+
+
+@app.route('/api/face/owner', methods=['GET'])
+def face_owner_get():
+    owner = _fb_get('face_owner') or {}
+    return jsonify(owner)
+
+
+@app.route('/api/face/verify', methods=['POST'])
+def face_verify():
+    data = request.json or {}
+    uid = data.get('uid', '')
+    descriptor = data.get('descriptor', [])
+    if not uid or not descriptor:
+        return jsonify({'erro': 'uid e descriptor obrigatórios'}), 400
+    stored = _fb_get(f'face_data/{uid}')
+    if not stored or not stored.get('descriptor'):
+        return jsonify({'match': False, 'reason': 'no_face_registered'})
+    stored_desc = stored['descriptor']
+    if len(stored_desc) != len(descriptor):
+        return jsonify({'match': False, 'reason': 'descriptor_mismatch'})
+    import math
+    distance = math.sqrt(sum((a - b) ** 2 for a, b in zip(stored_desc, descriptor)))
+    threshold = 0.55
+    return jsonify({'match': distance < threshold, 'distance': round(distance, 4), 'threshold': threshold})
+
+
+@app.route('/api/face/all', methods=['GET'])
+def face_all():
+    all_data = _fb_get('face_data') or {}
+    owner = _fb_get('face_owner') or {}
+    result = {}
+    for uid, fd in all_data.items():
+        result[uid] = {'name': fd.get('name', ''), 'has_face': bool(fd.get('descriptor'))}
+    return jsonify({'faces': result, 'owner': owner})
+
+
 if __name__ == '__main__':
     import webbrowser, threading
     threading.Timer(1.5, lambda: webbrowser.open('http://localhost:5000')).start()

@@ -242,6 +242,8 @@
         <div class="tab" data-tab="pedidos" onclick="switchTab('pedidos')" style="position:relative;">🛒 Pedidos <span id="pedidos-badge" style="display:none;background:var(--danger);color:#fff;font-size:10px;padding:2px 6px;border-radius:10px;margin-left:4px;font-weight:700;"></span></div>
         <div class="tab" data-tab="presentes" onclick="switchTab('presentes')">🎁 Presentear</div>
         <div class="tab" data-tab="ai-rules" onclick="switchTab('ai-rules')">🧠 Regras IA</div>
+        <div class="tab" data-tab="owner" onclick="switchTab('owner')">👤 Proprietário Legal</div>
+        <div class="tab" data-tab="face-security" onclick="switchTab('face-security')">🔒 Segurança Facial</div>
         <div class="tab" data-tab="database" onclick="switchTab('database')">📊 Base de Dados</div>
         <div class="tab" data-tab="moodle" onclick="switchTab('moodle')">🔗 Moodle</div>
     </div>
@@ -255,6 +257,7 @@
 
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="/static/js/face-api.min.js"></script>
 <script>
 const firebaseConfig = {
     apiKey: "AIzaSyCEZO2Haz9W2OFmecNJG2wk6nicjpQvTTI",
@@ -349,6 +352,8 @@ function renderTab() {
         case 'pedidos': renderPedidos(area); break;
         case 'presentes': renderPresentes(area); break;
         case 'ai-rules': renderAIRules(area); break;
+        case 'owner': renderOwner(area); break;
+        case 'face-security': renderFaceSecurity(area); break;
         case 'database': renderDatabase(area); break;
         case 'moodle': renderMoodle(area); break;
     }
@@ -1288,21 +1293,17 @@ async function sendGift() {
     statusEl.innerHTML = '<span style="color:var(--text-dim);">⏳ A enviar presente...</span>';
 
     try {
-        const r = await fetch('/api/admin/gift', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId, extId, message, image })
+        const giftId = 'gift_' + Date.now();
+        await db.ref(`admin_gifts/${giftId}`).set({
+            userId, extId, message, image,
+            status: 'pending',
+            createdAt: Date.now()
         });
-        const data = await r.json();
-        if (data.ok) {
-            statusEl.innerHTML = '<span style="color:var(--success);">✅ Presente enviado com sucesso!</span>';
-            document.getElementById('gift-message').value = '';
-            document.getElementById('gift-image').value = '';
-            showToast('🎁 Presente enviado!');
-            renderPresentes(document.getElementById('editor-content'));
-        } else {
-            statusEl.innerHTML = `<span style="color:var(--danger);">❌ ${data.erro}</span>`;
-        }
+        statusEl.innerHTML = '<span style="color:var(--success);">✅ Presente enviado com sucesso!</span>';
+        document.getElementById('gift-message').value = '';
+        document.getElementById('gift-image').value = '';
+        showToast('🎁 Presente enviado!');
+        renderPresentes(document.getElementById('editor-content'));
     } catch(e) {
         statusEl.innerHTML = `<span style="color:var(--danger);">❌ Erro: ${e.message}</span>`;
     }
@@ -1315,9 +1316,9 @@ async function sendGift() {
 let aiRules = [];
 
 async function renderAIRules(area) {
-    const snap = await fetch('/api/admin/ai-rules');
-    const data = await snap.json();
-    aiRules = Object.values(data.rules || {});
+    const snap = await db.ref('ai_rules').once('value');
+    const data = snap.val() || {};
+    aiRules = Object.entries(data).map(([id, r]) => ({ id, ...r }));
 
     const typeLabels = { email:'📧 Email', ip:'🌐 IP', mac:'🔌 MAC', group:'👥 Grupo' };
     const typeColors = { email:'#3b82f6', ip:'#22c55e', mac:'#f59e0b', group:'#a855f7' };
@@ -1437,19 +1438,11 @@ async function saveAIRule() {
     statusEl.innerHTML = '<span style="color:var(--text-dim);">⏳ A guardar...</span>';
 
     try {
-        const r = await fetch('/api/admin/ai-rules', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, type, target, system_prompt: prompt, tone, language: lang, restrictions, description: desc, active: true })
-        });
-        const data = await r.json();
-        if (data.ok) {
-            statusEl.innerHTML = '<span style="color:var(--success);">✅ Regra guardada!</span>';
-            showToast('🧠 Regra IA criada!');
-            renderAIRules(document.getElementById('editor-content'));
-        } else {
-            statusEl.innerHTML = `<span style="color:var(--danger);">❌ ${data.erro}</span>`;
-        }
+        const ruleId = 'rule_' + Date.now();
+        await db.ref(`ai_rules/${ruleId}`).set({ name, type, target, system_prompt: prompt, tone, language: lang, restrictions, description: desc, active: true, createdAt: Date.now() });
+        statusEl.innerHTML = '<span style="color:var(--success);">✅ Regra guardada!</span>';
+        showToast('🧠 Regra IA criada!');
+        renderAIRules(document.getElementById('editor-content'));
     } catch(e) {
         statusEl.innerHTML = `<span style="color:var(--danger);">❌ ${e.message}</span>`;
     }
@@ -1457,11 +1450,7 @@ async function saveAIRule() {
 
 async function toggleAIRule(id, active) {
     try {
-        await fetch('/api/admin/ai-rules', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ id, active })
-        });
+        await db.ref(`ai_rules/${id}/active`).set(active);
         showToast(active ? '▶ Regra ativada' : '⏸ Regra pausada');
         renderAIRules(document.getElementById('editor-content'));
     } catch(e) {
@@ -1472,12 +1461,231 @@ async function toggleAIRule(id, active) {
 async function deleteAIRule(id) {
     if (!confirm('Eliminar esta regra de IA?')) return;
     try {
-        await fetch(`/api/admin/ai-rules/${id}`, { method: 'DELETE' });
+        await db.ref(`ai_rules/${id}`).remove();
         showToast('🗑️ Regra eliminada');
         renderAIRules(document.getElementById('editor-content'));
     } catch(e) {
         showToast('❌ Erro: ' + e.message);
     }
+}
+
+// ════════════════════════════════════════════════════════════
+//   PROPRIETÁRIO LEGAL — Registo de rosto + dados do dono
+// ════════════════════════════════════════════════════════════
+
+let faceModelsLoaded = false;
+
+async function loadFaceModels() {
+    if (faceModelsLoaded) return true;
+    try {
+        const MODEL_URL = '/static/models';
+        await Promise.all([
+            faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+            faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL),
+            faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL)
+        ]);
+        faceModelsLoaded = true;
+        return true;
+    } catch(e) {
+        console.error('Erro ao carregar modelos face:', e);
+        return false;
+    }
+}
+
+async function renderOwner(area) {
+    const ownerSnap = await db.ref('face_owner').once('value');
+    const owner = ownerSnap.val() || {};
+
+    area.innerHTML = `
+        <div class="section-block">
+            <h3>👤 Proprietário Legal da Aplicação</h3>
+            <p style="font-size:13px;color:var(--text-dim);margin-bottom:20px;">Define quem é o proprietário legal do S&O+ Ultra Workspace. Este utilizador tem controlo total sobre o sistema.</p>
+
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:20px;">
+                <h4 style="margin-bottom:12px;">📝 Dados do Proprietário</h4>
+                <div class="field">
+                    <label>Nome Completo</label>
+                    <input id="owner-name" value="${esc(owner.name || '')}" placeholder="Ex: Francisco Rodrigues">
+                </div>
+                <div class="field">
+                    <label>UID Firebase</label>
+                    <input id="owner-uid" value="${esc(owner.uid || '')}" placeholder="UID do utilizador proprietário">
+                </div>
+                <div class="field">
+                    <label>Email</label>
+                    <input id="owner-email" value="${esc(owner.email || '')}" placeholder="email@exemplo.com">
+                </div>
+                <div class="field">
+                    <label>NIF / Documento de Identificação</label>
+                    <input id="owner-nif" value="${esc(owner.nif || '')}" placeholder="Ex: 123456789">
+                </div>
+                <button class="btn btn-primary" onclick="saveOwner()" style="margin-top:8px;">💾 Guardar Dados</button>
+                <div id="owner-status" style="margin-top:8px;font-size:13px;"></div>
+            </div>
+        </div>
+    `;
+}
+
+async function saveOwner() {
+    const statusEl = document.getElementById('owner-status');
+    const name = document.getElementById('owner-name').value.trim();
+    const uid = document.getElementById('owner-uid').value.trim();
+    const email = document.getElementById('owner-email').value.trim();
+    const nif = document.getElementById('owner-nif').value.trim();
+
+    if (!name) { statusEl.innerHTML = '<span style="color:var(--danger);">❌ Nome obrigatório</span>'; return; }
+
+    try {
+        await db.ref('face_owner').update({ name, uid, email, nif, updatedAt: Date.now() });
+        statusEl.innerHTML = '<span style="color:var(--success);">✅ Dados guardados!</span>';
+        showToast('👤 Proprietário atualizado!');
+    } catch(e) {
+        statusEl.innerHTML = `<span style="color:var(--danger);">❌ ${e.message}</span>`;
+    }
+}
+
+// ════════════════════════════════════════════════════════════
+//   SEGURANÇA FACIAL — Ativar/desativar + registo de rosto
+// ════════════════════════════════════════════════════════════
+
+async function renderFaceSecurity(area) {
+    const ownerSnap = await db.ref('face_owner').once('value');
+    const owner = ownerSnap.val() || {};
+    const faceSnap = await db.ref('face_data').once('value');
+    const faces = faceSnap.val() || {};
+    const faceCount = Object.keys(faces).length;
+
+    area.innerHTML = `
+        <div class="section-block">
+            <h3>🔒 Segurança Facial</h3>
+            <p style="font-size:13px;color:var(--text-dim);margin-bottom:20px;">Ativa o reconhecimento facial para proteger o acesso ao admin e ao site.</p>
+
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:20px;">
+                <h4 style="margin-bottom:12px;">⚡ Estado do Sistema</h4>
+                <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px;">
+                    <div style="flex:1;">
+                        <div style="font-size:13px;color:var(--text-dim);">Reconhecimento Facial</div>
+                        <div style="font-weight:700;font-size:16px;margin-top:4px;">${owner.verification_enabled ? '🟢 Ativo' : '🔴 Inativo'}</div>
+                    </div>
+                    <button class="btn ${owner.verification_enabled ? 'btn-danger' : 'btn-primary'}" onclick="toggleFaceVerification(${!owner.verification_enabled})" style="padding:10px 20px;">
+                        ${owner.verification_enabled ? '🔓 Desativar' : '🔒 Ativar'}
+                    </button>
+                </div>
+                <div style="font-size:12px;color:var(--text-dim);">
+                    👤 Proprietário: <strong>${owner.name || 'Não definido'}</strong> • 
+                    📸 Rostos registados: <strong>${faceCount}</strong>
+                </div>
+            </div>
+
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:20px;">
+                <h4 style="margin-bottom:12px;">📸 Registar Rosto do Proprietário</h4>
+                <p style="font-size:12px;color:var(--text-dim);margin-bottom:12px;">Usa a webcam para capturar o teu rosto. Necessário para ativar o reconhecimento facial.</p>
+                <div id="face-cam-container" style="position:relative;border-radius:12px;overflow:hidden;background:#000;margin-bottom:12px;">
+                    <video id="face-video" autoplay muted playsinline style="width:100%;max-width:400px;border-radius:12px;display:block;"></video>
+                    <canvas id="face-canvas" style="display:none;"></canvas>
+                    <div id="face-overlay" style="position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none;"></div>
+                </div>
+                <div style="display:flex;gap:10px;">
+                    <button class="btn btn-primary" onclick="startFaceCam()">📷 Iniciar Câmara</button>
+                    <button class="btn btn-primary" onclick="captureFace()" id="face-capture-btn" style="display:none;">📸 Capturar Rosto</button>
+                    <button class="btn btn-outline" onclick="stopFaceCam()">⏹ Parar</button>
+                </div>
+                <div id="face-register-status" style="margin-top:12px;font-size:13px;"></div>
+            </div>
+
+            <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;">
+                <h4 style="margin-bottom:12px;">📋 Rostos Registados</h4>
+                ${faceCount === 0 ? '<div style="font-size:13px;color:var(--text-dim);">Nenhum rosto registado.</div>' :
+                `<div style="display:flex;flex-direction:column;gap:8px;">
+                    ${Object.entries(faces).map(([uid, f]) => `
+                        <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--card);border:1px solid var(--border);border-radius:8px;">
+                            <div>
+                                <div style="font-weight:600;">${esc(f.name || uid)}</div>
+                                <div style="font-size:11px;color:var(--text-dim);">Registrado: ${new Date(f.createdAt).toLocaleDateString('pt-PT')}</div>
+                            </div>
+                            <button class="btn btn-danger" onclick="deleteFaceData('${uid}')" style="font-size:11px;padding:4px 10px;">🗑️</button>
+                        </div>
+                    `).join('')}
+                </div>`}
+            </div>
+        </div>
+    `;
+}
+
+async function toggleFaceVerification(enabled) {
+    await db.ref('face_owner/verification_enabled').set(enabled);
+    showToast(enabled ? '🔒 Reconhecimento facial ativado' : '🔓 Reconhecimento facial desativado');
+    renderFaceSecurity(document.getElementById('editor-content'));
+}
+
+let faceStream = null;
+
+async function startFaceCam() {
+    try {
+        faceStream = await navigator.mediaDevices.getUserMedia({ video: { width: 400, height: 300, facingMode: 'user' } });
+        const video = document.getElementById('face-video');
+        video.srcObject = faceStream;
+        document.getElementById('face-capture-btn').style.display = 'inline-block';
+        document.getElementById('face-register-status').innerHTML = '<span style="color:var(--success);">📷 Câmara ativa — olha para a câmara</span>';
+    } catch(e) {
+        document.getElementById('face-register-status').innerHTML = `<span style="color:var(--danger);">❌ Erro câmara: ${e.message}</span>`;
+    }
+}
+
+function stopFaceCam() {
+    if (faceStream) {
+        faceStream.getTracks().forEach(t => t.stop());
+        faceStream = null;
+    }
+    document.getElementById('face-capture-btn').style.display = 'none';
+}
+
+async function captureFace() {
+    const statusEl = document.getElementById('face-register-status');
+    statusEl.innerHTML = '<span style="color:var(--text-dim);">⏳ A carregar modelos de IA...</span>';
+
+    const loaded = await loadFaceModels();
+    if (!loaded) { statusEl.innerHTML = '<span style="color:var(--danger);">❌ Erro ao carregar modelos</span>'; return; }
+
+    const video = document.getElementById('face-video');
+    const canvas = document.getElementById('face-canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+
+    statusEl.innerHTML = '<span style="color:var(--text-dim);">🔍 A detetar rosto...</span>';
+
+    const detection = await faceapi.detectSingleFace(canvas, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 }))
+        .withFaceLandmarks(true)
+        .withFaceDescriptor();
+
+    if (!detection) {
+        statusEl.innerHTML = '<span style="color:var(--danger);">❌ Nenhum rosto detetado. Tenta novamente com boa iluminação.</span>';
+        return;
+    }
+
+    const descriptor = Array.from(detection.descriptor);
+    const ownerSnap = await db.ref('face_owner').once('value');
+    const owner = ownerSnap.val() || {};
+    const ownerUid = owner.uid || 'owner';
+
+    await db.ref(`face_data/${ownerUid}`).set({
+        name: owner.name || 'Proprietário',
+        descriptor: descriptor,
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+    });
+
+    statusEl.innerHTML = '<span style="color:var(--success);">✅ Rosto registado com sucesso!</span>';
+    showToast('👤 Rosto do proprietário registado!');
+    stopFaceCam();
+}
+
+async function deleteFaceData(uid) {
+    if (!confirm('Eliminar dados faciais deste utilizador?')) return;
+    await db.ref(`face_data/${uid}`).remove();
+    showToast('🗑️ Dados faciais eliminados');
+    renderFaceSecurity(document.getElementById('editor-content'));
 }
 
 // ════════════════════════════════════════════════════════════

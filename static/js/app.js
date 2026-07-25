@@ -8,6 +8,8 @@ let userProfile = null;
 let currentPage = null;
 let jitsiApi = null;
 let chartInstance = null;
+
+
 let deviceInfo = { ip: '', mac: '' };
 
 // ─── DEVICE DETECTION ─────────────────────────────────────

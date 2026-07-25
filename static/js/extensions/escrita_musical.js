@@ -162,11 +162,10 @@ function renderEscritaMusical(el) {
         document.head.appendChild(s);
         return;
     }
-    const L = getLang();
     el.innerHTML = `
     <div id="mus-app" style="display:flex;flex-direction:column;height:calc(100vh - 60px);background:var(--bg);">
       <div id="mus-toolbar" style="display:flex;align-items:center;gap:10px;padding:10px 16px;background:var(--surface);border-bottom:1px solid var(--border);flex-wrap:wrap;">
-        <div style="font-weight:700;font-size:15px;margin-right:8px;">🎵 ${t('ext_escrita_musical')||'Escrita Musical'}</div>
+        <div style="font-weight:700;font-size:15px;margin-right:8px;">🎵 ${typeof t==='function'?t('ext_escrita_musical'):'Escrita Musical'}</div>
         <button id="mus-play" class="btn btn-primary" onclick="musPlay()" style="font-size:12px;padding:6px 14px;">▶ Play</button>
         <button id="mus-stop" class="btn btn-outline" onclick="musStop()" style="font-size:12px;padding:6px 14px;">⏹ Stop</button>
         <div style="width:1px;height:24px;background:var(--border);"></div>

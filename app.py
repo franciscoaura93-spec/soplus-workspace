@@ -609,7 +609,9 @@ def resolve_ai_rules(email="", ip="", mac="", user_ids=None):
         rule_type = rule.get('type', '')
         target = rule.get('target', '').lower().strip()
 
-        if rule_type == 'email' and email.lower().strip() == target:
+        if rule_type == 'all':
+            matched.append(rule)
+        elif rule_type == 'email' and email.lower().strip() == target:
             matched.append(rule)
         elif rule_type == 'ip' and ip.strip() == target:
             matched.append(rule)

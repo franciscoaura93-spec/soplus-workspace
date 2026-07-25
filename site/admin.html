@@ -1320,8 +1320,8 @@ async function renderAIRules(area) {
     const data = snap.val() || {};
     aiRules = Object.entries(data).map(([id, r]) => ({ id, ...r }));
 
-    const typeLabels = { email:'📧 Email', ip:'🌐 IP', mac:'🔌 MAC', group:'👥 Grupo' };
-    const typeColors = { email:'#3b82f6', ip:'#22c55e', mac:'#f59e0b', group:'#a855f7' };
+    const typeLabels = { all:'🌍 Todos', email:'📧 Email', ip:'🌐 IP', mac:'🔌 MAC', group:'👥 Grupo' };
+    const typeColors = { all:'#06b6d4', email:'#3b82f6', ip:'#22c55e', mac:'#f59e0b', group:'#a855f7' };
 
     area.innerHTML = `
         <div class="section-block">
@@ -1337,14 +1337,15 @@ async function renderAIRules(area) {
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                     <div class="field">
                         <label>Tipo de Correspondência</label>
-                        <select id="rule-type">
+                        <select id="rule-type" onchange="document.getElementById('rule-target-wrap').style.display=this.value==='all'?'none':'block'">
+                            <option value="all">🌍 Todos os utilizadores</option>
                             <option value="email">📧 Email específico</option>
                             <option value="ip">🌐 Endereço IP</option>
                             <option value="mac">🔌 MAC Address</option>
                             <option value="group">👥 Grupo de utilizadores</option>
                         </select>
                     </div>
-                    <div class="field">
+                    <div class="field" id="rule-target-wrap">
                         <label>Alvo (target)</label>
                         <input id="rule-target" placeholder="ex: aluno@escola.pt / 192.168.1.100 / AA:BB:CC:DD:EE:FF">
                     </div>
@@ -1433,7 +1434,7 @@ async function saveAIRule() {
     const desc = document.getElementById('rule-desc').value.trim();
 
     if (!name) { statusEl.innerHTML = '<span style="color:var(--danger);">❌ Nome obrigatório</span>'; return; }
-    if (!target) { statusEl.innerHTML = '<span style="color:var(--danger);">❌ Alvo obrigatório</span>'; return; }
+    if (type !== 'all' && !target) { statusEl.innerHTML = '<span style="color:var(--danger);">❌ Alvo obrigatório</span>'; return; }
 
     statusEl.innerHTML = '<span style="color:var(--text-dim);">⏳ A guardar...</span>';
 

@@ -157,102 +157,6 @@
     </div>
 
     <script src="/static/js/firebase-config.js"></script>
-    <script src="/static/js/face-api.min.js"></script>
-    <script>
-    let loginFaceModelsLoaded = false;
-    async function loadLoginFaceModels() {
-        if (loginFaceModelsLoaded) return true;
-        try {
-            await Promise.all([
-                faceapi.nets.tinyFaceDetector.loadFromUri('/static/models'),
-                faceapi.nets.faceLandmark68TinyNet.loadFromUri('/static/models'),
-                faceapi.nets.faceRecognitionNet.loadFromUri('/static/models')
-            ]);
-            loginFaceModelsLoaded = true;
-            return true;
-        } catch(e) { return false; }
-    }
-
-    async function checkFaceBeforeRedirect(uid) {
-        const ownerSnap = await firebase.database().ref('face_owner').once('value');
-        const owner = ownerSnap.val() || {};
-        if (!owner.verification_enabled) { window.location.href = '/app'; return; }
-
-        const faceSnap = await firebase.database().ref('face_data').once('value');
-        const faces = faceSnap.val() || {};
-        if (Object.keys(faces).length === 0) { window.location.href = '/app'; return; }
-
-        showLoginFaceModal(uid);
-    }
-
-    let loginFvStream = null;
-    function showLoginFaceModal(uid) {
-        const modal = document.createElement('div');
-        modal.id = 'login-face-modal';
-        modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:10000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.9);';
-        modal.innerHTML = `
-            <div style="background:rgba(20,20,35,0.98);border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:32px;max-width:420px;width:90%;text-align:center;">
-                <div style="font-size:48px;margin-bottom:12px;">🔒</div>
-                <h3 style="color:#fff;margin-bottom:8px;">Verificação Facial Obrigatória</h3>
-                <p style="color:rgba(255,255,255,0.4);font-size:13px;margin-bottom:20px;">Olha para a câmara para aceder ao workspace</p>
-                <div style="position:relative;border-radius:12px;overflow:hidden;background:#000;margin-bottom:16px;">
-                    <video id="lfv-video" autoplay muted playsinline style="width:100%;max-width:360px;border-radius:12px;display:block;"></video>
-                    <canvas id="lfv-canvas" style="display:none;"></canvas>
-                </div>
-                <div id="lfv-status" style="font-size:13px;margin-bottom:16px;color:rgba(255,255,255,0.5);">A iniciar câmara...</div>
-                <button class="btn btn-primary" onclick="doLoginFaceVerify('${uid}')" id="lfv-capture-btn" style="width:100%;display:none;">📸 Verificar Rosto</button>
-            </div>
-        `;
-        document.body.appendChild(modal);
-        startLoginFaceCam();
-    }
-
-    async function startLoginFaceCam() {
-        try {
-            loginFvStream = await navigator.mediaDevices.getUserMedia({ video: { width: 360, height: 270, facingMode: 'user' } });
-            document.getElementById('lfv-video').srcObject = loginFvStream;
-            document.getElementById('lfv-capture-btn').style.display = 'inline-block';
-            document.getElementById('lfv-status').textContent = 'Câmara ativa — clica para verificar';
-        } catch(e) {
-            document.getElementById('lfv-status').textContent = '❌ Sem acesso à câmara';
-        }
-    }
-
-    async function doLoginFaceVerify(uid) {
-        const statusEl = document.getElementById('lfv-status');
-        statusEl.textContent = '⏳ A verificar...';
-        const loaded = await loadLoginFaceModels();
-        if (!loaded) { statusEl.textContent = '❌ Erro ao carregar modelos'; return; }
-
-        const video = document.getElementById('lfv-video');
-        const canvas = document.getElementById('lfv-canvas');
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        canvas.getContext('2d').drawImage(video, 0, 0);
-
-        const detection = await faceapi.detectSingleFace(canvas, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 }))
-            .withFaceLandmarks(true).withFaceDescriptor();
-        if (!detection) { statusEl.textContent = '❌ Nenhum rosto detetado'; return; }
-
-        const descriptor = Array.from(detection.descriptor);
-        const ownerSnap = await firebase.database().ref('face_owner').once('value');
-        const owner = ownerSnap.val() || {};
-        const ownerUid = owner.uid || 'owner';
-        const faceSnap = await firebase.database().ref(`face_data/${ownerUid}`).once('value');
-        const stored = faceSnap.val();
-
-        if (!stored || !stored.descriptor) { statusEl.textContent = '❌ Rosto não registado'; return; }
-
-        const distance = Math.sqrt(descriptor.reduce((s, v, i) => s + (v - stored.descriptor[i]) ** 2, 0));
-        if (distance < 0.55) {
-            statusEl.innerHTML = '<span style="color:#22c55e;">✅ Identidade confirmada!</span>';
-            setTimeout(() => { window.location.href = '/app'; }, 800);
-        } else {
-            statusEl.textContent = '❌ Rosto não reconhecido';
-        }
-        if (loginFvStream) { loginFvStream.getTracks().forEach(t => t.stop()); loginFvStream = null; }
-    }
-    </script>
     <script>
     db.ref('site_content/design').once('value').then(snap => {
         const d = snap.val();
@@ -298,7 +202,7 @@
                     showSuccess('Primeira vez! Completa o teu perfil.');
                     return;
                 }
-                checkFaceBeforeRedirect(user.uid);
+                window.location.href = '/app';
             }
         });
 

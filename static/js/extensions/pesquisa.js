@@ -36,10 +36,15 @@ function renderPesquisa(area, ext) {
     area.innerHTML = `
         <div class="page-header">
             <h2>${ext.icon} ${ext.name}</h2><p>${ext.desc}</p>
-            <div style="display:flex;gap:8px;margin-top:10px;">
+            <div style="display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap;">
                 <button id="pesq-tab-search" onclick="pesqSetMode('search')" style="padding:6px 16px;border-radius:20px;border:1px solid var(--primary);background:rgba(99,102,241,0.12);color:var(--primary);font-size:12px;font-weight:700;cursor:pointer;transition:all 0.2s;">🔍 Pesquisa</button>
                 <button id="pesq-tab-browser" onclick="pesqSetMode('browser')" style="padding:6px 16px;border-radius:20px;border:1px solid var(--border);background:var(--surface);color:var(--text-light);font-size:12px;font-weight:700;cursor:pointer;transition:all 0.2s;">🌐 Browser</button>
+                <div style="flex:1;"></div>
+                <button id="pesq-priv-btn" onclick="togglePesqPrivado()" style="display:flex;align-items:center;gap:6px;padding:5px 14px;border-radius:20px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:11px;font-weight:600;cursor:pointer;transition:all 0.25s;">
+                    🕶️ <span id="pesq-priv-label">Modo Privado</span>
+                </button>
             </div>
+            <div id="pesq-priv-status" style="font-size:10px;color:var(--text-light);margin-top:4px;">Pesquisas e navegação são guardadas no histórico</div>
         </div>
         <div id="pesq-search-panel">${_pesqSearchPanel()}</div>
         <div id="pesq-browser-panel" style="display:none;">${_pesqBrowserPanel()}</div>
@@ -74,12 +79,6 @@ function _pesqSearchPanel() {
                 <input class="form-input" id="search-input" placeholder="Pesquisar na web..." style="flex:1;" onkeydown="if(event.key==='Enter')doWebSearch()">
                 <button class="btn btn-primary" onclick="doWebSearch()">🔍 Pesquisar</button>
             </div>
-            <div id="pesq-priv-bar" style="display:flex;align-items:center;gap:10px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);">
-                <button id="pesq-priv-btn" onclick="togglePesqPrivado()" style="display:flex;align-items:center;gap:8px;padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:var(--surface);color:var(--text);font-size:12px;font-weight:600;cursor:pointer;transition:all 0.25s;">
-                    🕶️ <span id="pesq-priv-label">Modo Privado</span>
-                </button>
-                <span id="pesq-priv-status" style="font-size:11px;color:var(--text-light);">Pesquisas são guardadas no histórico</span>
-            </div>
         </div>
         <div id="search-results"></div>
         <div id="pesq-history-wrap">
@@ -100,15 +99,17 @@ function togglePesqPrivado() {
     const hw  = document.getElementById('pesq-history-wrap');
     if (pesqPrivado) {
         btn.style.background = 'rgba(99,102,241,0.15)'; btn.style.borderColor = 'var(--primary)'; btn.style.color = 'var(--primary)';
-        lbl.textContent = 'Modo Privado ON';
-        st.textContent = '⚡ Nada é guardado — pesquisa 100% anónima'; st.style.color = 'var(--primary)';
-        hw.style.display = 'none';
-        showToast('🕶️ Modo Privado ativado — sem histórico', 'info');
+        lbl.textContent = 'Privado ON';
+        st.textContent = '⚡ Nada é guardado — navegação e pesquisas 100% anónimas'; st.style.color = 'var(--primary)';
+        if (hw) hw.style.display = 'none';
+        if (brTabs[brActive]) _pesqRefreshBrowser();
+        showToast('🕶️ Modo Privado ativado', 'info');
     } else {
         btn.style.background = 'var(--surface)'; btn.style.borderColor = 'var(--border)'; btn.style.color = 'var(--text)';
         lbl.textContent = 'Modo Privado';
-        st.textContent = 'Pesquisas são guardadas no histórico'; st.style.color = 'var(--text-light)';
-        hw.style.display = 'block'; _pesqLoadHistory();
+        st.textContent = 'Pesquisas e navegação são guardadas no histórico'; st.style.color = 'var(--text-light)';
+        if (hw) hw.style.display = 'block'; _pesqLoadHistory();
+        if (brTabs[brActive]) _pesqRefreshBrowser();
         showToast('Modo Privado desativado', 'info');
     }
 }
@@ -186,6 +187,7 @@ function _pesqBrowserPanel() {
         </div>
         <!-- URL bar -->
         <div style="display:flex;align-items:center;gap:6px;padding:5px 8px;background:var(--surface);border-bottom:1px solid var(--border);">
+            ${pesqPrivado ? '<span style="font-size:9px;background:rgba(99,102,241,0.15);color:var(--primary);padding:2px 8px;border-radius:10px;font-weight:700;white-space:nowrap;">🕶️ PRIVADO</span>' : ''}
             <button onclick="brBack()" title="Voltar" style="background:none;border:none;font-size:14px;cursor:pointer;padding:3px 6px;border-radius:6px;color:var(--text-light);">◀</button>
             <button onclick="brForward()" title="Avançar" style="background:none;border:none;font-size:14px;cursor:pointer;padding:3px 6px;border-radius:6px;color:var(--text-light);">▶</button>
             <button onclick="brRefresh()" title="Atualizar" style="background:none;border:none;font-size:14px;cursor:pointer;padding:3px 6px;border-radius:6px;color:var(--text-light);">🔄</button>
@@ -211,7 +213,7 @@ function _brRenderHome() {
     <div style="height:100%;overflow-y:auto;padding:24px 16px;">
         <div style="text-align:center;margin-bottom:22px;">
             <div style="font-size:26px;font-weight:800;background:linear-gradient(135deg,var(--primary),var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;">S&O+ Browser</div>
-            <div style="font-size:12px;color:var(--text-light);margin-top:2px;">Navega de forma privada e sem distrações</div>
+            <div style="font-size:12px;color:var(--text-light);margin-top:2px;">${pesqPrivado ? '<span style="background:rgba(99,102,241,0.15);color:var(--primary);padding:2px 10px;border-radius:10px;font-size:10px;font-weight:700;">🕶️ Modo Privado — sem histórico</span>' : 'Navega de forma privada e sem distrações'}</div>
         </div>
         <div style="max-width:460px;margin:0 auto;">
             <div style="display:flex;align-items:center;background:var(--surface);border:2px solid var(--border);border-radius:12px;padding:4px 6px;margin-bottom:20px;transition:border-color 0.2s;" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--border)'">

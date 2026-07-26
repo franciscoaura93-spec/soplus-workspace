@@ -185,6 +185,8 @@ function renderEscritaMusical(el) {
         <button class="btn btn-outline" onclick="musToggleNotes()" style="font-size:11px;padding:5px 10px;">📝 Notas</button>
         <button class="btn btn-outline" onclick="musSave()" style="font-size:11px;padding:5px 10px;">💾 Guardar</button>
         <button class="btn btn-outline" onclick="musLoad()" style="font-size:11px;padding:5px 10px;">📂 Carregar</button>
+        <button class="btn btn-outline" onclick="musListSongs()" style="font-size:11px;padding:5px 10px;">📚 Lista</button>
+        <button class="btn btn-outline" onclick="musDeleteSong()" style="font-size:11px;padding:5px 10px;color:var(--danger);">🗑️ Apagar</button>
       </div>
 
       <div style="display:flex;flex:1;overflow:hidden;">
@@ -694,9 +696,18 @@ function musStop() {
     musRenderCanvas();
 }
 
-// ── Save / Load ──
+// ── Save / Load (multi-song, up to 10) ──
+let musCurrentSongId = null;
+
 async function musSave() {
+    if(typeof currentUser === 'undefined' || !currentUser || !currentUser.uid) {
+        showToast('Precisas de login para guardar na cloud', 'warning'); return;
+    }
+    const name = prompt('Nome da música:', musCurrentSongName || '');
+    if (!name) return;
+    musCurrentSongName = name;
     const data = {
+        name,
         tracks: musState.tracks,
         measures: musState.measures,
         bpm: musState.bpm,
@@ -706,44 +717,81 @@ async function musSave() {
         savedAt: Date.now()
     };
     try {
-        if(typeof currentUser !== 'undefined' && currentUser && currentUser.uid) {
-            await db.ref(`music/${currentUser.uid}`).set(data);
-            showToast('🎵 Música guardada!', 'success');
-        } else {
-            const json = JSON.stringify(data);
-            const blob = new Blob([json], {type:'application/json'});
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = 'minha-musica.json';
-            a.click();
-            showToast('📁 Ficheiro descarregado!', 'success');
+        const songsSnap = await db.ref(`music/${currentUser.uid}`).once('value');
+        const existing = songsSnap.val() || {};
+        const keys = Object.keys(existing);
+        if (!musCurrentSongId && keys.length >= 10) {
+            showToast('Máximo de 10 músicas. Apaga uma primeiro.', 'error'); return;
         }
+        if (musCurrentSongId) {
+            await db.ref(`music/${currentUser.uid}/${musCurrentSongId}`).set(data);
+        } else {
+            const ref = await db.ref(`music/${currentUser.uid}`).push(data);
+            musCurrentSongId = ref.key;
+        }
+        showToast(`🎵 "${name}" guardada!`, 'success');
     } catch(e) { showToast('Erro ao guardar: '+e.message, 'error'); }
 }
 
 async function musLoad() {
+    if(typeof currentUser === 'undefined' || !currentUser || !currentUser.uid) {
+        showToast('Precisas de login para carregar da cloud', 'warning'); return;
+    }
     try {
-        if(typeof currentUser !== 'undefined' && currentUser && currentUser.uid) {
-            const snap = await db.ref(`music/${currentUser.uid}`).once('value');
-            const data = snap.val();
-            if(data) { musApplyData(data); showToast('🎵 Música carregada!', 'success'); }
-            else showToast('Nenhuma música guardada', 'warning');
+        const snap = await db.ref(`music/${currentUser.uid}`).once('value');
+        const data = snap.val();
+        if (!data) { showToast('Nenhuma música guardada', 'warning'); return; }
+        const entries = Object.entries(data);
+        if (entries.length === 1) {
+            const [id, song] = entries[0];
+            musCurrentSongId = id;
+            musCurrentSongName = song.name || 'Sem nome';
+            musApplyData(song);
+            showToast(`🎵 "${musCurrentSongName}" carregada!`, 'success');
         } else {
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.accept = '.json';
-            input.onchange = e => {
-                const reader = new FileReader();
-                reader.onload = ev => {
-                    try { musApplyData(JSON.parse(ev.target.result)); showToast('🎵 Música carregada!', 'success'); }
-                    catch(err) { showToast('Ficheiro inválido', 'error'); }
-                };
-                reader.readAsText(e.target.files[0]);
-            };
-            input.click();
+            const list = entries.map(([id, s], i) => {
+                const dt = s.savedAt ? new Date(s.savedAt).toLocaleDateString('pt-PT') : '—';
+                return `${i+1}. ${s.name||'Sem nome'} (${s.tracks?.length||0} pistas, ${dt})`;
+            }).join('\n');
+            const choice = prompt(`Escolhe uma música (1-${entries.length}):\n\n${list}`);
+            if (!choice) return;
+            const idx = parseInt(choice) - 1;
+            if (idx >= 0 && idx < entries.length) {
+                const [id, song] = entries[idx];
+                musCurrentSongId = id;
+                musCurrentSongName = song.name || 'Sem nome';
+                musApplyData(song);
+                showToast(`🎵 "${musCurrentSongName}" carregada!`, 'success');
+            }
         }
     } catch(e) { showToast('Erro ao carregar: '+e.message, 'error'); }
 }
+
+async function musDeleteSong() {
+    if(typeof currentUser === 'undefined' || !currentUser || !currentUser.uid) return;
+    if (!musCurrentSongId) { showToast('Nenhuma música selecionada', 'warning'); return; }
+    if (!confirm(`Eliminar "${musCurrentSongName||'esta música'}"?`)) return;
+    try {
+        await db.ref(`music/${currentUser.uid}/${musCurrentSongId}`).remove();
+        musCurrentSongId = null;
+        musCurrentSongName = '';
+        showToast('🗑️ Música eliminada!', 'success');
+    } catch(e) { showToast('Erro: '+e.message, 'error'); }
+}
+
+async function musListSongs() {
+    if(typeof currentUser === 'undefined' || !currentUser || !currentUser.uid) {
+        showToast('Precisas de login', 'warning'); return;
+    }
+    try {
+        const snap = await db.ref(`music/${currentUser.uid}`).once('value');
+        const data = snap.val();
+        const count = data ? Object.keys(data).length : 0;
+        showToast(`📚 ${count}/10 músicas guardadas`, 'success');
+    } catch(e) { showToast('Erro: '+e.message, 'error'); }
+}
+
+let musCurrentSongName = '';
 
 function musApplyData(data) {
     if(data.tracks) musState.tracks = data.tracks;

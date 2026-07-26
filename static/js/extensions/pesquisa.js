@@ -281,8 +281,9 @@ function _brRenderFrame(tab) {
                         <div style="font-size:40px;margin-bottom:12px;">⚠️</div>
                         <h3 style="font-size:16px;margin-bottom:6px;">Erro ao carregar</h3>
                         <p style="font-size:12px;color:var(--text-light);margin-bottom:16px;">${escapeHTML(tab.error)}</p>
-                        <div style="display:flex;gap:8px;">
+                        <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
                             <button class="btn btn-primary" onclick="brRefresh()" style="font-size:11px;">🔄 Tentar novamente</button>
+                            <button class="btn btn-outline" onclick="brTryProxy()" style="font-size:11px;">🔌 Tentar com proxy</button>
                             <button class="btn btn-outline" onclick="window.open('${escapeHTML(tab.url)}','_blank')" style="font-size:11px;">Abrir no navegador ↗</button>
                         </div>
                     </div>`
@@ -325,6 +326,24 @@ async function _brFetchPage(url) {
     _pesqRefreshBrowser();
 }
 function brGoHome() { brTabs[brActive] = { url: BR_START, title: 'Início', loading: false }; _pesqRefreshBrowser(); }
+async function brTryProxy() {
+    const tab = brTabs[brActive];
+    if (!tab || !tab.url) return;
+    brTabs[brActive] = { ...tab, loading: true, error: null };
+    _pesqRefreshBrowser();
+    try {
+        const r = await fetch('/api/proxy?url=' + encodeURIComponent(tab.url));
+        const data = await r.json();
+        if (data.html) {
+            brTabs[brActive] = { ...brTabs[brActive], html: data.html, title: data.title || tab.title, loading: false, finalUrl: data.url || tab.url };
+        } else {
+            brTabs[brActive] = { ...brTabs[brActive], loading: false, error: data.error || 'Proxy falhou também' };
+        }
+    } catch(e) {
+        brTabs[brActive] = { ...brTabs[brActive], loading: false, error: 'Proxy indisponível' };
+    }
+    _pesqRefreshBrowser();
+}
 function brBack() { window.history.back(); }
 function brForward() { window.history.forward(); }
 function brRefresh() { brTabs[brActive].loading = true; _pesqRefreshBrowser(); setTimeout(() => { if(brTabs[brActive]) { brTabs[brActive].loading = false; _pesqRefreshBrowser(); } }, 3000); }

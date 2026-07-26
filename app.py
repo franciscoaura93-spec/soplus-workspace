@@ -945,7 +945,8 @@ def proxy_fetch():
         html = _re.sub(r'<iframe[^>]*>.*?</iframe>', '', html, flags=_re.IGNORECASE|_re.DOTALL)
         html = _re.sub(r'xmlns="[^"]*"', '', html)
         for pattern in _BLOCKED_DOMAINS:
-            html = _re.sub(r'<[^>]*(?:src|href|action)=[\"'][^\"']*?' + _re.escape(pattern) + r'[^\"']*[\"'][^>]*>','', html, flags=_re.IGNORECASE)
+            pat = r'<[^>]*(?:src|href|action)=["\x27][^"\x27]*?' + _re.escape(pattern) + r'[^"\x27]*["\x27][^>]*>'
+            html = _re.sub(pat, '', html, flags=_re.IGNORECASE)
         html = html.replace("window.open", "void(0)")
         html = html.replace("window.location", "void(0)")
         return html, 200, {'Content-Type': 'text/html; charset=utf-8', 'X-Proxy': 'soplus'}

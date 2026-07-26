@@ -269,19 +269,26 @@ function _brRenderHome() {
 function _brRenderFrame(tab) {
     const blocked = brAdBlock && BR_BLOCKED.some(d => tab.url.includes(d));
     const iframeSrc = _brResolveUrl(tab.url);
+    const isProxied = pesqPrivado || iframeSrc.startsWith('/api/proxy');
     return `
     <div style="height:100%;display:flex;flex-direction:column;">
         ${tab.loading ? '<div style="height:3px;background:var(--border);overflow:hidden;"><div style="height:100%;width:40%;background:linear-gradient(90deg,transparent,var(--primary),transparent);animation:brLoad 1.2s infinite;"></div></div>' : ''}
         ${blocked ? '<div style="padding:5px 10px;background:rgba(34,197,94,0.1);border-bottom:1px solid rgba(34,197,94,0.2);font-size:10px;color:var(--success);text-align:center;">🛡️ Anúncios bloqueados</div>' : ''}
         <div style="flex:1;position:relative;">
-            <iframe id="br-iframe" src="${escapeHTML(iframeSrc)}" style="width:100%;height:100%;border:none;" sandbox="allow-same-origin allow-scripts allow-popups allow-forms" onload="brIframeLoaded()" onerror="brIframeError()"></iframe>
+            <iframe id="br-iframe" src="${escapeHTML(iframeSrc)}" style="width:100%;height:100%;border:none;" sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-downloads" onload="brIframeLoaded()" onerror="brIframeError()"></iframe>
             <div id="br-iframe-overlay" style="display:none;position:absolute;inset:0;background:var(--bg);flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px;">
                 <div style="font-size:40px;margin-bottom:12px;">🔒</div>
-                <h3 style="font-size:16px;margin-bottom:6px;">Site não suportado dentro da app</h3>
-                <p style="font-size:12px;color:var(--text-light);margin-bottom:16px;max-width:360px;">Este site bloqueia embutimento. Abre no navegador externo.</p>
-                <div style="display:flex;gap:8px;">
-                    <button class="btn btn-primary" onclick="window.open('${escapeHTML(tab.url)}','_blank')" style="font-size:12px;">Abrir no navegador ↗</button>
-                    <button class="btn btn-outline" onclick="brClose(brActive)" style="font-size:12px;">Fechar aba</button>
+                <h3 style="font-size:16px;margin-bottom:6px;">Este site bloqueia embutimento</h3>
+                <p style="font-size:12px;color:var(--text-light);margin-bottom:16px;max-width:360px;">
+                    ${isProxied
+                        ? 'O proxy não conseguiu carregar este site. Pode ter restrições adicionais.'
+                        : 'Tenta ativar o <strong>Modo Privado</strong> para carregar via proxy, ou abre no navegador externo.'}
+                </p>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
+                    ${!pesqPrivado ? `<button class="btn btn-outline" onclick="togglePesqPrivado()" style="font-size:11px;">🕶️ Ativar Proxy</button>` : ''}
+                    <button class="btn btn-primary" onclick="brRetryProxy()" style="font-size:11px;">🔄 Tentar via Proxy</button>
+                    <button class="btn btn-outline" onclick="window.open('${escapeHTML(tab.url)}','_blank')" style="font-size:11px;">Abrir no navegador ↗</button>
+                    <button class="btn btn-outline" onclick="brClose(brActive)" style="font-size:11px;">Fechar aba</button>
                 </div>
             </div>
         </div>
@@ -309,10 +316,34 @@ function brForward() { window.history.forward(); }
 function brRefresh() { brTabs[brActive].loading = true; _pesqRefreshBrowser(); setTimeout(() => { if(brTabs[brActive]) { brTabs[brActive].loading = false; _pesqRefreshBrowser(); } }, 3000); }
 function brIframeLoaded() {
     const t = brTabs[brActive];
-    if (t) { t.loading = false; try { const f = document.getElementById('br-iframe'); if(f?.contentDocument?.title) t.title = f.contentDocument.title; } catch(e){} }
+    if (t) { t.loading = false; }
+    const iframe = document.getElementById('br-iframe');
+    if (iframe) {
+        try {
+            const doc = iframe.contentDocument || iframe.contentWindow?.document;
+            if (doc && doc.title) t.title = doc.title;
+            const body = doc?.body;
+            if (body && body.children.length === 0 && body.innerText.trim() === '') {
+                setTimeout(() => {
+                    const ol = document.getElementById('br-iframe-overlay');
+                    if (ol) { ol.style.display = 'flex'; ol.querySelector('h3').textContent = 'Página vazia ou bloqueada'; }
+                }, 1500);
+                return;
+            }
+        } catch(e) {}
+    }
     const ol = document.getElementById('br-iframe-overlay'); if(ol) ol.style.display = 'none';
 }
-function brIframeError() { const t = brTabs[brActive]; if(t) t.loading = false; const ol = document.getElementById('br-iframe-overlay'); if(ol) ol.style.display = 'flex'; }
+function brIframeError() {
+    const t = brTabs[brActive]; if(t) t.loading = false;
+    const ol = document.getElementById('br-iframe-overlay'); if(ol) ol.style.display = 'flex';
+}
+function brRetryProxy() {
+    const t = brTabs[brActive]; if (!t) return;
+    const newUrl = '/api/proxy?url=' + encodeURIComponent(t.url);
+    t.loading = true;
+    _pesqRefreshBrowser();
+}
 function _brDomain(u) { try { return new URL(u).hostname.replace('www.',''); } catch(e) { return u.slice(0,30); } }
 function _pesqRefreshBrowser() { const bp = document.getElementById('pesq-browser-panel'); if (bp) bp.innerHTML = _pesqBrowserPanel(); }
 

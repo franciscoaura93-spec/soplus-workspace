@@ -927,11 +927,18 @@ def proxy_fetch():
         return jsonify({'error': 'Blocked'}), 403
     try:
         headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Safari/537.36',
-            'Accept': 'text/html,application/xhtml+xml,*/*',
-            'Accept-Language': 'pt-PT,pt;q=0.9,en;q=0.8',
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+            'Accept-Language': 'pt-PT,pt;q=0.9,en-US;q=0.8,en;q=0.7',
+            'Accept-Encoding': 'gzip, deflate',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+            'Sec-Fetch-Dest': 'document',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-Site': 'none',
+            'Sec-Fetch-User': '?1',
         }
-        r = requests.get(url, headers=headers, timeout=15, allow_redirects=True, verify=False)
+        r = requests.get(url, headers=headers, timeout=20, allow_redirects=True, verify=False)
         ct = r.headers.get('Content-Type', 'text/html')
         if 'text/html' not in ct:
             return jsonify({'error': 'Not HTML'}), 400
@@ -941,15 +948,17 @@ def proxy_fetch():
         base_origin = f"{base_parsed.scheme}://{base_parsed.netloc}"
         html = _re.sub(r'<base\s+[^>]*>', '', html, flags=_re.IGNORECASE)
         html = _re.sub(r'<head>', f'<head><base href="{base_origin}/">', html, count=1, flags=_re.IGNORECASE)
-        html = _re.sub(r'<script[^>]*>(.*?</script>)?', '', html, flags=_re.IGNORECASE|_re.DOTALL)
-        html = _re.sub(r'<iframe[^>]*>.*?</iframe>', '', html, flags=_re.IGNORECASE|_re.DOTALL)
+        html = _re.sub(r'<script[^>]*>.*?</script>', '', html, flags=_re.IGNORECASE|_re.DOTALL)
         html = _re.sub(r'xmlns="[^"]*"', '', html)
+        html = _re.sub(r'x-frame-options[^"]*"[^"]*"', '', html, flags=_re.IGNORECASE)
+        html = _re.sub(r'content-security-policy[^"]*"[^"]*"', '', html, flags=_re.IGNORECASE)
         for pattern in _BLOCKED_DOMAINS:
             pat = r'<[^>]*(?:src|href|action)=["\x27][^"\x27]*?' + _re.escape(pattern) + r'[^"\x27]*["\x27][^>]*>'
             html = _re.sub(pat, '', html, flags=_re.IGNORECASE)
         html = html.replace("window.open", "void(0)")
-        html = html.replace("window.location", "void(0)")
-        return html, 200, {'Content-Type': 'text/html; charset=utf-8', 'X-Proxy': 'soplus'}
+        html = html.replace("window.location.href", "void(0)")
+        html = html.replace("window.location.replace", "void(0)")
+        return html, 200, {'Content-Type': 'text/html; charset=utf-8', 'X-Proxy': 'soplus', 'Access-Control-Allow-Origin': '*'}
     except Exception as e:
         return jsonify({'error': str(e)[:120]}), 502
 

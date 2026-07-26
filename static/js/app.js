@@ -2757,25 +2757,25 @@ async function claimGift(giftId) {
 }
 
 // ════════════════════════════════════════════════════════════
-//   SIDEBAR RESIZE — drag to resize sidebar width
+//   CONTENT RESIZE — drag right edge to resize workspace area
 // ════════════════════════════════════════════════════════════
 (function() {
-    const MIN_W = 180, MAX_W = 500;
+    const MIN_W = 400, MAX_W = 1400;
     let dragging = false, startX = 0, startW = 0;
 
     document.addEventListener('DOMContentLoaded', () => {
-        const handle = document.getElementById('sidebarResize');
-        const sidebar = document.getElementById('sidebar');
-        if (!handle || !sidebar) return;
+        const handle = document.getElementById('contentResize');
+        const main = document.getElementById('mainContent');
+        if (!handle || !main) return;
 
-        const saved = localStorage.getItem('sidebar_width');
-        if (saved) { sidebar.style.width = saved + 'px'; }
+        const saved = localStorage.getItem('content_width');
+        if (saved) { main.style.width = saved + 'px'; main.style.flex = 'none'; }
 
         handle.addEventListener('mousedown', e => {
             e.preventDefault();
             dragging = true;
             startX = e.clientX;
-            startW = sidebar.offsetWidth;
+            startW = main.offsetWidth;
             handle.classList.add('active');
             document.body.style.cursor = 'col-resize';
             document.body.style.userSelect = 'none';
@@ -2783,8 +2783,9 @@ async function claimGift(giftId) {
 
         document.addEventListener('mousemove', e => {
             if (!dragging) return;
-            const w = Math.min(MAX_W, Math.max(MIN_W, startW + (e.clientX - startX)));
-            sidebar.style.width = w + 'px';
+            const w = Math.min(MAX_W, Math.max(MIN_W, startW - (e.clientX - startX)));
+            main.style.width = w + 'px';
+            main.style.flex = 'none';
         });
 
         document.addEventListener('mouseup', () => {
@@ -2793,7 +2794,7 @@ async function claimGift(giftId) {
             handle.classList.remove('active');
             document.body.style.cursor = '';
             document.body.style.userSelect = '';
-            localStorage.setItem('sidebar_width', sidebar.offsetWidth);
+            localStorage.setItem('content_width', main.offsetWidth);
         });
     });
 })();

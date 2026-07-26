@@ -346,8 +346,8 @@ const STAFF_LINE_SPACE = 10;
 const STAFF_HEIGHT = STAFF_LINE_SPACE * 4;
 const STAFF_MARGIN_TOP = 80;
 const STAFF_GAP = 100;
-const NOTE_HEAD_RX = 6;
-const NOTE_HEAD_RY = 4.5;
+const NOTE_HEAD_RX = 5;
+const NOTE_HEAD_RY = 3.5;
 const BEAT_WIDTH = 50;
 const MEASURE_PAD_LEFT = 60;
 const STAFF_PAD_LEFT = 80;
@@ -361,7 +361,7 @@ const BASS_MIDI_BY_POS = [57,55,53,52,50,48,47,45,43,41,40,38,36,35,33];
 
 function musPitchToY(pitch, staffIdx) {
     const base = STAFF_MARGIN_TOP + staffIdx * (STAFF_HEIGHT + STAFF_GAP);
-    const midi = pitch.note + (pitch.octave + 1) * 12;
+    const midi = pitch.note;
     const table = musState.clef === 'bass' ? BASS_MIDI_BY_POS : TREBLE_MIDI_BY_POS;
     let pos = table.indexOf(midi);
     if (pos < 0) {
@@ -369,11 +369,11 @@ function musPitchToY(pitch, staffIdx) {
         table.forEach((m, i) => { const d = Math.abs(m - midi); if (d < bestDist) { bestDist = d; best = i; } });
         pos = best;
     }
-    return base + pos * STAFF_LINE_SPACE;
+    return base + pos * (STAFF_LINE_SPACE / 2);
 }
 
 function musYToMidi(relY) {
-    const pos = Math.round(relY / STAFF_LINE_SPACE);
+    const pos = Math.round(relY / (STAFF_LINE_SPACE / 2));
     const table = musState.clef === 'bass' ? BASS_MIDI_BY_POS : TREBLE_MIDI_BY_POS;
     const clampedPos = Math.max(0, Math.min(table.length - 1, pos));
     return table[clampedPos];
@@ -456,7 +456,7 @@ function musDrawNote(ctx, x, y, dur, isRest, isSharp) {
 
     if(d.stem) {
         const stemDir = stemUp ? -1 : 1;
-        const stemLen = 28;
+        const stemLen = 20;
         const sx = stemUp ? x + NOTE_HEAD_RX - 1 : x - NOTE_HEAD_RX + 1;
         ctx.beginPath();
         ctx.moveTo(sx, y);

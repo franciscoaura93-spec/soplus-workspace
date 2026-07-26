@@ -33,6 +33,7 @@ GEMINI_KEY = os.environ.get("GEMINI_KEY", "")
 ADMIN_AI_KEY = os.environ.get("ADMIN_AI_KEY", "")
 OPENROUTER_KEY = os.environ.get("OPENROUTER_KEY", "")
 OPENROUTER_MODEL = os.environ.get("OPENROUTER_MODEL", "nvidia/nemotron-3-ultra-550b-a55b:free")
+OPENROUTER_MODEL_2 = os.environ.get("OPENROUTER_MODEL_2", "meta-llama/llama-3.1-8b-instruct:free")
 GEMINI_MODEL = "gemini-3.1-flash-lite"
 
 SSL_CTX = ssl.create_default_context()
@@ -115,7 +116,13 @@ def ai_post(user_prompt, system_prompt=None, model=None, max_tokens=2048, temper
     if text is not None:
         return {"ok": True, "resposta": text, "provider": "openrouter"}
 
-    print(f"[OpenRouter falhou: {err}] — a tentar Gemini fallback...")
+    print(f"[OpenRouter falhou: {err}] — a tentar modelo alternativo...")
+
+    text2, err2 = openrouter_post(messages, model=OPENROUTER_MODEL_2, max_tokens=max_tokens, temperature=temperature, timeout=timeout)
+    if text2 is not None:
+        return {"ok": True, "resposta": text2, "provider": "openrouter-2"}
+
+    print(f"[OpenRouter modelo 2 falhou: {err2}] — a tentar Gemini fallback...")
 
     gen_config = {"temperature": temperature, "maxOutputTokens": max_tokens}
     if json_mode:
@@ -127,7 +134,7 @@ def ai_post(user_prompt, system_prompt=None, model=None, max_tokens=2048, temper
     payload = {"contents": contents, "generationConfig": gen_config}
     data = gemini_post(model or GEMINI_MODEL, payload, timeout=timeout)
     if "error" in data:
-        return {"ok": False, "erro": f"OpenRouter: {err} | Gemini: {data['error'].get('message', 'Erro')}"}
+        return {"ok": False, "erro": f"OpenRouter: {err} | OpenRouter2: {err2} | Gemini: {data['error'].get('message', 'Erro')}"}
     try:
         txt = data['candidates'][0]['content']['parts'][0]['text']
         return {"ok": True, "resposta": txt, "provider": "gemini"}

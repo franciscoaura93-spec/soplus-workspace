@@ -181,6 +181,8 @@ function renderEscritaMusical(el) {
         </select>
         <div style="width:1px;height:24px;background:var(--border);"></div>
         <button class="btn btn-outline" onclick="musAddMeasure()" style="font-size:11px;padding:5px 10px;">+ Compasso</button>
+        <button id="mus-rec-btn" class="btn btn-outline" onclick="musToggleRec()" style="font-size:11px;padding:5px 10px;">🎙️ Gravar Voz</button>
+        <button class="btn btn-outline" onclick="musToggleNotes()" style="font-size:11px;padding:5px 10px;">📝 Notas</button>
         <button class="btn btn-outline" onclick="musSave()" style="font-size:11px;padding:5px 10px;">💾 Guardar</button>
         <button class="btn btn-outline" onclick="musLoad()" style="font-size:11px;padding:5px 10px;">📂 Carregar</button>
       </div>
@@ -208,6 +210,14 @@ function renderEscritaMusical(el) {
         <div id="mus-mixer" style="width:200px;background:var(--surface);border-left:1px solid var(--border);overflow-y:auto;">
           <div style="padding:10px 12px;border-bottom:1px solid var(--border);font-weight:600;font-size:13px;">🎚️ Mixer</div>
           <div id="mus-mixer-channels" style="padding:4px;"></div>
+        </div>
+
+        <div id="mus-notes-panel" style="display:none;width:260px;background:var(--surface);border-left:1px solid var(--border);flex-direction:column;">
+          <div style="padding:10px 12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-weight:600;font-size:13px;">📝 Notas / Post-its</span>
+            <button onclick="musAddNote()" style="background:var(--primary);border:none;color:#fff;width:24px;height:24px;border-radius:6px;cursor:pointer;font-size:14px;">+</button>
+          </div>
+          <div id="mus-notes-list" style="flex:1;overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:8px;"></div>
         </div>
       </div>
 
@@ -344,21 +354,29 @@ const STAFF_PAD_LEFT = 80;
 
 function musGetTotalBeats() { return musState.measures * musState.timeSig[0]; }
 function musBeatToX(beat) { return MEASURE_PAD_LEFT + beat * BEAT_WIDTH; }
+
+// Treble clef: position 0 = top line (F5=77), each step down = next lower note in scale
+const TREBLE_MIDI_BY_POS = [77,76,74,72,71,69,67,65,64,62,60,59,57,55,53,51,49,48];
+const BASS_MIDI_BY_POS = [57,55,53,52,50,48,47,45,43,41,40,38,36,35,33];
+
 function musPitchToY(pitch, staffIdx) {
     const base = STAFF_MARGIN_TOP + staffIdx * (STAFF_HEIGHT + STAFF_GAP);
-    const noteIdx = pitch.note % 12;
-    const scalePos = [0,0,1,1,2,3,3,4,4,5,5,6][noteIdx];
-    const linePos = 3 - (scalePos + (pitch.octave - 4) * 3.5 - 2.5);
-    return base + linePos * (STAFF_LINE_SPACE / 1);
+    const midi = pitch.note + (pitch.octave + 1) * 12;
+    const table = musState.clef === 'bass' ? BASS_MIDI_BY_POS : TREBLE_MIDI_BY_POS;
+    let pos = table.indexOf(midi);
+    if (pos < 0) {
+        let best = 0, bestDist = 999;
+        table.forEach((m, i) => { const d = Math.abs(m - midi); if (d < bestDist) { bestDist = d; best = i; } });
+        pos = best;
+    }
+    return base + pos * STAFF_LINE_SPACE;
 }
 
 function musYToMidi(relY) {
-    const totalSteps = Math.round((STAFF_HEIGHT - relY) / STAFF_LINE_SPACE) + 3;
-    const octave = Math.floor(totalSteps / 7);
-    const stepInOctave = ((totalSteps % 7) + 7) % 7;
-    const scaleSteps = [0, 2, 4, 5, 7, 9, 11];
-    const midi = 60 + scaleSteps[stepInOctave] + octave * 12;
-    return Math.max(36, Math.min(96, midi));
+    const pos = Math.round(relY / STAFF_LINE_SPACE);
+    const table = musState.clef === 'bass' ? BASS_MIDI_BY_POS : TREBLE_MIDI_BY_POS;
+    const clampedPos = Math.max(0, Math.min(table.length - 1, pos));
+    return table[clampedPos];
 }
 
 function musNoteInfo(noteNum) {
@@ -481,6 +499,20 @@ function musRenderCanvas() {
         ctx.fillStyle = 'rgba(167,139,250,0.7)';
         ctx.font = 'bold 11px Inter, sans-serif';
         ctx.fillText(tr.name, 4, staffY + STAFF_HEIGHT/2 + 4);
+
+        if (tr.isRecording) {
+            ctx.fillStyle = 'rgba(239,68,68,0.15)';
+            ctx.fillRect(MEASURE_PAD_LEFT, staffY, musState.measures * musState.timeSig[0] * BEAT_WIDTH, STAFF_HEIGHT);
+            ctx.fillStyle = 'rgba(239,68,68,0.6)';
+            ctx.font = '20px serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('🎙️', MEASURE_PAD_LEFT + (musState.measures * musState.timeSig[0] * BEAT_WIDTH) / 2, staffY + STAFF_HEIGHT / 2 + 6);
+            ctx.font = '11px Inter, sans-serif';
+            ctx.fillText('Gravação de voz', MEASURE_PAD_LEFT + (musState.measures * musState.timeSig[0] * BEAT_WIDTH) / 2, staffY + STAFF_HEIGHT / 2 + 24);
+            ctx.textAlign = 'left';
+            return;
+        }
+
         tr.notes.forEach(n => {
             const nx = musBeatToX(n.beat);
             const ny = musPitchToY(musNoteInfo(n.midi), ti);
@@ -590,6 +622,16 @@ async function musPlay() {
     musState.tracks.forEach((tr, ti) => {
         if(tr.muted) return;
         if(hasSolo && !tr.solo) return;
+
+        if (tr.isRecording && tr.recordingUrl) {
+            const audio = new Audio(tr.recordingUrl);
+            audio.volume = Math.pow(10, tr.volume / 20);
+            audio.currentTime = 0;
+            audio.play().catch(()=>{});
+            musState.parts.push({ part: null, audio });
+            return;
+        }
+
         const inst = INST_DB.find(x=>x.id===tr.instId) || INST_DB[0];
         const { synth, isNoise } = musCreateSynth(inst);
         const vol = new Tone.Volume(tr.volume).toDestination();
@@ -639,9 +681,10 @@ function musStop() {
     Tone.Transport.stop();
     Tone.Transport.position = 0;
     musState.parts.forEach(p => {
-        try { p.part.dispose(); } catch(e) {}
+        try { if(p.part) p.part.dispose(); } catch(e) {}
         try { if(p.synth) p.synth.dispose(); } catch(e) {}
         try { if(p.vol) p.vol.dispose(); } catch(e) {}
+        try { if(p.audio) { p.audio.pause(); p.audio.currentTime = 0; } } catch(e) {}
     });
     musState.parts = [];
     musState.playing = false;
@@ -712,3 +755,129 @@ function musApplyData(data) {
     musState.selectedTrack = 0;
     musRenderInstList(); musRenderMixer(); musRenderCanvas(); musUpdateStatus();
 }
+
+// ── Voice Recording ──
+let musRecStream = null, musRecRecorder = null, musRecChunks = [], musRecBlob = null;
+
+async function musToggleRec() {
+    const btn = document.getElementById('mus-rec-btn');
+    if (musRecRecorder && musRecRecorder.state === 'recording') {
+        musRecRecorder.stop();
+        btn.textContent = '🎙️ Gravar Voz';
+        btn.style.background = '';
+        btn.style.color = '';
+        return;
+    }
+    try {
+        musRecStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        musRecChunks = [];
+        musRecRecorder = new MediaRecorder(musRecStream);
+        musRecRecorder.ondataavailable = e => { if (e.data.size > 0) musRecChunks.push(e.data); };
+        musRecRecorder.onstop = () => {
+            musRecBlob = new Blob(musRecChunks, { type: 'audio/webm' });
+            musRecStream.getTracks().forEach(t => t.stop());
+            musRecStream = null;
+            musSaveRecording();
+        };
+        musRecRecorder.start();
+        btn.textContent = '⏹ Parar Gravação';
+        btn.style.background = 'rgba(239,68,68,0.2)';
+        btn.style.color = '#ef4444';
+        showToast('🎙️ A gravar voz...', 'success');
+    } catch(e) {
+        showToast('Erro ao aceder ao microfone: ' + e.message, 'error');
+    }
+}
+
+async function musSaveRecording() {
+    if (!musRecBlob) return;
+    const name = prompt('Nome da gravação:', 'Voz ' + new Date().toLocaleTimeString('pt-PT'));
+    if (!name) return;
+    const track = {
+        id: Date.now(), instId: 0, name: name, volume: 0, muted: false, solo: false, notes: [],
+        isRecording: true, recordingUrl: URL.createObjectURL(musRecBlob)
+    };
+    musState.tracks.push(track);
+    musRenderInstList(); musRenderMixer(); musRenderCanvas(); musUpdateStatus();
+    showToast('🎙️ Gravação adicionada como pista!', 'success');
+
+    if (typeof currentUser !== 'undefined' && currentUser?.uid) {
+        try {
+            const reader = new FileReader();
+            reader.onload = async () => {
+                await db.ref(`music_recordings/${currentUser.uid}/${track.id}`).set({
+                    name, data: reader.result, createdAt: Date.now()
+                });
+            };
+            reader.readAsDataURL(musRecBlob);
+        } catch(e) {}
+    }
+}
+
+// ── Notes / Post-its ──
+let musNotes = [];
+let musNotesVisible = false;
+
+function musToggleNotes() {
+    musNotesVisible = !musNotesVisible;
+    const panel = document.getElementById('mus-notes-panel');
+    if (panel) panel.style.display = musNotesVisible ? 'flex' : 'none';
+    if (musNotesVisible) musRenderNotes();
+}
+
+async function musAddNote() {
+    const text = prompt('Nota / Post-it:');
+    if (!text) return;
+    const note = { id: Date.now(), text, color: ['#fbbf24','#34d399','#60a5fa','#f87171','#c084fc'][musNotes.length % 5], createdAt: Date.now(), link: '' };
+    const link = prompt('Link (opcional) — ex: nota, nota/turma, chat, horarios:', '');
+    if (link !== null) note.link = link;
+    musNotes.push(note);
+    musRenderNotes();
+    if (typeof currentUser !== 'undefined' && currentUser?.uid) {
+        await db.ref(`music_notes/${currentUser.uid}`).set(musNotes);
+    }
+}
+
+function musDeleteNote(id) {
+    musNotes = musNotes.filter(n => n.id !== id);
+    musRenderNotes();
+    if (typeof currentUser !== 'undefined' && currentUser?.uid) {
+        db.ref(`music_notes/${currentUser.uid}`).set(musNotes);
+    }
+}
+
+function musRenderNotes() {
+    const el = document.getElementById('mus-notes-list');
+    if (!el) return;
+    if (musNotes.length === 0) {
+        el.innerHTML = '<div style="text-align:center;color:var(--text-light);font-size:12px;padding:20px;">Sem notas.<br>Clica + para adicionar.</div>';
+        return;
+    }
+    el.innerHTML = musNotes.map(n => `
+      <div style="background:${n.color}22;border:1px solid ${n.color}44;border-left:3px solid ${n.color};border-radius:8px;padding:10px;position:relative;cursor:${n.link ? 'pointer' : 'default'};" ${n.link ? `onclick="musNavigateNote('${n.link}')"` : ''}>
+        <div style="font-size:12px;line-height:1.5;color:var(--text);white-space:pre-wrap;word-break:break-word;">${n.text}</div>
+        ${n.link ? `<div style="font-size:10px;color:var(--text-light);margin-top:4px;">🔗 ${n.link}</div>` : ''}
+        <button onclick="event.stopPropagation();musDeleteNote(${n.id})" style="position:absolute;top:6px;right:6px;background:none;border:none;color:var(--text-light);cursor:pointer;font-size:12px;">×</button>
+      </div>
+    `).join('');
+}
+
+function musNavigateNote(link) {
+    if (!link) return;
+    const parts = link.split('/').filter(Boolean);
+    const target = parts[0];
+    if (typeof navigateTo === 'function') navigateTo(target);
+    showToast(`🔗 A ir para: ${target}`, 'success');
+}
+
+async function musLoadNotes() {
+    try {
+        if (typeof currentUser !== 'undefined' && currentUser?.uid) {
+            const snap = await db.ref(`music_notes/${currentUser.uid}`).once('value');
+            if (snap.val()) musNotes = snap.val();
+        }
+    } catch(e) {}
+}
+
+// Load notes on init
+if (typeof musState !== 'undefined') musLoadNotes();

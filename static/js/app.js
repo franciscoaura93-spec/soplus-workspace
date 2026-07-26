@@ -2646,7 +2646,8 @@ function renderExtPage(area, extId) {
         return;
     }
     const ext = allExtensions[extId] || {};
-    const pageType = ext.pageType || 'generic';
+    const knownPageTypes = { flash_cards:'flash_cards', escrita_musical:'escrita_musical', exames:'exames', ia_professor:'ia_professor', musica:'musica' };
+    const pageType = ext.pageType || knownPageTypes[extId] || 'generic';
     const renderFn = 'render' + pageType.split('_').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join('');
 
     if (typeof window[renderFn] === 'function') {

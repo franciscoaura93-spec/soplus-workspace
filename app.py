@@ -963,6 +963,62 @@ def proxy_fetch():
         return jsonify({'error': str(e)[:120]}), 502
 
 
+# ════════════════════════════════════════════════════════════
+#   BROWSE — Playwright-powered real browser rendering
+# ════════════════════════════════════════════════════════════
+_pw_browser = None
+
+def _get_pw_browser():
+    global _pw_browser
+    if _pw_browser is None or not _pw_browser.is_connected():
+        from playwright.sync_api import sync_playwright
+        pw = sync_playwright().start()
+        _pw_browser = pw.chromium.launch(
+            headless=True,
+            args=['--no-sandbox','--disable-dev-shm-usage','--disable-gpu','--disable-extensions']
+        )
+    return _pw_browser
+
+@app.route('/api/browse', methods=['GET'])
+def browse_page():
+    url = request.args.get('url', '').strip()
+    if not url:
+        return jsonify({'error': 'No URL'}), 400
+    if not url.startswith(('http://', 'https://')):
+        return jsonify({'error': 'Invalid URL'}), 400
+    parsed = _urlparse.urlparse(url)
+    if parsed.hostname in ('localhost', '127.0.0.1', '0.0.0.0'):
+        return jsonify({'error': 'Blocked'}), 403
+    try:
+        browser = _get_pw_browser()
+        page = browser.new_page(
+            user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+            viewport={'width': 1280, 'height': 800}
+        )
+        try:
+            page.goto(url, wait_until='domcontentloaded', timeout=20000)
+            try:
+                page.wait_for_load_state('networkidle', timeout=8000)
+            except:
+                pass
+            html = page.content()
+            final_url = page.url
+            base_parsed = _urlparse.urlparse(final_url)
+            base_origin = f"{base_parsed.scheme}://{base_parsed.netloc}"
+            html = _re.sub(r'<base\s+[^>]*>', '', html, flags=_re.IGNORECASE)
+            html = f'<base href="{base_origin}/">' + html
+            title = page.title() or _br_extract_title(html)
+            return jsonify({'html': html, 'title': title, 'url': final_url})
+        finally:
+            page.close()
+    except Exception as e:
+        return jsonify({'error': str(e)[:200]}), 502
+
+def _br_extract_title(html):
+    m = _re.search(r'<title[^>]*>(.*?)</title>', html, _re.IGNORECASE|_re.DOTALL)
+    return m.group(1).strip() if m else 'Sem título'
+
+
 if __name__ == '__main__':
     import webbrowser, threading
     threading.Timer(1.5, lambda: webbrowser.open('http://localhost:5000')).start()

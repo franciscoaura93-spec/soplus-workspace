@@ -1920,6 +1920,15 @@ function renderVersions(area) {
                     <div class="field"><label>Link de Download</label><input id="ver-beta-url" value="https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v2.8-beta/S+O-Workspace-Instalador.exe"></div>
                     <div class="field"><label>Badge Texto</label><input id="ver-beta-badge" value="v2.8 Beta"></div>
                 </div>
+
+                <div style="background:var(--card);border:1px solid rgba(139,92,246,0.3);border-radius:12px;padding:20px;">
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+                        <span style="padding:4px 10px;background:rgba(139,92,246,0.15);color:#a78bfa;border-radius:6px;font-size:11px;font-weight:700;">DEV</span>
+                        <span style="font-size:18px;font-weight:700;">v2.9</span>
+                    </div>
+                    <div class="field"><label>Link de Download</label><input id="ver-dev-url" value="https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v2.9-dev/S+O-Workspace-Instalador.exe"></div>
+                    <div class="field"><label>Badge Texto</label><input id="ver-dev-badge" value="v2.9 Dev"></div>
+                </div>
             </div>
 
             <div style="display:flex;gap:10px;margin-top:20px;">
@@ -1931,12 +1940,15 @@ function renderVersions(area) {
 
         <div class="section-block">
             <h3>📋 Versão Atual</h3>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
                 <div>
                     <div class="field"><label>Versão Estável</label><input id="ver-current-stable" value="2.6"></div>
                 </div>
                 <div>
                     <div class="field"><label>Versão Beta</label><input id="ver-current-beta" value="2.8"></div>
+                </div>
+                <div>
+                    <div class="field"><label>Versão Dev</label><input id="ver-current-dev" value="2.9"></div>
                 </div>
             </div>
             <div class="field"><label>Versão App (Inno Setup)</label><input id="ver-app-version" value="2.8" style="max-width:200px;"></div>

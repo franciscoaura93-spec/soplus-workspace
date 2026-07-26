@@ -283,3 +283,6 @@ textarea.form-input { resize:vertical; min-height:80px; }
 
 /* ── DRAW ── */
 #draw-canvas { touch-action: none; }
+
+/* ── EXAM LOCK ── */
+.exam-locked { pointer-events: none !important; opacity: 0.3; transition: opacity 0.3s; }

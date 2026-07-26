@@ -219,6 +219,12 @@ function examStart() {
     examState.timeLeft = examState.meta.duration * 60;
     examState.finished = false;
     examState.score = 0;
+    window.__examBeforeUnload = function(e) { e.preventDefault(); e.returnValue = ''; };
+    window.addEventListener('beforeunload', window.__examBeforeUnload);
+    document.getElementById('nav-container')?.classList.add('exam-locked');
+    document.querySelector('.sidebar')?.classList.add('exam-locked');
+    document.getElementById('ai-fab')?.classList.add('exam-locked');
+    document.getElementById('hamburger')?.classList.add('exam-locked');
     examRenderTaking(document.querySelector('#content-area'), { icon:'📝', name:'Exame' });
     examStartTimer();
 }
@@ -293,7 +299,7 @@ function examRenderTaking(area, ext) {
             <div onclick="examAnswer('${q.id}','Falso')" style="flex:1;padding:14px;text-align:center;background:${examState.answers[q.id]==='Falso'?'rgba(239,68,68,0.15)':'var(--card)'};border:1px solid ${examState.answers[q.id]==='Falso'?'#ef4444':'var(--border)'};border-radius:10px;cursor:pointer;font-size:14px;font-weight:600;">❌ Falso</div>
           </div>
         ` : `
-          <textarea id="exam-open-${q.id}" rows="5" placeholder="Escreve a tua resposta..." oninput="examAnswer('${q.id}',this.value)" style="width:100%;padding:12px;background:var(--card);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;resize:vertical;">${examState.answers[q.id]||''}</textarea>
+          <textarea id="exam-open-${q.id}" rows="5" placeholder="Escreve a tua resposta..." oninput="examAnswerLive('${q.id}',this.value)" style="width:100%;padding:12px;background:var(--card);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:14px;resize:vertical;">${examState.answers[q.id]||''}</textarea>
         `}
       </div>
 
@@ -316,6 +322,10 @@ function examRenderTaking(area, ext) {
 function examAnswer(qid, val) {
     examState.answers[qid] = val;
     examRenderTaking(document.querySelector('#content-area'), { icon:'📝', name:'Exame' });
+}
+
+function examAnswerLive(qid, val) {
+    examState.answers[qid] = val;
 }
 
 function examNavQ(dir) {
@@ -394,6 +404,11 @@ function examStartTimer() {
 
 function examStopTimer() {
     if (examState.timerInterval) { clearInterval(examState.timerInterval); examState.timerInterval = null; }
+    if (window.__examBeforeUnload) { window.removeEventListener('beforeunload', window.__examBeforeUnload); window.__examBeforeUnload = null; }
+    document.getElementById('nav-container')?.classList.remove('exam-locked');
+    document.querySelector('.sidebar')?.classList.remove('exam-locked');
+    document.getElementById('ai-fab')?.classList.remove('exam-locked');
+    document.getElementById('hamburger')?.classList.remove('exam-locked');
 }
 
 function examReset() {

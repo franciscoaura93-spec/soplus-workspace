@@ -132,6 +132,8 @@ function buildNav() {
 }
 
 function navigateTo(page) {
+    if (typeof examState !== 'undefined' && examState.taking && !confirm('Tens um exame em curso. Se saíres, o exame será entregue. Continuar?')) return;
+    if (typeof examState !== 'undefined' && examState.taking) { examSubmit(); }
     currentPage = page;
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     const activeEl = document.getElementById('nav-' + page);

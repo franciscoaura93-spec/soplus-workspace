@@ -147,7 +147,7 @@
 
     const VERSIONS = {
         stable: { label: 'v2.6 Estável', url: 'https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v2.6/S+O-Workspace-Instalador.exe' },
-        beta: { label: 'v2.7 Beta', url: 'https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v2.7-beta/S+O-Workspace-Instalador.exe' }
+        beta: { label: 'v2.8 Beta', url: 'https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v2.8-beta/S+O-Workspace-Instalador.exe' }
     };
     let currentVersion = 'stable';
 
@@ -241,7 +241,7 @@
             <p>${h.subtitle || ''}</p>
             <div class="version-tabs">
                 <button class="version-tab active" onclick="switchVersion('stable', this)" id="vt-stable">v2.6 Estável</button>
-                <button class="version-tab" onclick="switchVersion('beta', this)" id="vt-beta">v2.7 Beta<span class="beta-badge">NEW</span></button>
+                <button class="version-tab" onclick="switchVersion('beta', this)" id="vt-beta">v2.8 Beta<span class="beta-badge">NEW</span></button>
             </div>
             <div class="hero-buttons">
                 <a href="${h.ctaLink || '#download'}" class="btn btn-primary" id="hero-download-btn">
@@ -325,7 +325,7 @@
             <p>${f.downloadSub || ''}</p>
                 <div class="version-tabs">
                 <button class="version-tab active" onclick="switchVersion('stable', this)" id="dl-vt-stable">v2.6 Estável</button>
-                <button class="version-tab" onclick="switchVersion('beta', this)" id="dl-vt-beta">v2.7 Beta<span class="beta-badge">NEW</span></button>
+                <button class="version-tab" onclick="switchVersion('beta', this)" id="dl-vt-beta">v2.8 Beta<span class="beta-badge">NEW</span></button>
             </div>
             <div class="hero-buttons" style="justify-content:center;">
                 <a href="${f.downloadLink || '#'}" class="btn btn-primary" id="dl-download-btn">

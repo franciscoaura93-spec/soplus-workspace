@@ -2755,3 +2755,45 @@ async function claimGift(giftId) {
         console.warn('Erro ao reclamar presente:', e);
     }
 }
+
+// ════════════════════════════════════════════════════════════
+//   SIDEBAR RESIZE — drag to resize sidebar width
+// ════════════════════════════════════════════════════════════
+(function() {
+    const MIN_W = 180, MAX_W = 500;
+    let dragging = false, startX = 0, startW = 0;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const handle = document.getElementById('sidebarResize');
+        const sidebar = document.getElementById('sidebar');
+        if (!handle || !sidebar) return;
+
+        const saved = localStorage.getItem('sidebar_width');
+        if (saved) { sidebar.style.width = saved + 'px'; }
+
+        handle.addEventListener('mousedown', e => {
+            e.preventDefault();
+            dragging = true;
+            startX = e.clientX;
+            startW = sidebar.offsetWidth;
+            handle.classList.add('active');
+            document.body.style.cursor = 'col-resize';
+            document.body.style.userSelect = 'none';
+        });
+
+        document.addEventListener('mousemove', e => {
+            if (!dragging) return;
+            const w = Math.min(MAX_W, Math.max(MIN_W, startW + (e.clientX - startX)));
+            sidebar.style.width = w + 'px';
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (!dragging) return;
+            dragging = false;
+            handle.classList.remove('active');
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+            localStorage.setItem('sidebar_width', sidebar.offsetWidth);
+        });
+    });
+})();

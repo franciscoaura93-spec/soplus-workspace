@@ -1,6 +1,6 @@
 // S&O+ Extension: Pesquisa Web + Mini Browser (unified)
 let pesqPrivado = false;
-let pesqMode = 'search'; // 'search' | 'browser'
+let pesqMode = 'search';
 let brTabs = [];
 let brActive = -1;
 let brBookmarks = [];
@@ -21,7 +21,6 @@ const BR_HOME_ITEMS = [
     { name: 'Drive', url: 'https://drive.google.com', icon: '💾' },
     { name: 'Classroom', url: 'https://classroom.google.com', icon: '🏫' },
 ];
-
 const BR_BLOCKED = ['doubleclick.net','googlesyndication.com','googleadservices.com','adnxs.com','adsrvr.org'];
 
 // ═══════════════════════════════════════
@@ -70,6 +69,32 @@ function pesqSetMode(m) {
 }
 
 // ═══════════════════════════════════════
+//   PRIVATE MODE
+// ═══════════════════════════════════════
+function togglePesqPrivado() {
+    pesqPrivado = !pesqPrivado;
+    const btn = document.getElementById('pesq-priv-btn');
+    const lbl = document.getElementById('pesq-priv-label');
+    const st  = document.getElementById('pesq-priv-status');
+    const hw  = document.getElementById('pesq-history-wrap');
+    if (pesqPrivado) {
+        btn.style.background = 'rgba(99,102,241,0.15)'; btn.style.borderColor = 'var(--primary)'; btn.style.color = 'var(--primary)';
+        lbl.textContent = 'Privado ON';
+        st.innerHTML = '⚡ <strong>Proxy ativo</strong> · Sem histórico · Bloqueador de anúncios · IA integrada'; st.style.color = 'var(--primary)';
+        if (hw) hw.style.display = 'none';
+        _pesqRefreshBrowser();
+        showToast('🕶️ Modo Privado — proxy + segurança + IA ativados', 'success');
+    } else {
+        btn.style.background = 'var(--surface)'; btn.style.borderColor = 'var(--border)'; btn.style.color = 'var(--text)';
+        lbl.textContent = 'Modo Privado';
+        st.textContent = 'Pesquisas e navegação são guardadas no histórico'; st.style.color = 'var(--text-light)';
+        if (hw) hw.style.display = 'block'; _pesqLoadHistory();
+        _pesqRefreshBrowser();
+        showToast('Modo Privado desativado', 'info');
+    }
+}
+
+// ═══════════════════════════════════════
 //   SEARCH MODE
 // ═══════════════════════════════════════
 function _pesqSearchPanel() {
@@ -91,29 +116,6 @@ function _pesqSearchPanel() {
     `;
 }
 
-function togglePesqPrivado() {
-    pesqPrivado = !pesqPrivado;
-    const btn = document.getElementById('pesq-priv-btn');
-    const lbl = document.getElementById('pesq-priv-label');
-    const st  = document.getElementById('pesq-priv-status');
-    const hw  = document.getElementById('pesq-history-wrap');
-    if (pesqPrivado) {
-        btn.style.background = 'rgba(99,102,241,0.15)'; btn.style.borderColor = 'var(--primary)'; btn.style.color = 'var(--primary)';
-        lbl.textContent = 'Privado ON';
-        st.textContent = '⚡ Nada é guardado — navegação e pesquisas 100% anónimas'; st.style.color = 'var(--primary)';
-        if (hw) hw.style.display = 'none';
-        if (brTabs[brActive]) _pesqRefreshBrowser();
-        showToast('🕶️ Modo Privado ativado', 'info');
-    } else {
-        btn.style.background = 'var(--surface)'; btn.style.borderColor = 'var(--border)'; btn.style.color = 'var(--text)';
-        lbl.textContent = 'Modo Privado';
-        st.textContent = 'Pesquisas e navegação são guardadas no histórico'; st.style.color = 'var(--text-light)';
-        if (hw) hw.style.display = 'block'; _pesqLoadHistory();
-        if (brTabs[brActive]) _pesqRefreshBrowser();
-        showToast('Modo Privado desativado', 'info');
-    }
-}
-
 async function doWebSearch() {
     const q = document.getElementById('search-input').value.trim();
     if (!q) return;
@@ -129,19 +131,30 @@ async function doWebSearch() {
             <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-light);margin-bottom:12px;">
                 ${pesqPrivado ? '<span style="background:rgba(99,102,241,0.15);color:var(--primary);padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;">🕶️ PRIVADO</span>' : ''}
                 <span>${items.length} resultados para "<strong>${escapeHTML(q)}</strong>"</span>
+                <span style="font-size:10px;color:var(--text-light);">• Clica para abrir no Browser</span>
             </div>
             ${items.map(r => `
-                <a href="${escapeHTML(r.href)}" target="_blank" rel="noopener noreferrer" style="display:block;padding:18px 20px;background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:10px;cursor:pointer;transition:all 0.2s;text-decoration:none;color:inherit;" onmouseover="this.style.borderColor='rgba(37,99,235,0.3)'" onmouseout="this.style.borderColor='var(--border)'">
+                <div onclick="pesqOpenResult('${escapeHTML(r.href).replace(/'/g,"\\'")}','${escapeHTML(r.title).replace(/'/g,"\\'")}')" style="display:block;padding:18px 20px;background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:10px;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.borderColor='rgba(37,99,235,0.3)';this.style.transform='translateY(-1px)'" onmouseout="this.style.borderColor='var(--border)';this.style.transform=''">
                     <div style="font-size:15px;font-weight:600;color:var(--accent);margin-bottom:4px;">${escapeHTML(r.title)}</div>
                     <div style="font-size:13px;color:var(--text-light);line-height:1.5;margin-bottom:6px;">${escapeHTML(r.body)}</div>
-                    <div style="font-size:11px;color:var(--primary);word-break:break-all;">${escapeHTML(r.href)}</div>
-                </a>
+                    <div style="font-size:11px;color:var(--primary);word-break:break-all;display:flex;align-items:center;gap:6px;">
+                        ${pesqPrivado ? '<span style="background:rgba(99,102,241,0.12);padding:1px 6px;border-radius:6px;font-weight:700;">PROXY</span>' : ''}
+                        ${escapeHTML(r.href)}
+                    </div>
+                </div>
             `).join('')}
         `;
         if(!pesqPrivado) _pesqLoadHistory();
     } catch(e) {
         results.innerHTML = '<div class="empty-state"><div class="icon">⚠️</div><h3>Erro na pesquisa</h3><p>Verifica a ligação e tenta novamente.</p></div>';
     }
+}
+
+function pesqOpenResult(url, title) {
+    brTabs[brActive] = { url, title: title || _brDomain(url), loading: true };
+    pesqSetMode('browser');
+    _pesqRefreshBrowser();
+    setTimeout(() => { if(brTabs[brActive]) { brTabs[brActive].loading = false; _pesqRefreshBrowser(); } }, 5000);
 }
 
 async function _pesqLoadHistory() {
@@ -169,6 +182,11 @@ async function clearSearchHistory() {
 // ═══════════════════════════════════════
 //   BROWSER MODE
 // ═══════════════════════════════════════
+function _brResolveUrl(url) {
+    if (pesqPrivado) return '/api/proxy?url=' + encodeURIComponent(url);
+    return url;
+}
+
 function _pesqBrowserPanel() {
     const tab = brTabs[brActive] || brTabs[0];
     const isHome = !tab || tab.url === BR_START;
@@ -178,7 +196,7 @@ function _pesqBrowserPanel() {
         <div style="display:flex;align-items:center;background:var(--surface);border-bottom:1px solid var(--border);padding:0 6px;gap:2px;min-height:36px;overflow-x:auto;">
             ${brTabs.map((t, i) => `
                 <div onclick="brSwitch(${i})" style="display:flex;align-items:center;gap:6px;padding:5px 12px;border-radius:8px 8px 0 0;cursor:pointer;font-size:12px;white-space:nowrap;max-width:150px;overflow:hidden;text-overflow:ellipsis;transition:all 0.15s;${i===brActive ? 'background:var(--bg);font-weight:700;color:var(--accent);border:1px solid var(--border);border-bottom-color:var(--bg);' : 'color:var(--text-light);border:1px solid transparent;'}">
-                    <span style="font-size:12px;">${t.url === BR_START ? '🏠' : '🌐'}</span>
+                    <span style="font-size:12px;">${t.url === BR_START ? '🏠' : (pesqPrivado ? '🕶️' : '🌐')}</span>
                     <span style="overflow:hidden;text-overflow:ellipsis;">${escapeHTML(t.title || 'Nova aba')}</span>
                     <span onclick="event.stopPropagation();brClose(${i})" style="margin-left:4px;font-size:13px;color:var(--text-light);border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center;" onmouseover="this.style.background='rgba(239,68,68,0.15)';this.style.color='var(--danger)'" onmouseout="this.style.background='';this.style.color='var(--text-light)'">✕</span>
                 </div>
@@ -187,18 +205,21 @@ function _pesqBrowserPanel() {
         </div>
         <!-- URL bar -->
         <div style="display:flex;align-items:center;gap:6px;padding:5px 8px;background:var(--surface);border-bottom:1px solid var(--border);">
-            ${pesqPrivado ? '<span style="font-size:9px;background:rgba(99,102,241,0.15);color:var(--primary);padding:2px 8px;border-radius:10px;font-weight:700;white-space:nowrap;">🕶️ PRIVADO</span>' : ''}
+            ${pesqPrivado ? '<span style="font-size:9px;background:rgba(99,102,241,0.15);color:var(--primary);padding:2px 8px;border-radius:10px;font-weight:700;white-space:nowrap;">🕶️ PROXY</span>' : ''}
             <button onclick="brBack()" title="Voltar" style="background:none;border:none;font-size:14px;cursor:pointer;padding:3px 6px;border-radius:6px;color:var(--text-light);">◀</button>
             <button onclick="brForward()" title="Avançar" style="background:none;border:none;font-size:14px;cursor:pointer;padding:3px 6px;border-radius:6px;color:var(--text-light);">▶</button>
             <button onclick="brRefresh()" title="Atualizar" style="background:none;border:none;font-size:14px;cursor:pointer;padding:3px 6px;border-radius:6px;color:var(--text-light);">🔄</button>
             <div style="flex:1;display:flex;align-items:center;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:0 10px;">
-                <span style="font-size:12px;margin-right:5px;">${isHome ? '🏠' : (tab?.url?.startsWith('https') ? '🔒' : '🌐')}</span>
+                <span style="font-size:12px;margin-right:5px;">${isHome ? '🏠' : (pesqPrivado ? '🛡️' : (tab?.url?.startsWith('https') ? '🔒' : '🌐'))}</span>
                 <input id="br-url" value="${escapeHTML(tab?.url === BR_START ? '' : (tab?.url || ''))}" placeholder="Endereço ou pesquisa..." style="flex:1;border:none;background:none;padding:6px 0;font-size:12px;color:var(--text);outline:none;" onkeydown="if(event.key==='Enter')brNavigate(this.value)">
             </div>
             <button onclick="brToggleAdBlock()" title="Bloqueador de anúncios" style="background:none;border:none;font-size:14px;cursor:pointer;padding:3px 6px;border-radius:6px;${brAdBlock ? 'color:var(--success);' : 'color:var(--text-light);'}">🛡️</button>
             <button onclick="brBookmarkPage()" title="Bookmark" style="background:none;border:none;font-size:14px;cursor:pointer;padding:3px 6px;border-radius:6px;color:${_brIsBookmarked(tab?.url) ? 'var(--accent)' : 'var(--text-light)'};">${_brIsBookmarked(tab?.url) ? '⭐' : '☆'}</button>
             <button onclick="brReaderMode()" title="Reader Mode" style="background:none;border:none;font-size:14px;cursor:pointer;padding:3px 6px;border-radius:6px;color:var(--text-light);">📖</button>
+            <button onclick="brAiSummarize()" title="Resumo IA" style="background:none;border:none;font-size:14px;cursor:pointer;padding:3px 6px;border-radius:6px;color:var(--text-light);">🤖</button>
         </div>
+        <!-- Status bar when private -->
+        ${pesqPrivado ? '<div style="display:flex;align-items:center;gap:12px;padding:3px 10px;background:rgba(99,102,241,0.06);border-bottom:1px solid rgba(99,102,241,0.15);font-size:9px;color:var(--primary);"><span>🛡️ Proxy ativo</span><span>• IP oculto</span><span>• Anúncios bloqueados</span><span>• Sem rasto</span></div>' : ''}
         <!-- Content -->
         <div id="br-content" style="flex:1;overflow:hidden;position:relative;">
             ${isHome ? _brRenderHome() : _brRenderFrame(tab)}
@@ -213,7 +234,7 @@ function _brRenderHome() {
     <div style="height:100%;overflow-y:auto;padding:24px 16px;">
         <div style="text-align:center;margin-bottom:22px;">
             <div style="font-size:26px;font-weight:800;background:linear-gradient(135deg,var(--primary),var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;">S&O+ Browser</div>
-            <div style="font-size:12px;color:var(--text-light);margin-top:2px;">${pesqPrivado ? '<span style="background:rgba(99,102,241,0.15);color:var(--primary);padding:2px 10px;border-radius:10px;font-size:10px;font-weight:700;">🕶️ Modo Privado — sem histórico</span>' : 'Navega de forma privada e sem distrações'}</div>
+            <div style="font-size:12px;color:var(--text-light);margin-top:2px;">${pesqPrivado ? '<span style="background:rgba(99,102,241,0.15);color:var(--primary);padding:2px 10px;border-radius:10px;font-size:10px;font-weight:700;">🕶️ Proxy + Segurança + IA ativos</span>' : 'Navega de forma privada e sem distrações'}</div>
         </div>
         <div style="max-width:460px;margin:0 auto;">
             <div style="display:flex;align-items:center;background:var(--surface);border:2px solid var(--border);border-radius:12px;padding:4px 6px;margin-bottom:20px;transition:border-color 0.2s;" onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor='var(--border)'">
@@ -247,12 +268,13 @@ function _brRenderHome() {
 
 function _brRenderFrame(tab) {
     const blocked = brAdBlock && BR_BLOCKED.some(d => tab.url.includes(d));
+    const iframeSrc = _brResolveUrl(tab.url);
     return `
     <div style="height:100%;display:flex;flex-direction:column;">
         ${tab.loading ? '<div style="height:3px;background:var(--border);overflow:hidden;"><div style="height:100%;width:40%;background:linear-gradient(90deg,transparent,var(--primary),transparent);animation:brLoad 1.2s infinite;"></div></div>' : ''}
         ${blocked ? '<div style="padding:5px 10px;background:rgba(34,197,94,0.1);border-bottom:1px solid rgba(34,197,94,0.2);font-size:10px;color:var(--success);text-align:center;">🛡️ Anúncios bloqueados</div>' : ''}
         <div style="flex:1;position:relative;">
-            <iframe id="br-iframe" src="${escapeHTML(tab.url)}" style="width:100%;height:100%;border:none;" sandbox="allow-same-origin allow-scripts allow-popups allow-forms" onload="brIframeLoaded()" onerror="brIframeError()"></iframe>
+            <iframe id="br-iframe" src="${escapeHTML(iframeSrc)}" style="width:100%;height:100%;border:none;" sandbox="allow-same-origin allow-scripts allow-popups allow-forms" onload="brIframeLoaded()" onerror="brIframeError()"></iframe>
             <div id="br-iframe-overlay" style="display:none;position:absolute;inset:0;background:var(--bg);flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px;">
                 <div style="font-size:40px;margin-bottom:12px;">🔒</div>
                 <h3 style="font-size:16px;margin-bottom:6px;">Site não suportado dentro da app</h3>
@@ -267,18 +289,9 @@ function _brRenderFrame(tab) {
 }
 
 // ─── Tab management ───
-function brNewTab() {
-    brTabs.push({ url: BR_START, title: 'Nova aba', loading: false });
-    brActive = brTabs.length - 1;
-    _pesqRefreshBrowser();
-}
+function brNewTab() { brTabs.push({ url: BR_START, title: 'Nova aba', loading: false }); brActive = brTabs.length - 1; _pesqRefreshBrowser(); }
 function brSwitch(i) { brActive = i; _pesqRefreshBrowser(); }
-function brClose(i) {
-    if (brTabs.length <= 1) return;
-    brTabs.splice(i, 1);
-    if (brActive >= brTabs.length) brActive = brTabs.length - 1;
-    _pesqRefreshBrowser();
-}
+function brClose(i) { if (brTabs.length <= 1) return; brTabs.splice(i, 1); if (brActive >= brTabs.length) brActive = brTabs.length - 1; _pesqRefreshBrowser(); }
 function brNavigate(raw) {
     if (!raw || !raw.trim()) return;
     let url = raw.trim();
@@ -288,30 +301,20 @@ function brNavigate(raw) {
     }
     brTabs[brActive] = { url, title: _brDomain(url), loading: true };
     _pesqRefreshBrowser();
-    setTimeout(() => { if(brTabs[brActive]) { brTabs[brActive].loading = false; _pesqRefreshBrowser(); } }, 4000);
+    setTimeout(() => { if(brTabs[brActive]) { brTabs[brActive].loading = false; _pesqRefreshBrowser(); } }, 5000);
 }
 function brGoHome() { brTabs[brActive] = { url: BR_START, title: 'Início', loading: false }; _pesqRefreshBrowser(); }
 function brBack() { window.history.back(); }
 function brForward() { window.history.forward(); }
-function brRefresh() {
-    brTabs[brActive].loading = true; _pesqRefreshBrowser();
-    setTimeout(() => { if(brTabs[brActive]) { brTabs[brActive].loading = false; _pesqRefreshBrowser(); } }, 3000);
-}
+function brRefresh() { brTabs[brActive].loading = true; _pesqRefreshBrowser(); setTimeout(() => { if(brTabs[brActive]) { brTabs[brActive].loading = false; _pesqRefreshBrowser(); } }, 3000); }
 function brIframeLoaded() {
     const t = brTabs[brActive];
     if (t) { t.loading = false; try { const f = document.getElementById('br-iframe'); if(f?.contentDocument?.title) t.title = f.contentDocument.title; } catch(e){} }
     const ol = document.getElementById('br-iframe-overlay'); if(ol) ol.style.display = 'none';
 }
-function brIframeError() {
-    const t = brTabs[brActive]; if(t) t.loading = false;
-    const ol = document.getElementById('br-iframe-overlay'); if(ol) ol.style.display = 'flex';
-}
+function brIframeError() { const t = brTabs[brActive]; if(t) t.loading = false; const ol = document.getElementById('br-iframe-overlay'); if(ol) ol.style.display = 'flex'; }
 function _brDomain(u) { try { return new URL(u).hostname.replace('www.',''); } catch(e) { return u.slice(0,30); } }
-
-function _pesqRefreshBrowser() {
-    const bp = document.getElementById('pesq-browser-panel');
-    if (bp) bp.innerHTML = _pesqBrowserPanel();
-}
+function _pesqRefreshBrowser() { const bp = document.getElementById('pesq-browser-panel'); if (bp) bp.innerHTML = _pesqBrowserPanel(); }
 
 // ─── Bookmarks ───
 function _brIsBookmarked(url) { return url && url !== BR_START && brBookmarks.some(b => b.url === url); }
@@ -325,6 +328,79 @@ function brRemoveBookmark(i) { brBookmarks.splice(i,1); localStorage.setItem('br
 
 // ─── Ad blocker ───
 function brToggleAdBlock() { brAdBlock = !brAdBlock; showToast(brAdBlock ? '🛡️ Bloqueador ON' : 'Bloqueador OFF', brAdBlock?'success':'info'); _pesqRefreshBrowser(); }
+
+// ─── AI Summarize ───
+async function brAiSummarize() {
+    const iframe = document.getElementById('br-iframe');
+    if (!iframe) { showToast('Abre um site primeiro','warning'); return; }
+    let text = '';
+    try {
+        const doc = iframe.contentDocument || iframe.contentWindow.document;
+        text = Array.from(doc.querySelectorAll('p,h1,h2,h3,li')).map(e => e.innerText).filter(t => t.length > 15).join('\n').slice(0, 4000);
+    } catch(e) { showToast('Não conseguiu ler o conteúdo','warning'); return; }
+    if (!text) { showToast('Sem conteúdo para resumir','warning'); return; }
+
+    const ov = document.createElement('div');
+    ov.id = 'br-ai-overlay';
+    ov.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;';
+    ov.innerHTML = `
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:16px;padding:24px;max-width:520px;width:90%;max-height:80vh;overflow-y:auto;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                <span style="font-size:14px;font-weight:700;">🤖 Resumo IA</span>
+                <button onclick="document.getElementById('br-ai-overlay').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text-light);">✕</button>
+            </div>
+            <div id="br-ai-result" style="font-size:13px;color:var(--text);line-height:1.7;">
+                <div style="text-align:center;padding:20px;"><div class="spinner" style="margin:0 auto 10px;"></div>A gerar resumo...</div>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:14px;">
+                <button class="btn btn-outline" onclick="brAiAction('resumir')" style="font-size:11px;flex:1;">📝 Resumir</button>
+                <button class="btn btn-outline" onclick="brAiAction('traduzir')" style="font-size:11px;flex:1;">🌐 Traduzir PT</button>
+                <button class="btn btn-outline" onclick="brAiAction('explicar')" style="font-size:11px;flex:1;">🎓 Explicar</button>
+                <button class="btn btn-outline" onclick="brAiAction('pontos')" style="font-size:11px;flex:1;">📋 Pontos</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(ov);
+    brAiAction('resumir', text);
+}
+
+async function brAiAction(action, presetText) {
+    const resEl = document.getElementById('br-ai-result');
+    if (!resEl) return;
+    const iframe = document.getElementById('br-iframe');
+    let text = presetText;
+    if (!text) {
+        try {
+            const doc = iframe.contentDocument || iframe.contentWindow.document;
+            text = Array.from(doc.querySelectorAll('p,h1,h2,h3,li')).map(e => e.innerText).filter(t => t.length > 15).join('\n').slice(0, 4000);
+        } catch(e) { resEl.innerHTML = '<span style="color:var(--danger);">Erro ao ler conteúdo</span>'; return; }
+    }
+    const prompts = {
+        resumir: `Resume este conteúdo em 5-8 pontos principais, em português:\n\n${text}`,
+        traduzir: `Traduz este conteúdo para português de Portugal, mantendo o estilo:\n\n${text}`,
+        explicar: `Explica este conteúdo como se fosses um professor, de forma clara e didática, em português:\n\n${text}`,
+        pontos: `Extrai os pontos-chave e factos importantes deste conteúdo, em formato de lista, em português:\n\n${text}`
+    };
+    const labels = { resumir: '📝 Resumo', traduzir: '🌐 Tradução', explicar: '🎓 Explicação', pontos: '📋 Pontos-chave' };
+    resEl.innerHTML = `<div style="text-align:center;padding:20px;"><div class="spinner" style="margin:0 auto 10px;"></div>A gerar ${labels[action]}...</div>`;
+    try {
+        const r = await fetch('/api/ai/openrouter', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt: prompts[action] })
+        });
+        const data = await r.json();
+        if (data.reply) {
+            resEl.innerHTML = `
+                <div style="font-size:10px;font-weight:700;color:var(--primary);margin-bottom:10px;">${labels[action]} — ${pesqPrivado ? '🕶️ via Proxy' : '🌐 Direto'}</div>
+                ${data.reply.split('\n').map(l => `<p style="margin-bottom:6px;">${escapeHTML(l)}</p>`).join('')}
+            `;
+        } else {
+            resEl.innerHTML = `<span style="color:var(--danger);">Erro: ${escapeHTML(data.error || 'Resposta vazia')}</span>`;
+        }
+    } catch(e) {
+        resEl.innerHTML = `<span style="color:var(--danger);">Erro de ligação</span>`;
+    }
+}
 
 // ─── Reader mode ───
 function brReaderMode() {

@@ -904,6 +904,55 @@ def face_all():
     return jsonify({'faces': result, 'owner': owner})
 
 
+# ════════════════════════════════════════════════════════════
+#   PROXY — Server-side page fetch for privacy mode
+# ════════════════════════════════════════════════════════════
+import re as _re, urllib.parse as _urlparse
+
+_BLOCKED_DOMAINS = [
+    'doubleclick.net','googlesyndication.com','googleadservices.com',
+    'adnxs.com','adsrvr.org','facebook.net','analytics.google.com',
+    'googletagmanager.com','ads.','advert.','tracking.','pixel.'
+]
+
+@app.route('/api/proxy', methods=['GET'])
+def proxy_fetch():
+    url = request.args.get('url', '').strip()
+    if not url:
+        return jsonify({'error': 'No URL'}), 400
+    if not url.startswith(('http://', 'https://')):
+        return jsonify({'error': 'Invalid URL'}), 400
+    parsed = _urlparse.urlparse(url)
+    if parsed.hostname in ('localhost', '127.0.0.1', '0.0.0.0'):
+        return jsonify({'error': 'Blocked'}), 403
+    try:
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,*/*',
+            'Accept-Language': 'pt-PT,pt;q=0.9,en;q=0.8',
+        }
+        r = requests.get(url, headers=headers, timeout=15, allow_redirects=True, verify=False)
+        ct = r.headers.get('Content-Type', 'text/html')
+        if 'text/html' not in ct:
+            return jsonify({'error': 'Not HTML'}), 400
+        html = r.text
+        base = r.url
+        base_parsed = _urlparse.urlparse(base)
+        base_origin = f"{base_parsed.scheme}://{base_parsed.netloc}"
+        html = _re.sub(r'<base\s+[^>]*>', '', html, flags=_re.IGNORECASE)
+        html = _re.sub(r'<head>', f'<head><base href="{base_origin}/">', html, count=1, flags=_re.IGNORECASE)
+        html = _re.sub(r'<script[^>]*>(.*?</script>)?', '', html, flags=_re.IGNORECASE|_re.DOTALL)
+        html = _re.sub(r'<iframe[^>]*>.*?</iframe>', '', html, flags=_re.IGNORECASE|_re.DOTALL)
+        html = _re.sub(r'xmlns="[^"]*"', '', html)
+        for pattern in _BLOCKED_DOMAINS:
+            html = _re.sub(r'<[^>]*(?:src|href|action)=[\"'][^\"']*?' + _re.escape(pattern) + r'[^\"']*[\"'][^>]*>','', html, flags=_re.IGNORECASE)
+        html = html.replace("window.open", "void(0)")
+        html = html.replace("window.location", "void(0)")
+        return html, 200, {'Content-Type': 'text/html; charset=utf-8', 'X-Proxy': 'soplus'}
+    except Exception as e:
+        return jsonify({'error': str(e)[:120]}), 502
+
+
 if __name__ == '__main__':
     import webbrowser, threading
     threading.Timer(1.5, lambda: webbrowser.open('http://localhost:5000')).start()

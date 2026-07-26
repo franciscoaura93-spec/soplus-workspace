@@ -1,0 +1,107 @@
+[debug] [2026-07-26T16:37:25.613Z] ----------------------------------------------------------------------
+[debug] [2026-07-26T16:37:25.930Z] Command:       /home/francisco_rodrigues/.nvm/versions/node/v22.23.1/bin/node /home/francisco_rodrigues/.nvm/versions/node/v22.23.1/bin/firebase deploy --only hosting --non-interactive
+[debug] [2026-07-26T16:37:25.931Z] CLI Version:   15.24.0
+[debug] [2026-07-26T16:37:25.931Z] Platform:      linux
+[debug] [2026-07-26T16:37:25.932Z] Node Version:  v22.23.1
+[debug] [2026-07-26T16:37:25.932Z] Detected Agent: open_code
+[debug] [2026-07-26T16:37:25.933Z] Time:          Sun Jul 26 2026 17:37:25 GMT+0100 (Western European Summer Time)
+[debug] [2026-07-26T16:37:25.933Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-07-26T16:38:41.063Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-07-26T16:38:41.064Z] > authorizing via signed-in user (franciscoaura93@gmail.com)
+[debug] [2026-07-26T16:38:41.065Z] [iam] checking project s123o-f3e37 for permissions ["firebase.projects.get","firebasehosting.sites.update"]
+[debug] [2026-07-26T16:38:41.328Z] Checked if tokens are valid: true, expires at: 1785086022475
+[debug] [2026-07-26T16:38:41.329Z] Checked if tokens are valid: true, expires at: 1785086022475
+[debug] [2026-07-26T16:38:41.331Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/s123o-f3e37:testIamPermissions [none]
+[debug] [2026-07-26T16:38:41.332Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/s123o-f3e37:testIamPermissions  x-goog-user-project=s123o-f3e37
+[debug] [2026-07-26T16:38:41.333Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/s123o-f3e37:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-07-26T16:38:50.071Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/s123o-f3e37:testIamPermissions 200
+[debug] [2026-07-26T16:38:50.072Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/s123o-f3e37:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-07-26T16:38:50.088Z] Checked if tokens are valid: true, expires at: 1785086022475
+[debug] [2026-07-26T16:38:50.088Z] Checked if tokens are valid: true, expires at: 1785086022475
+[debug] [2026-07-26T16:38:50.100Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/s123o-f3e37 [none]
+[debug] [2026-07-26T16:38:52.371Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/s123o-f3e37 200
+[debug] [2026-07-26T16:38:52.372Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/s123o-f3e37 {"projectId":"s123o-f3e37","projectNumber":"714841609825","displayName":"so-workspace","name":"projects/s123o-f3e37","resources":{"hostingSite":"s123o-f3e37","realtimeDatabaseInstance":"s123o-f3e37-default-rtdb"},"state":"ACTIVE","labels":{"firebase":"enabled","firebaseworkflows/environment":"unspecified"},"etag":"1_3a4e353b-43cb-498d-b256-ea96551c66ce"}
+[info] 
+[info] === Deploying to 's123o-f3e37'...
+[info] 
+[info] i  deploying hosting 
+[debug] [2026-07-26T16:38:52.746Z] Checked if tokens are valid: true, expires at: 1785086022475
+[debug] [2026-07-26T16:38:52.746Z] Checked if tokens are valid: true, expires at: 1785086022475
+[debug] [2026-07-26T16:38:52.747Z] >>> [apiv2][query] GET https://firebasehosting.googleapis.com/v1beta1/projects/s123o-f3e37/sites/s123o-f3e37 [none]
+[debug] [2026-07-26T16:38:55.853Z] <<< [apiv2][status] GET https://firebasehosting.googleapis.com/v1beta1/projects/s123o-f3e37/sites/s123o-f3e37 200
+[debug] [2026-07-26T16:38:55.854Z] <<< [apiv2][body] GET https://firebasehosting.googleapis.com/v1beta1/projects/s123o-f3e37/sites/s123o-f3e37 {"name":"projects/s123o-f3e37/sites/s123o-f3e37","defaultUrl":"https://s123o-f3e37.web.app","type":"DEFAULT_SITE"}
+[debug] [2026-07-26T16:38:55.880Z] Checked if tokens are valid: true, expires at: 1785086022475
+[debug] [2026-07-26T16:38:55.880Z] Checked if tokens are valid: true, expires at: 1785086022475
+[debug] [2026-07-26T16:38:55.904Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/s123o-f3e37/versions [none]
+[debug] [2026-07-26T16:38:55.904Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/s123o-f3e37/versions {"status":"CREATED","labels":{"deployment-tool":"cli-firebase"}}
+[debug] [2026-07-26T16:38:57.533Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/s123o-f3e37/versions 200
+[debug] [2026-07-26T16:38:57.533Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/s123o-f3e37/versions {"name":"projects/714841609825/sites/s123o-f3e37/versions/f81008f8f5f3182e","status":"CREATED","config":{},"labels":{"deployment-tool":"cli-firebase"}}
+[info] i  hosting[s123o-f3e37]: beginning deploy... 
+[info] i  hosting[s123o-f3e37]: found 20 files in site 
+[debug] [2026-07-26T16:39:00.995Z] [hosting] uploading with 200 concurrency
+[debug] [2026-07-26T16:39:02.962Z] Checked if tokens are valid: true, expires at: 1785086022475
+[debug] [2026-07-26T16:39:02.962Z] Checked if tokens are valid: true, expires at: 1785086022475
+[debug] [2026-07-26T16:39:05.049Z] [hosting] hash cache [c2l0ZQ] stored for 20 files
+[debug] [2026-07-26T16:39:05.049Z] [hosting][hash queue][FINAL] {"max":1919,"min":365,"avg":365,"active":0,"complete":20,"success":20,"errored":0,"retried":0,"total":20,"elapsed":4007}
+[debug] [2026-07-26T16:39:05.051Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/714841609825/sites/s123o-f3e37/versions/f81008f8f5f3182e:populateFiles [none]
+[debug] [2026-07-26T16:39:05.059Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/714841609825/sites/s123o-f3e37/versions/f81008f8f5f3182e:populateFiles {"files":{"/index.html":"b8072d6699c2972c19e29f974669c420b09cb755a06ff9140f8d12fe3d1eef69","/favicon.svg":"fa28ad685f915016b64dcb63670c421ce891b9dee613704784ae6864afe588b9","/favicon.ico":"c06b064a1c41b527435d14aed49bec2e27ff529a102a35fc321242af5cc72adc","/admin.html":"d3344fe4f8659c312c9dd477a2529be115de6785a77db67873771fc3550bd4b4","/static/models/tiny_face_detector_model-weights_manifest.json":"ecdefd3957d8fc363b5ed397260df4e23298ee5f3057fadad9dc30cd8132c266","/static/models/tiny_face_detector_model-shard1":"c9cce75613a85ed870372ba61520165f2e2a7af73dadcd55400ad31acf74cea5","/static/models/face_recognition_model-weights_manifest.json":"f3c4ae8cb325dcebcb23772cab6e6757c0d20a8e1228fc07d1640c1b123269c5","/static/models/face_recognition_model-shard2":"8f0cc7dbedbac5c25366f0030846ee3363a47c7f03a0d0cde3b4c21249a6ac93","/static/models/face_recognition_model-shard1":"7e600137133a7b198dc94cd6f3406049b1ce3c4d36a8a5b9528ed22b7d6fac3c","/static/models/face_landmark_68_tiny_model-weights_manifest.json":"61e3d6ab0bc225f2292567b91910a6d75ca619b27ee67d23b73f0d1850c1b42e","/static/models/face_landmark_68_tiny_model-shard1":"82170c5a8647392d739131cf6c617053ab937ee68a174b3354557c9908b01164","/static/models/face_landmark_68_model-weights_manifest.json":"f0e1a4957e7904797ada50b900b44ea70f45091aedd05f24a64640ee0947ab56","/static/models/face_landmark_68_model-shard1":"d9bd0513e9c794f08cb2f10441fd14d0c730dfa7810579dade5c5ef7d9aff3ad","/static/models/face_expression_model-weights_manifest.json":"8593f4ce1a9a992f0a7ac086d3fd3243e9851bfe539012d73968cfbc84b80532","/static/models/face_expression_model-shard1":"2065094c15c83d9fbcdae4a48350e5d6c2380521121d872e9998d150c804b3c4","/static/js/face-api.min.js":"0bdfaac501f3715786247d9469fc24d17015ec79aff1b910ca1f09744d455a18","/images/og-banner.svg":"4e0448b3c9e79701f2770a4914adace560d6924f3aa01ac9411b7e7c3dd962f6","/images/login.svg":"d8da299770b46a1cb1dba5fc4f8b3a315e64662b5d55168e325ab8cae0de7db5","/images/dashboard.svg":"40a6457096c9bc9961aae2f3ad581e43b2c5635d856c7aee771572f0d701ba28","/images/ai-studio.svg":"f9995ec00423292603883e42923cf51805c16c9a19ad5042ff501bf0058b04f8"}}
+[info] i  hosting: adding files to version [0/20] (0%) 
+[info] i  hosting: adding files to version [0/20] (0%) 
+[debug] [2026-07-26T16:39:09.626Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/714841609825/sites/s123o-f3e37/versions/f81008f8f5f3182e:populateFiles 200
+[debug] [2026-07-26T16:39:09.627Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/714841609825/sites/s123o-f3e37/versions/f81008f8f5f3182e:populateFiles {"uploadUrl":"https://upload-firebasehosting.googleapis.com/upload/sites/s123o-f3e37/versions/f81008f8f5f3182e/files"}
+[debug] [2026-07-26T16:39:09.628Z] [hosting][populate queue][FINAL] {"max":6667,"min":6667,"avg":6667,"active":0,"complete":1,"success":1,"errored":0,"retried":0,"total":1,"elapsed":6667}
+[debug] [2026-07-26T16:39:09.629Z] [hosting] uploads queued: 0
+[debug] [2026-07-26T16:39:09.637Z] [hosting][upload queue][FINAL] {"max":0,"min":9999999999,"avg":0,"active":0,"complete":0,"success":0,"errored":0,"retried":0,"total":0,"elapsed":1785083949637}
+[info] i  hosting: upload complete 
+[info] ✔  hosting[s123o-f3e37]: file upload complete 
+[debug] [2026-07-26T16:39:09.653Z] [hosting] deploy completed after 11503ms
+[debug] [2026-07-26T16:39:09.656Z] [
+  {
+    "config": {
+      "public": "site",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ],
+      "rewrites": [],
+      "headers": [
+        {
+          "source": "**",
+          "headers": [
+            {
+              "key": "Cache-Control",
+              "value": "public, max-age=3600"
+            }
+          ]
+        }
+      ],
+      "site": "s123o-f3e37"
+    },
+    "version": "projects/714841609825/sites/s123o-f3e37/versions/f81008f8f5f3182e"
+  }
+]
+[info] i  hosting[s123o-f3e37]: finalizing version... 
+[debug] [2026-07-26T16:39:09.673Z] Checked if tokens are valid: true, expires at: 1785086022475
+[debug] [2026-07-26T16:39:09.674Z] Checked if tokens are valid: true, expires at: 1785086022475
+[debug] [2026-07-26T16:39:09.845Z] >>> [apiv2][query] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/s123o-f3e37/versions/f81008f8f5f3182e updateMask=status%2Cconfig
+[debug] [2026-07-26T16:39:09.846Z] >>> [apiv2][body] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/s123o-f3e37/versions/f81008f8f5f3182e {"status":"FINALIZED","config":{"rewrites":[],"headers":[{"glob":"**","headers":{"Cache-Control":"public, max-age=3600"}}]}}
+[debug] [2026-07-26T16:39:11.231Z] <<< [apiv2][status] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/s123o-f3e37/versions/f81008f8f5f3182e 200
+[debug] [2026-07-26T16:39:11.231Z] <<< [apiv2][body] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/s123o-f3e37/versions/f81008f8f5f3182e {"name":"projects/714841609825/sites/s123o-f3e37/versions/f81008f8f5f3182e","status":"FINALIZED","config":{"headers":[{"headers":{"Cache-Control":"public, max-age=3600"},"glob":"**"}]},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2026-07-26T16:38:55.423613Z","createUser":{"email":"franciscoaura93@gmail.com"},"finalizeTime":"2026-07-26T16:39:10.091892Z","finalizeUser":{"email":"franciscoaura93@gmail.com"}}
+[debug] [2026-07-26T16:39:11.232Z] [hosting] finalized version for s123o-f3e37:[object Object]
+[info] ✔  hosting[s123o-f3e37]: version finalized 
+[info] i  hosting[s123o-f3e37]: releasing new version... 
+[debug] [2026-07-26T16:39:11.235Z] Checked if tokens are valid: true, expires at: 1785086022475
+[debug] [2026-07-26T16:39:11.235Z] Checked if tokens are valid: true, expires at: 1785086022475
+[debug] [2026-07-26T16:39:11.235Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/s123o-f3e37/channels/live/releases versionName=projects%2F714841609825%2Fsites%2Fs123o-f3e37%2Fversions%2Ff81008f8f5f3182e
+[debug] [2026-07-26T16:39:11.245Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/s123o-f3e37/channels/live/releases {}
+[debug] [2026-07-26T16:39:13.315Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/s123o-f3e37/channels/live/releases 200
+[debug] [2026-07-26T16:39:13.316Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/s123o-f3e37/channels/live/releases {"name":"projects/714841609825/sites/s123o-f3e37/channels/live/releases/1785083951115000","version":{"name":"projects/714841609825/sites/s123o-f3e37/versions/f81008f8f5f3182e","status":"FINALIZED","config":{"headers":[{"headers":{"Cache-Control":"public, max-age=3600"},"glob":"**"}]},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2026-07-26T16:38:55.423613Z","createUser":{"email":"franciscoaura93@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocIM0Knr1XCb6_ehP77FTIrSJ9IGuGkfqNMP3Tns-EndM0oZuA=mo"},"finalizeTime":"2026-07-26T16:39:10.091892Z","finalizeUser":{"email":"franciscoaura93@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocIM0Knr1XCb6_ehP77FTIrSJ9IGuGkfqNMP3Tns-EndM0oZuA=mo"}},"type":"DEPLOY","releaseTime":"2026-07-26T16:39:11.115Z","releaseUser":{"email":"franciscoaura93@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocIM0Knr1XCb6_ehP77FTIrSJ9IGuGkfqNMP3Tns-EndM0oZuA=mo"}}
+[debug] [2026-07-26T16:39:13.316Z] [hosting] release: {"name":"projects/714841609825/sites/s123o-f3e37/channels/live/releases/1785083951115000","version":{"name":"projects/714841609825/sites/s123o-f3e37/versions/f81008f8f5f3182e","status":"FINALIZED","config":{"headers":[{"headers":{"Cache-Control":"public, max-age=3600"},"glob":"**"}]},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2026-07-26T16:38:55.423613Z","createUser":{"email":"franciscoaura93@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocIM0Knr1XCb6_ehP77FTIrSJ9IGuGkfqNMP3Tns-EndM0oZuA=mo"},"finalizeTime":"2026-07-26T16:39:10.091892Z","finalizeUser":{"email":"franciscoaura93@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocIM0Knr1XCb6_ehP77FTIrSJ9IGuGkfqNMP3Tns-EndM0oZuA=mo"}},"type":"DEPLOY","releaseTime":"2026-07-26T16:39:11.115Z","releaseUser":{"email":"franciscoaura93@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocIM0Knr1XCb6_ehP77FTIrSJ9IGuGkfqNMP3Tns-EndM0oZuA=mo"}}
+[info] ✔  hosting[s123o-f3e37]: release complete 
+[info] 
+[info] ✔  Deploy complete! 
+[info] 
+[info] Project Console: https://console.firebase.google.com/project/s123o-f3e37/overview
+[info] Hosting URL: https://s123o-f3e37.web.app

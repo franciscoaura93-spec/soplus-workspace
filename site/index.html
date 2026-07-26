@@ -246,7 +246,7 @@
                 <button class="version-tab" onclick="switchVersion('dev', this)" id="vt-dev">v2.9 Dev<span class="beta-badge">NEW</span></button>
             </div>
             <div class="hero-buttons">
-                <a href="${h.ctaLink || '#download'}" class="btn btn-primary" id="hero-download-btn">
+                <a href="${VERSIONS[currentVersion].url}" class="btn btn-primary" id="hero-download-btn">
                     <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                     ${h.ctaText || 'Download'}
                 </a>
@@ -331,7 +331,7 @@
                 <button class="version-tab" onclick="switchVersion('dev', this)" id="dl-vt-dev">v2.9 Dev<span class="beta-badge">NEW</span></button>
             </div>
             <div class="hero-buttons" style="justify-content:center;">
-                <a href="${f.downloadLink || '#'}" class="btn btn-primary" id="dl-download-btn">
+                <a href="${VERSIONS[currentVersion].url}" class="btn btn-primary" id="dl-download-btn">
                     <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                     ${f.downloadBtn || 'Download'}
                 </a>

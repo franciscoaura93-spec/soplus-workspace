@@ -185,8 +185,7 @@ function renderEscritaMusical(el) {
         <button class="btn btn-outline" onclick="musToggleNotes()" style="font-size:11px;padding:5px 10px;">📝 Notas</button>
         <button class="btn btn-outline" onclick="musSave()" style="font-size:11px;padding:5px 10px;">💾 Guardar</button>
         <button class="btn btn-outline" onclick="musLoad()" style="font-size:11px;padding:5px 10px;">📂 Carregar</button>
-        <button class="btn btn-outline" onclick="musListSongs()" style="font-size:11px;padding:5px 10px;">📚 Lista</button>
-        <button class="btn btn-outline" onclick="musDeleteSong()" style="font-size:11px;padding:5px 10px;color:var(--danger);">🗑️ Apagar</button>
+        <button class="btn btn-outline" onclick="musLoadSongs()" style="font-size:11px;padding:5px 10px;">📚 Lista</button>
       </div>
 
       <div style="display:flex;flex:1;overflow:hidden;">
@@ -698,13 +697,54 @@ function musStop() {
 
 // ── Save / Load (multi-song, up to 10) ──
 let musCurrentSongId = null;
+let musCurrentSongName = '';
+
+function musShowModal(title, body) {
+    let overlay = document.getElementById('mus-modal-overlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'mus-modal-overlay';
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;';
+        document.body.appendChild(overlay);
+    }
+    overlay.innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;max-width:420px;width:90%;max-height:80vh;overflow-y:auto;">
+      <h3 style="font-size:16px;font-weight:700;margin-bottom:16px;">${title}</h3>
+      ${body}
+    </div>`;
+    overlay.style.display = 'flex';
+    overlay.onclick = e => { if(e.target === overlay) overlay.style.display = 'none'; };
+}
+
+function musHideModal() {
+    const o = document.getElementById('mus-modal-overlay');
+    if(o) o.style.display = 'none';
+}
 
 async function musSave() {
     if(typeof currentUser === 'undefined' || !currentUser || !currentUser.uid) {
         showToast('Precisas de login para guardar na cloud', 'warning'); return;
     }
-    const name = prompt('Nome da música:', musCurrentSongName || '');
-    if (!name) return;
+    musShowModal('💾 Guardar Música', `
+      <div class="form-group" style="margin-bottom:12px;">
+        <label style="font-size:12px;font-weight:600;color:var(--text-light);">Nome da música</label>
+        <input id="mus-save-name" value="${escapeHTML(musCurrentSongName || '')}" placeholder="Ex: Minha Sonata" style="width:100%;padding:10px 14px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;margin-top:6px;">
+      </div>
+      <div id="mus-save-err" style="color:var(--danger);font-size:12px;margin-bottom:8px;"></div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button class="btn btn-outline" onclick="musHideModal()" style="font-size:12px;">Cancelar</button>
+        <button class="btn btn-primary" onclick="musDoSave()" style="font-size:12px;">💾 Guardar</button>
+      </div>
+    `);
+    document.getElementById('mus-save-name').focus();
+    document.getElementById('mus-save-name').onkeydown = e => { if(e.key==='Enter') musDoSave(); };
+}
+
+async function musDoSave() {
+    const nameEl = document.getElementById('mus-save-name');
+    const name = nameEl ? nameEl.value.trim() : '';
+    if (!name) { document.getElementById('mus-save-err').textContent = 'Escreve um nome'; return; }
+    if(typeof currentUser === 'undefined' || !currentUser || !currentUser.uid) { musHideModal(); return; }
     musCurrentSongName = name;
     const data = {
         name,
@@ -717,11 +757,11 @@ async function musSave() {
         savedAt: Date.now()
     };
     try {
-        const songsSnap = await db.ref(`music/${currentUser.uid}`).once('value');
-        const existing = songsSnap.val() || {};
-        const keys = Object.keys(existing);
+        const existing = await dbGet(`music/${currentUser.uid}`);
+        const keys = existing ? Object.keys(existing) : [];
         if (!musCurrentSongId && keys.length >= 10) {
-            showToast('Máximo de 10 músicas. Apaga uma primeiro.', 'error'); return;
+            document.getElementById('mus-save-err').textContent = 'Máximo de 10 músicas. Apaga uma primeiro.';
+            return;
         }
         if (musCurrentSongId) {
             await db.ref(`music/${currentUser.uid}/${musCurrentSongId}`).set(data);
@@ -729,8 +769,11 @@ async function musSave() {
             const ref = await db.ref(`music/${currentUser.uid}`).push(data);
             musCurrentSongId = ref.key;
         }
+        musHideModal();
         showToast(`🎵 "${name}" guardada!`, 'success');
-    } catch(e) { showToast('Erro ao guardar: '+e.message, 'error'); }
+    } catch(e) {
+        document.getElementById('mus-save-err').textContent = 'Erro: ' + e.message;
+    }
 }
 
 async function musLoad() {
@@ -738,9 +781,9 @@ async function musLoad() {
         showToast('Precisas de login para carregar da cloud', 'warning'); return;
     }
     try {
-        const snap = await db.ref(`music/${currentUser.uid}`).once('value');
-        const data = snap.val();
+        const data = await dbGet(`music/${currentUser.uid}`);
         if (!data) { showToast('Nenhuma música guardada', 'warning'); return; }
+        window.__musLoadedData = data;
         const entries = Object.entries(data);
         if (entries.length === 1) {
             const [id, song] = entries[0];
@@ -749,49 +792,79 @@ async function musLoad() {
             musApplyData(song);
             showToast(`🎵 "${musCurrentSongName}" carregada!`, 'success');
         } else {
-            const list = entries.map(([id, s], i) => {
+            const rows = entries.map(([id, s], i) => {
                 const dt = s.savedAt ? new Date(s.savedAt).toLocaleDateString('pt-PT') : '—';
-                return `${i+1}. ${s.name||'Sem nome'} (${s.tracks?.length||0} pistas, ${dt})`;
-            }).join('\n');
-            const choice = prompt(`Escolhe uma música (1-${entries.length}):\n\n${list}`);
-            if (!choice) return;
-            const idx = parseInt(choice) - 1;
-            if (idx >= 0 && idx < entries.length) {
-                const [id, song] = entries[idx];
-                musCurrentSongId = id;
-                musCurrentSongName = song.name || 'Sem nome';
-                musApplyData(song);
-                showToast(`🎵 "${musCurrentSongName}" carregada!`, 'success');
-            }
+                return `<div onclick="musPickSong('${id}')" style="padding:10px 14px;background:var(--card);border:1px solid var(--border);border-radius:10px;cursor:pointer;transition:all 0.2s;display:flex;justify-content:space-between;align-items:center;" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
+                  <div><div style="font-weight:600;font-size:14px;">${s.name||'Sem nome'}</div>
+                  <div style="font-size:11px;color:var(--text-light);">${s.tracks?.length||0} pistas • ${dt}</div></div>
+                  <span style="color:var(--primary);font-size:18px;">→</span>
+                </div>`;
+            }).join('');
+            musShowModal('📂 Carregar Música', `
+              <div style="display:flex;flex-direction:column;gap:8px;">${rows}</div>
+              <div style="margin-top:12px;text-align:right;">
+                <button class="btn btn-outline" onclick="musHideModal()" style="font-size:12px;">Cancelar</button>
+              </div>
+            `);
         }
     } catch(e) { showToast('Erro ao carregar: '+e.message, 'error'); }
 }
 
-async function musDeleteSong() {
-    if(typeof currentUser === 'undefined' || !currentUser || !currentUser.uid) return;
-    if (!musCurrentSongId) { showToast('Nenhuma música selecionada', 'warning'); return; }
-    if (!confirm(`Eliminar "${musCurrentSongName||'esta música'}"?`)) return;
-    try {
-        await db.ref(`music/${currentUser.uid}/${musCurrentSongId}`).remove();
-        musCurrentSongId = null;
-        musCurrentSongName = '';
-        showToast('🗑️ Música eliminada!', 'success');
-    } catch(e) { showToast('Erro: '+e.message, 'error'); }
+function musPickSong(id) {
+    const data = window.__musLoadedData;
+    if (!data || !data[id]) return;
+    musCurrentSongId = id;
+    musCurrentSongName = data[id].name || 'Sem nome';
+    musApplyData(data[id]);
+    musHideModal();
+    showToast(`🎵 "${musCurrentSongName}" carregada!`, 'success');
 }
 
-async function musListSongs() {
+async function musLoadSongs() {
     if(typeof currentUser === 'undefined' || !currentUser || !currentUser.uid) {
         showToast('Precisas de login', 'warning'); return;
     }
     try {
-        const snap = await db.ref(`music/${currentUser.uid}`).once('value');
-        const data = snap.val();
-        const count = data ? Object.keys(data).length : 0;
-        showToast(`📚 ${count}/10 músicas guardadas`, 'success');
+        const data = await dbGet(`music/${currentUser.uid}`);
+        if (!data) { showToast('Nenhuma música guardada', 'warning'); return; }
+        const entries = Object.entries(data);
+        const rows = entries.map(([id, s], i) => {
+            const dt = s.savedAt ? new Date(s.savedAt).toLocaleDateString('pt-PT') : '—';
+            const active = id === musCurrentSongId;
+            return `<div style="padding:10px 14px;background:${active?'rgba(99,102,241,0.1)':'var(--card)'};border:1px solid ${active?'var(--primary)':'var(--border)'};border-radius:10px;display:flex;justify-content:space-between;align-items:center;">
+              <div><div style="font-weight:600;font-size:14px;">${s.name||'Sem nome'} ${active?'<span style="font-size:11px;color:var(--primary);">(atual)</span>':''}</div>
+              <div style="font-size:11px;color:var(--text-light);">${s.tracks?.length||0} pistas • ${dt}</div></div>
+              <button class="btn btn-outline" onclick="musDeleteSongConfirm('${id}','${escapeHTML(s.name||'')}')" style="font-size:11px;padding:4px 10px;color:var(--danger);">🗑️</button>
+            </div>`;
+        }).join('');
+        musShowModal(`📚 ${entries.length}/10 Músicas Guardadas`, `
+          <div style="display:flex;flex-direction:column;gap:8px;max-height:50vh;overflow-y:auto;">${rows}</div>
+          <div style="margin-top:12px;text-align:right;">
+            <button class="btn btn-outline" onclick="musHideModal()" style="font-size:12px;">Fechar</button>
+          </div>
+        `);
     } catch(e) { showToast('Erro: '+e.message, 'error'); }
 }
 
-let musCurrentSongName = '';
+function musDeleteSongConfirm(id, name) {
+    musShowModal('🗑️ Eliminar Música', `
+      <p style="font-size:14px;margin-bottom:16px;">Eliminar "<strong>${name}</strong>"?</p>
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button class="btn btn-outline" onclick="musLoadSongs()" style="font-size:12px;">Cancelar</button>
+        <button class="btn btn-primary" onclick="musDoDelete('${id}')" style="font-size:12px;background:var(--danger);">Eliminar</button>
+      </div>
+    `);
+}
+
+async function musDoDelete(id) {
+    try {
+        await dbRemove(`music/${currentUser.uid}/${id}`);
+        if (musCurrentSongId === id) { musCurrentSongId = null; musCurrentSongName = ''; }
+        musHideModal();
+        showToast('🗑️ Música eliminada!', 'success');
+        musLoadSongs();
+    } catch(e) { showToast('Erro: '+e.message, 'error'); }
+}
 
 function musApplyData(data) {
     if(data.tracks) musState.tracks = data.tracks;

@@ -996,9 +996,13 @@ def browse_page():
             viewport={'width': 1280, 'height': 800}
         )
         try:
-            page.goto(url, wait_until='domcontentloaded', timeout=20000)
+            page.goto(url, wait_until='commit', timeout=30000)
             try:
-                page.wait_for_load_state('networkidle', timeout=8000)
+                page.wait_for_load_state('domcontentloaded', timeout=15000)
+            except:
+                pass
+            try:
+                page.wait_for_load_state('networkidle', timeout=10000)
             except:
                 pass
             html = page.content()

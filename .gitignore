@@ -10,3 +10,7 @@ instance/
 
 .firebase/
 instance/
+
+upload.ps1
+upload_v3.ps1
+firebase-debug.log

@@ -1,6 +1,6 @@
 [Setup]
 AppName=S+O Ultra Workspace
-AppVersion=2.8
+AppVersion=3.1
 AppPublisher=S+O+
 DefaultDirName={autopf}\S+O Workspace
 DefaultGroupName=S+O Ultra Workspace
@@ -12,7 +12,7 @@ Compression=lzma2/ultra64
 SolidCompression=yes
 PrivilegesRequired=lowest
 DisableProgramGroupPage=yes
-VersionInfoVersion=2.8.0.0
+VersionInfoVersion=3.1.0.0
 VersionInfoDescription=S.O+ Ultra Workspace Installer
 
 [Languages]
@@ -32,21 +32,17 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 [Files]
 Source: "app.py"; DestDir: "{app}"; Flags: ignoreversion
 Source: "moodle.py"; DestDir: "{app}"; Flags: ignoreversion
-Source: "browser.py"; DestDir: "{app}"; Flags: ignoreversion
 Source: ".env"; DestDir: "{app}"; Flags: ignoreversion
 Source: "requirements.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "iniciar.bat"; DestDir: "{app}"; Flags: ignoreversion
 Source: "instalar_deps.ps1"; DestDir: "{app}"; Flags: ignoreversion
 Source: "static\*"; DestDir: "{app}\static"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "static\js\extensions\*"; DestDir: "{app}\static\js\extensions"; Flags: ignoreversion
 Source: "templates\*"; DestDir: "{app}\templates"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{group}\S+O Ultra Workspace"; Filename: "{app}\iniciar.bat"; WorkingDir: "{app}"; IconFilename: "{app}\static\favicon.ico"
-Name: "{group}\S+O Browser"; Filename: "cmd.exe"; Parameters: "/C cd ""{app}"" && python browser.py"; WorkingDir: "{app}"; IconFilename: "{app}\static\favicon.ico"
 Name: "{group}\Desinstalar S+O Ultra Workspace"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\S+O Ultra Workspace"; Filename: "{app}\iniciar.bat"; WorkingDir: "{app}"; Tasks: desktopicon; IconFilename: "{app}\static\favicon.ico"
-Name: "{autodesktop}\S+O Browser"; Filename: "cmd.exe"; Parameters: "/C cd ""{app}"" && python browser.py"; WorkingDir: "{app}"; Tasks: desktopicon; IconFilename: "{app}\static\favicon.ico"
 
 [Run]
 Filename: "{cmd}"; Parameters: "/C powershell -ExecutionPolicy Bypass -File ""{app}\instalar_deps.ps1"""; StatusMsg: "A configurar dependencias..."; Flags: waituntilterminated runhidden

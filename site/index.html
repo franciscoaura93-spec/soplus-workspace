@@ -150,15 +150,16 @@
     const db = firebase.database();
 
     const VERSIONS = [
-        { id:'v3', label: 'v3.0', desc:'Nova versão', url: 'https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v2.9-dev/S.O-Workspace-Instalador.exe', color:'#22c55e' },
-        { id:'dev', label: 'v2.9 Dev', desc:'Em desenvolvimento', url: 'https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v2.9-dev/S.O-Workspace-Instalador.exe', color:'#8b5cf6' },
+        { id:'stable', label: 'v2.6 Estável', desc:'Estável e testada', url: 'https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v2.6/S.O-Workspace-Instalador.exe', color:'#3b82f6' },
         { id:'beta', label: 'v2.8 Beta', desc:'Beta test', url: 'https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v2.8-beta/S.O-Workspace-Instalador.exe', color:'#eab308' },
-        { id:'stable', label: 'v2.6 Estável', desc:'Estável e testada', url: 'https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v2.6/S.O-Workspace-Instalador.exe', color:'#3b82f6' }
+        { id:'dev', label: 'v2.9 Dev', desc:'Em desenvolvimento', url: 'https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v2.9-dev/S.O-Workspace-Instalador.exe', color:'#8b5cf6' },
+        { id:'v3', label: 'v3.0', desc:'Browser integrado', url: 'https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v3.0/S.O-Workspace-Instalador.exe', color:'#22c55e' },
+        { id:'v31', label: 'v3.1 Super Stable', desc:'Tudo estable, sem browser', url: 'https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v3.1/S.O-Workspace-Instalador.exe', color:'#06b6d4' }
     ];
-    let currentVersion = 0;
+    let currentVersion = VERSIONS.length - 1;
 
     const DEFAULT_DATA = {
-        hero: { badge:"v3.0 — 2026", title:"O Workspace Escolar\ndefinitivo", subtitle:"Notas, provas, chat, videochamadas, IDE, editor de documentos, desenho, IA integrada e muito mais — tudo num só sítio.", ctaText:"Descarregar para Windows", ctaLink: VERSIONS[0].url, secondaryText:"Saber mais", secondaryLink:"#features-section" },
+        hero: { badge:"v3.1 Super Stable", title:"O Workspace Escolar\ndefinitivo", subtitle:"Notas, provas, chat, videochamadas, IDE, editor de documentos, desenho, IA integrada e muito mais — tudo num só sítio.", ctaText:"Descarregar para Windows", ctaLink: VERSIONS[VERSIONS.length-1].url, secondaryText:"Saber mais", secondaryLink:"#features-section" },
         features: [
             { icon:"📊", title:"Notas e Provas", desc:"Regista notas, cria provas com questões, corrige automaticamente com IA e acompanha o teu desempenho." },
             { icon:"💬", title:"Chat e Videochamadas", desc:"Chat em tempo real com a turma e videochamadas integradas via Jitsi — sem contas extras." },
@@ -179,7 +180,7 @@
             { icon:"📊", name:"Analytics Avançado", desc:"Gráficos detalhados de desempenho por disciplina.", price:"€2.99", category:"produtividade", status:"coming" },
             { icon:"🎵", name:"Escrita Musical", desc:"Pentagrama profissional com 100+ instrumentos, mixer, playback e gravação de músicas multi-instrumento.", price:"€4.99", category:"criatividade", status:"available" }
         ],
-        footer: { title:"Feito para escolas", subtitle:"Interface moderna, escura e sem distrações", copyright:"S&O+ Ultra Workspace © 2026", downloadText:"Pronto para começar?", downloadSub:"Descarrega o instalador e tem o workspace a funcionar em menos de 1 minuto.", downloadBtn:"Descarregar v2.6 (~2MB)", downloadLink:"https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v2.6/S.O-Workspace-Instalador.exe", downloadInfo:"Windows 10/11 • Python instalado automaticamente • Grátis para sempre" },
+        footer: { title:"Feito para escolas", subtitle:"Interface moderna, escura e sem distrações", copyright:"S&O+ Ultra Workspace © 2026", downloadText:"Pronto para começar?", downloadSub:"Descarrega o instalador e tem o workspace a funcionar em menos de 1 minuto.", downloadBtn:"Descarregar v3.1 (~2MB)", downloadLink:"https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v3.1/S.O-Workspace-Instalador.exe", downloadInfo:"Windows 10/11 • Python instalado automaticamente • Grátis para sempre" },
         design: {}
     };
 
@@ -193,12 +194,16 @@
     db.ref('admin_config/versions').on('value', snap => {
         const v = snap.val();
         if (v) {
-            if (v.stableUrl) VERSIONS[3].url = v.stableUrl;
-            if (v.stableBadge) VERSIONS[3].label = v.stableBadge;
-            if (v.betaUrl) VERSIONS[2].url = v.betaUrl;
-            if (v.betaBadge) VERSIONS[2].label = v.betaBadge;
-            if (v.devUrl) VERSIONS[1].url = v.devUrl;
-            if (v.devBadge) VERSIONS[1].label = v.devBadge;
+            if (v.stableUrl) VERSIONS[0].url = v.stableUrl;
+            if (v.stableBadge) VERSIONS[0].label = v.stableBadge;
+            if (v.betaUrl) VERSIONS[1].url = v.betaUrl;
+            if (v.betaBadge) VERSIONS[1].label = v.betaBadge;
+            if (v.devUrl) VERSIONS[2].url = v.devUrl;
+            if (v.devBadge) VERSIONS[2].label = v.devBadge;
+            if (v.v3Url) VERSIONS[3].url = v.v3Url;
+            if (v.v3Badge) VERSIONS[3].label = v.v3Badge;
+            if (v.v31Url) VERSIONS[4].url = v.v31Url;
+            if (v.v31Badge) VERSIONS[4].label = v.v31Badge;
         }
     });
 

@@ -1935,8 +1935,17 @@ function renderVersions(area) {
                         <span style="padding:4px 10px;background:rgba(34,197,94,0.15);color:#22c55e;border-radius:6px;font-size:11px;font-weight:700;">v3.0</span>
                         <span style="font-size:18px;font-weight:700;">v3.0</span>
                     </div>
-                    <div class="field"><label>Link de Download</label><input id="ver-v3-url" value="https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v2.9-dev/S.O-Workspace-Instalador.exe"></div>
+                    <div class="field"><label>Link de Download</label><input id="ver-v3-url" value="https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v3.0/S.O-Workspace-Instalador.exe"></div>
                     <div class="field"><label>Badge Texto</label><input id="ver-v3-badge" value="v3.0"></div>
+                </div>
+
+                <div style="background:var(--card);border:1px solid rgba(6,182,212,0.3);border-radius:12px;padding:20px;">
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+                        <span style="padding:4px 10px;background:rgba(6,182,212,0.15);color:#06b6d4;border-radius:6px;font-size:11px;font-weight:700;">v3.1</span>
+                        <span style="font-size:18px;font-weight:700;">v3.1 Super Stable</span>
+                    </div>
+                    <div class="field"><label>Link de Download</label><input id="ver-v31-url" value="https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v3.1/S.O-Workspace-Instalador.exe"></div>
+                    <div class="field"><label>Badge Texto</label><input id="ver-v31-badge" value="v3.1 Super Stable"></div>
                 </div>
             </div>
 
@@ -2004,6 +2013,12 @@ function saveVersions() {
         stableBadge: document.getElementById('ver-stable-badge').value,
         betaUrl: document.getElementById('ver-beta-url').value,
         betaBadge: document.getElementById('ver-beta-badge').value,
+        devUrl: document.getElementById('ver-dev-url').value,
+        devBadge: document.getElementById('ver-dev-badge').value,
+        v3Url: document.getElementById('ver-v3-url').value,
+        v3Badge: document.getElementById('ver-v3-badge').value,
+        v31Url: document.getElementById('ver-v31-url').value,
+        v31Badge: document.getElementById('ver-v31-badge').value,
         updatedAt: Date.now()
     });
     showToast('Links de versão guardados!');

@@ -49,10 +49,14 @@
         .hero p { font-size: 18px; color: var(--text-light); max-width: 560px; line-height: 1.6; margin-bottom: 40px; }
         .hero-buttons { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
 
-        .version-tabs { display: flex; gap: 8px; margin-bottom: 28px; justify-content: center; }
-        .version-tab { padding: 8px 20px; font-size: 13px; font-weight: 600; cursor: pointer; border: 1px solid var(--border); background: var(--surface); color: var(--text-light); transition: all 0.3s; font-family: inherit; position: relative; border-radius: 8px; }
-        .version-tab:hover { color: var(--text); border-color: rgba(99,102,241,0.4); background: rgba(99,102,241,0.05); }
-        .version-tab.active { color: #fff; background: rgba(99,102,241,0.2); border-color: rgba(99,102,241,0.4); }
+        .version-selector { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; justify-content: center; }
+        .version-selector .vs-btn { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s; }
+        .version-selector .vs-btn:hover { border-color: var(--primary); background: rgba(99,102,241,0.1); }
+        .version-selector .vs-btn:active { transform: scale(0.9); }
+        .version-selector .vs-info { text-align: center; min-width: 160px; padding: 8px 20px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; cursor: pointer; transition: all 0.3s; }
+        .version-selector .vs-info:hover { border-color: var(--primary); }
+        .version-selector .vs-label { font-size: 16px; font-weight: 700; }
+        .version-selector .vs-desc { font-size: 11px; color: var(--text-light); margin-top: 2px; }
         .version-tab .beta-badge { display: inline-block; padding: 1px 6px; background: rgba(234,179,8,0.2); color: #eab308; border-radius: 4px; font-size: 10px; font-weight: 700; margin-left: 5px; vertical-align: middle; }
 
         .btn { padding: 14px 32px; border-radius: 12px; font-size: 15px; font-weight: 600; cursor: pointer; border: none; text-decoration: none; display: inline-flex; align-items: center; gap: 10px; transition: all 0.3s; font-family: inherit; }
@@ -145,15 +149,16 @@
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
 
-    const VERSIONS = {
-        stable: { label: 'v2.6 Estável', url: 'https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v2.6/S.O-Workspace-Instalador.exe' },
-        beta: { label: 'v2.8 Beta', url: 'https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v2.8-beta/S.O-Workspace-Instalador.exe' },
-        dev: { label: 'v2.9 Dev', url: 'https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v2.9-dev/S.O-Workspace-Instalador.exe' }
-    };
-    let currentVersion = 'stable';
+    const VERSIONS = [
+        { id:'v3', label: 'v3.0', desc:'Nova versão', url: 'https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v2.9-dev/S.O-Workspace-Instalador.exe', color:'#22c55e' },
+        { id:'dev', label: 'v2.9 Dev', desc:'Em desenvolvimento', url: 'https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v2.9-dev/S.O-Workspace-Instalador.exe', color:'#8b5cf6' },
+        { id:'beta', label: 'v2.8 Beta', desc:'Beta test', url: 'https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v2.8-beta/S.O-Workspace-Instalador.exe', color:'#eab308' },
+        { id:'stable', label: 'v2.6 Estável', desc:'Estável e testada', url: 'https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v2.6/S.O-Workspace-Instalador.exe', color:'#3b82f6' }
+    ];
+    let currentVersion = 0;
 
     const DEFAULT_DATA = {
-        hero: { badge:"v2.6 — 2026", title:"O Workspace Escolar\ndefinitivo", subtitle:"Notas, provas, chat, videochamadas, IDE, editor de documentos, desenho, IA integrada e muito mais — tudo num só sítio.", ctaText:"Descarregar para Windows", ctaLink: VERSIONS.stable.url, secondaryText:"Saber mais", secondaryLink:"#features-section" },
+        hero: { badge:"v3.0 — 2026", title:"O Workspace Escolar\ndefinitivo", subtitle:"Notas, provas, chat, videochamadas, IDE, editor de documentos, desenho, IA integrada e muito mais — tudo num só sítio.", ctaText:"Descarregar para Windows", ctaLink: VERSIONS[0].url, secondaryText:"Saber mais", secondaryLink:"#features-section" },
         features: [
             { icon:"📊", title:"Notas e Provas", desc:"Regista notas, cria provas com questões, corrige automaticamente com IA e acompanha o teu desempenho." },
             { icon:"💬", title:"Chat e Videochamadas", desc:"Chat em tempo real com a turma e videochamadas integradas via Jitsi — sem contas extras." },
@@ -188,12 +193,12 @@
     db.ref('admin_config/versions').on('value', snap => {
         const v = snap.val();
         if (v) {
-            if (v.stableUrl) VERSIONS.stable.url = v.stableUrl;
-            if (v.stableBadge) VERSIONS.stable.label = v.stableBadge;
-            if (v.betaUrl) VERSIONS.beta.url = v.betaUrl;
-            if (v.betaBadge) VERSIONS.beta.label = v.betaBadge;
-            if (v.devUrl) VERSIONS.dev.url = v.devUrl;
-            if (v.devBadge) VERSIONS.dev.label = v.devBadge;
+            if (v.stableUrl) VERSIONS[3].url = v.stableUrl;
+            if (v.stableBadge) VERSIONS[3].label = v.stableBadge;
+            if (v.betaUrl) VERSIONS[2].url = v.betaUrl;
+            if (v.betaBadge) VERSIONS[2].label = v.betaBadge;
+            if (v.devUrl) VERSIONS[1].url = v.devUrl;
+            if (v.devBadge) VERSIONS[1].label = v.devBadge;
         }
     });
 
@@ -237,13 +242,16 @@
             <div class="badge">${h.badge || ''}</div>
             <h1>${(h.title || '').replace(/\\n/g, '\n')}</h1>
             <p>${h.subtitle || ''}</p>
-            <div class="version-tabs">
-                <button class="version-tab${cv==='stable'?' active':''}" onclick="switchVersion('stable', this)" id="vt-stable">v2.6 Estável</button>
-                <button class="version-tab${cv==='beta'?' active':''}" onclick="switchVersion('beta', this)" id="vt-beta">v2.8 Beta</button>
-                <button class="version-tab${cv==='dev'?' active':''}" onclick="switchVersion('dev', this)" id="vt-dev">v2.9 Dev<span class="beta-badge">NEW</span></button>
+            <div class="version-selector">
+                <button class="vs-btn" onclick="versionPrev()" title="Versão anterior">◀</button>
+                <div class="vs-info" onclick="versionNext()" id="vs-display" style="border-color:${VERSIONS[currentVersion].color}40;">
+                    <div class="vs-label" style="color:${VERSIONS[currentVersion].color}">${VERSIONS[currentVersion].label}</div>
+                    <div class="vs-desc">${VERSIONS[currentVersion].desc}</div>
+                </div>
+                <button class="vs-btn" onclick="versionNext()" title="Próxima versão">▶</button>
             </div>
             <div class="hero-buttons">
-                <a href="${VERSIONS[cv].url}" class="btn btn-primary" id="hero-download-btn">
+                <a href="${VERSIONS[currentVersion].url}" class="btn btn-primary" id="hero-download-btn">
                     <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                     ${h.ctaText || 'Download'}
                 </a>
@@ -322,15 +330,18 @@
         document.getElementById('download-section').innerHTML = `
             <h2>${f.downloadText || 'Pronto para começar?'}</h2>
             <p>${f.downloadSub || ''}</p>
-                <div class="version-tabs">
-                <button class="version-tab${cv==='stable'?' active':''}" onclick="switchVersion('stable', this)" id="dl-vt-stable">v2.6 Estável</button>
-                <button class="version-tab${cv==='beta'?' active':''}" onclick="switchVersion('beta', this)" id="dl-vt-beta">v2.8 Beta</button>
-                <button class="version-tab${cv==='dev'?' active':''}" onclick="switchVersion('dev', this)" id="dl-vt-dev">v2.9 Dev<span class="beta-badge">NEW</span></button>
+                <div class="version-selector">
+                <button class="vs-btn" onclick="versionPrev()" title="Versão anterior">◀</button>
+                <div class="vs-info" onclick="versionNext()" id="dl-vs-display" style="border-color:${VERSIONS[currentVersion].color}40;">
+                    <div class="vs-label" style="color:${VERSIONS[currentVersion].color}">${VERSIONS[currentVersion].label}</div>
+                    <div class="vs-desc">${VERSIONS[currentVersion].desc}</div>
+                </div>
+                <button class="vs-btn" onclick="versionNext()" title="Próxima versão">▶</button>
             </div>
             <div class="hero-buttons" style="justify-content:center;">
-                <a href="${VERSIONS[cv].url}" class="btn btn-primary" id="dl-download-btn">
+                <a href="${VERSIONS[currentVersion].url}" class="btn btn-primary" id="dl-download-btn">
                     <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                    Descarregar ${VERSIONS[cv].label}
+                    Descarregar ${VERSIONS[currentVersion].label}
                 </a>
             </div>
             <p id="dl-info" style="margin-top:20px;font-size:12px;color:var(--text-light);">${f.downloadInfo || '~2 MB — Windows 7/10/11'}</p>
@@ -379,21 +390,36 @@
         dots.forEach((d, i) => d.classList.toggle('active', i === mainSliderIdx));
     }
 
-    function switchVersion(ver, btn) {
-        currentVersion = ver;
-        const url = VERSIONS[ver].url;
-        const info = ver === 'beta' ? '~7 MB — Windows 7/10/11' : '~2 MB — Windows 7/10/11';
-        document.querySelectorAll('.version-tab').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll(`.version-tab[onclick*="'${ver}'"]`).forEach(t => t.classList.add('active'));
+    function versionNext() {
+        currentVersion = (currentVersion + 1) % VERSIONS.length;
+        _updateVersionDisplay();
+    }
+    function versionPrev() {
+        currentVersion = (currentVersion - 1 + VERSIONS.length) % VERSIONS.length;
+        _updateVersionDisplay();
+    }
+    function _updateVersionDisplay() {
+        const v = VERSIONS[currentVersion];
         const heroBtn = document.getElementById('hero-download-btn');
         const dlBtn = document.getElementById('dl-download-btn');
-        if (heroBtn) heroBtn.href = url;
+        const vsDisplay = document.getElementById('vs-display');
+        const dlVsDisplay = document.getElementById('dl-vs-display');
+        // Update displays
+        [vsDisplay, dlVsDisplay].forEach(el => {
+            if (!el) return;
+            el.style.borderColor = v.color + '40';
+            el.querySelector('.vs-label').textContent = v.label;
+            el.querySelector('.vs-label').style.color = v.color;
+            el.querySelector('.vs-desc').textContent = v.desc;
+        });
+        // Update buttons
+        if (heroBtn) heroBtn.href = v.url;
         if (dlBtn) {
-            dlBtn.href = url;
-            dlBtn.innerHTML = `<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Descarregar ${VERSIONS[ver].label}`;
+            dlBtn.href = v.url;
+            dlBtn.innerHTML = `<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Descarregar ${v.label}`;
         }
         const infoEl = document.getElementById('dl-info');
-        if (infoEl) infoEl.textContent = info;
+        if (infoEl) infoEl.textContent = v.id === 'beta' ? '~7 MB — Windows 7/10/11' : '~2 MB — Windows 7/10/11';
     }
 
     document.querySelectorAll('a[href^="#"]').forEach(a => {

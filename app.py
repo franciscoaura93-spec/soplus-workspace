@@ -975,6 +975,7 @@ def proxy_fetch():
 # ════════════════════════════════════════════════════════════
 _pw_browser = None
 _pw_instance = None
+_pw_page = None  # Reusable page for speed
 
 def _get_pw_browser():
     global _pw_browser, _pw_instance
@@ -986,9 +987,30 @@ def _get_pw_browser():
             args=['--no-sandbox','--disable-dev-shm-usage','--disable-gpu',
                   '--disable-background-networking','--disable-default-apps',
                   '--disable-sync','--disable-translate','--metrics-recording-only',
-                  '--no-first-run','--disable-blink-features=AutomationControlled']
+                  '--no-first-run','--disable-blink-features=AutomationControlled',
+                  '--disk-cache-size=52428800','--media-cache-size=52428800']
         )
     return _pw_browser
+
+def _get_pw_page():
+    """Reuse same page + context = persistent cache, DNS cache, cookies."""
+    global _pw_page, _pw_browser
+    browser = _get_pw_browser()
+    if _pw_page is None or _pw_page.is_closed():
+        ctx = browser.new_context(
+            user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+            viewport={'width': 1280, 'height': 800},
+            java_script_enabled=True
+        )
+        # Block ads/trackers once at context level
+        def _route_handler(route):
+            req_host = _urlparse.urlparse(route.request.url).hostname or ''
+            if any(d in req_host for d in AD_DOMAINS):
+                return route.abort()
+            return route.continue_()
+        ctx.route('**/*', _route_handler)
+        _pw_page = ctx.new_page()
+    return _pw_page
 
 AD_DOMAINS = {'doubleclick.net','googlesyndication.com','googleadservices.com','adnxs.com',
     'adsrvr.org','facebook.net','google-analytics.com','googletagmanager.com',
@@ -1022,29 +1044,15 @@ def browse_page():
 
     # ── Playwright: full JS render with video/image support ──
     try:
-        browser = _get_pw_browser()
-        page = browser.new_page(
-            user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
-            viewport={'width': 1280, 'height': 800},
-            java_script_enabled=True
-        )
+        page = _get_pw_page()
         try:
-            # Block ONLY ads and trackers — keep images, videos, fonts
-            def _route_handler(route):
-                req_url = route.request.url
-                req_host = _urlparse.urlparse(req_url).hostname or ''
-                if any(d in req_host for d in AD_DOMAINS):
-                    return route.abort()
-                return route.continue_()
-            page.route('**/*', _route_handler)
-
-            page.goto(url, wait_until='commit', timeout=25000)
+            page.goto(url, wait_until='commit', timeout=20000)
             try:
-                page.wait_for_load_state('domcontentloaded', timeout=12000)
+                page.wait_for_load_state('domcontentloaded', timeout=10000)
             except:
                 pass
             try:
-                page.wait_for_load_state('networkidle', timeout=10000)
+                page.wait_for_load_state('networkidle', timeout=8000)
             except:
                 pass
 
@@ -1071,8 +1079,16 @@ def browse_page():
             html = f'<base href="{base_origin}/">' + html
             title = page.title() or _br_extract_title(html)
             return jsonify({'html': html, 'title': title, 'url': final_url, 'mode': 'playwright'})
-        finally:
-            page.close()
+        except Exception as page_err:
+            # Reset page on error so next request gets a fresh one
+            global _pw_page
+            try:
+                if _pw_page and not _pw_page.is_closed():
+                    _pw_page.close()
+            except:
+                pass
+            _pw_page = None
+            raise page_err
     except Exception as e:
         print(f"[Playwright falhou para {url}: {e}] — fallback lite")
         return _browse_lite(url)

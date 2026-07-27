@@ -213,6 +213,7 @@ function _pesqBrowserPanel() {
             <button onclick="brBookmarkPage()" title="Bookmark" style="background:none;border:none;font-size:14px;cursor:pointer;padding:3px 6px;border-radius:6px;color:${_brIsBookmarked(tab?.url) ? 'var(--accent)' : 'var(--text-light)'};">${_brIsBookmarked(tab?.url) ? '⭐' : '☆'}</button>
             <button onclick="brReaderMode()" title="Reader Mode" style="background:none;border:none;font-size:14px;cursor:pointer;padding:3px 6px;border-radius:6px;color:var(--text-light);">📖</button>
             <button onclick="brAiSummarize()" title="Resumo IA" style="background:none;border:none;font-size:14px;cursor:pointer;padding:3px 6px;border-radius:6px;color:var(--text-light);">🤖</button>
+            <button onclick="brOpenNative()" title="Abrir em browser nativo (pywebview)" style="background:none;border:none;font-size:14px;cursor:pointer;padding:3px 6px;border-radius:6px;color:var(--text-light);">🖥️</button>
         </div>
         ${pesqPrivado ? '<div style="display:flex;align-items:center;gap:12px;padding:3px 10px;background:rgba(99,102,241,0.06);border-bottom:1px solid rgba(99,102,241,0.15);font-size:9px;color:var(--primary);"><span>🛡️ Proxy ativo</span><span>• IP oculto</span><span>• Anúncios bloqueados</span><span>• Sem rasto</span></div>' : ''}
         <div id="br-content" style="flex:1;overflow:hidden;position:relative;">
@@ -476,4 +477,24 @@ function brReaderMode() {
         </div>`;
         document.body.appendChild(ov);
     } catch(e) { showToast('Não foi possível extrair conteúdo','warning'); }
+}
+
+// ─── Open in native pywebview window ───
+async function brOpenNative() {
+    const tab = brTabs[brActive];
+    if (!tab || tab.url === BR_START) { showToast('Abre um site primeiro','warning'); return; }
+    try {
+        const r = await fetch('/api/browser/open-native', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ url: tab.url, title: tab.title || '' })
+        });
+        const data = await r.json();
+        if (data.ok) {
+            showToast('🖥️ Browser nativo aberto!','success');
+        } else {
+            showToast(data.error || 'Erro ao abrir browser nativo','warning');
+        }
+    } catch(e) {
+        showToast('Erro ao comunicar com o servidor','warning');
+    }
 }

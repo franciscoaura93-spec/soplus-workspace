@@ -72,7 +72,6 @@ Write-Host "[2/3] A instalar dependências..." -ForegroundColor Yellow
 if ($pyCmd) {
     & $pyCmd -m pip install --user flask requests 2>&1 | Out-Null
     & $pyCmd -m pip install --user -r (Join-Path $PSScriptRoot "requirements.txt") 2>&1 | Out-Null
-    & $pyCmd -m pip install --user ddgs 2>&1 | Out-Null
 }
 Write-Host "✓ Dependências instaladas" -ForegroundColor Green
 

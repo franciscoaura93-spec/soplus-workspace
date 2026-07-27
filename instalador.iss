@@ -1,6 +1,6 @@
 [Setup]
 AppName=S+O Ultra Workspace
-AppVersion=3.1
+AppVersion=3.0
 AppPublisher=S+O+
 DefaultDirName={autopf}\S+O Workspace
 DefaultGroupName=S+O Ultra Workspace
@@ -12,7 +12,7 @@ Compression=lzma2/ultra64
 SolidCompression=yes
 PrivilegesRequired=lowest
 DisableProgramGroupPage=yes
-VersionInfoVersion=3.1.0.0
+VersionInfoVersion=3.0.0.0
 VersionInfoDescription=S.O+ Ultra Workspace Installer
 
 [Languages]
@@ -32,6 +32,7 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 [Files]
 Source: "app.py"; DestDir: "{app}"; Flags: ignoreversion
 Source: "moodle.py"; DestDir: "{app}"; Flags: ignoreversion
+Source: "browser.py"; DestDir: "{app}"; Flags: ignoreversion
 Source: ".env"; DestDir: "{app}"; Flags: ignoreversion
 Source: "requirements.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "iniciar.bat"; DestDir: "{app}"; Flags: ignoreversion

@@ -4,7 +4,7 @@ color 0B
 cls
 echo.
 echo   ╔══════════════════════════════════════╗
-echo   ║   S^&O+ Ultra Workspace v3.1         ║
+echo   ║   S^&O+ Ultra Workspace v3.0         ║
 echo   ║   A arrancar...                      ║
 echo   ╚══════════════════════════════════════╝
 echo.

@@ -912,8 +912,15 @@ def face_all():
 
 
 # ════════════════════════════════════════════════════════════
-#   v3.1 Super Stable — no browser, no proxy, no playwright
+#   BROWSER — imported from browser.py (playwright + proxy)
 # ════════════════════════════════════════════════════════════
+try:
+    from browser import browser_bp
+    app.register_blueprint(browser_bp)
+    HAS_BROWSER = True
+except Exception as e:
+    print(f"[browser.py não encontrado: {e}]")
+    HAS_BROWSER = False
 
 if __name__ == '__main__':
     import webbrowser, threading

@@ -289,34 +289,31 @@ _browser_bookmarks = []
 _browser_history = []
 
 # ═══════════════════════════════════════════════════════════
-#  PYWEBVIEW — native browser window
+#  PYWEBVIEW — native browser window (runs in a SEPARATE PROCESS)
 # ═══════════════════════════════════════════════════════════
-_pywebview_windows = []
+import multiprocessing as _mp
+
+
+def _pw_worker(url, title):
+    """This runs in its own process — main thread, clean slate."""
+    import webview
+    webview.create_window(title, url, width=1200, height=800,
+                          min_size=(600, 400), text_select=True, zoomable=True)
+    webview.start(debug=False)
 
 
 def _open_pywebview(url, title='S&O+ Browser'):
-    """Open a native Edge WebView2 window with the given URL. Thread-safe."""
+    """Open a native Edge WebView2 window in a separate process."""
     try:
-        import webview
-        def _create():
-            try:
-                w = webview.create_window(
-                    title or 'S&O+ Browser',
-                    url,
-                    width=1200, height=800,
-                    min_size=(600, 400),
-                    text_select=True,
-                    zoomable=True
-                )
-                _pywebview_windows.append(w)
-                webview.start(debug=False)
-            except Exception as e:
-                print(f"[pywebview error: {e}]")
-
-        t = threading.Thread(target=_create, daemon=True)
-        t.start()
+        import webview  # noqa: F401 — just verify it's installed
+        p = _mp.Process(target=_pw_worker, args=(url, title or 'S&O+ Browser'),
+                        daemon=True)
+        p.start()
         return True
     except ImportError:
+        return False
+    except Exception as e:
+        print(f"[pywebview error: {e}]")
         return False
 
 

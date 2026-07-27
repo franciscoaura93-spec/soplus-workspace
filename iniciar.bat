@@ -4,32 +4,26 @@ color 0B
 cls
 echo.
 echo   ╔══════════════════════════════════════╗
-echo   ║   S^&O+ Ultra Workspace v3.0         ║
-echo   ║   A arrancar...                      ║
+echo   ║   S^&O+ Ultra Workspace v3.2         ║
+echo   ║   A arrancar em pywebview...         ║
 echo   ╚══════════════════════════════════════╝
 echo.
 cd /d "%~dp0"
 
 where python >nul 2>&1
 if %errorlevel%==0 (
-    start "" python app.py
-    timeout /t 2 >nul
-    start http://localhost:5000
+    python launcher.py
     goto :end
 )
 
 where py >nul 2>&1
 if %errorlevel%==0 (
-    start "" py app.py
-    timeout /t 2 >nul
-    start http://localhost:5000
+    py launcher.py
     goto :end
 )
 
 if exist "C:\Users\Francisco Rodrigues\AppData\Local\Programs\Python\Python312\python.exe" (
-    start "" "C:\Users\Francisco Rodrigues\AppData\Local\Programs\Python\Python312\python.exe" app.py
-    timeout /t 2 >nul
-    start http://localhost:5000
+    "C:\Users\Francisco Rodrigues\AppData\Local\Programs\Python\Python312\python.exe" launcher.py
     goto :end
 )
 

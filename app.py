@@ -1127,6 +1127,49 @@ def _br_extract_title(html):
     return m.group(1).strip() if m else 'Sem título'
 
 
+# ─── BROWSER API ───────────────────────────────────────────
+import http.cookiejar as _cookiejar
+
+_browser_bookmarks = []
+_browser_history = []
+
+@app.route('/browser')
+def browser_page():
+    return render_template('browser.html')
+
+@app.route('/api/browser/bookmarks', methods=['GET'])
+def browser_get_bookmarks():
+    return jsonify(_browser_bookmarks)
+
+@app.route('/api/browser/bookmarks', methods=['POST'])
+def browser_add_bookmark():
+    d = request.json or {}
+    url, name = d.get('url',''), d.get('name','')
+    if url and not any(b['url']==url for b in _browser_bookmarks):
+        _browser_bookmarks.append({'url':url,'name':name or url})
+    return jsonify({'ok':True})
+
+@app.route('/api/browser/bookmarks', methods=['DELETE'])
+def browser_del_bookmark():
+    d = request.json or {}
+    url = d.get('url','')
+    global _browser_bookmarks
+    _browser_bookmarks = [b for b in _browser_bookmarks if b['url']!=url]
+    return jsonify({'ok':True})
+
+@app.route('/api/browser/history', methods=['GET'])
+def browser_get_history():
+    return jsonify(_browser_history[:30])
+
+@app.route('/api/browser/history', methods=['POST'])
+def browser_add_history():
+    d = request.json or {}
+    url, title = d.get('url',''), d.get('title','')
+    _browser_history.insert(0, {'url':url,'title':title or url})
+    del _browser_history[31:]
+    return jsonify({'ok':True})
+
+
 if __name__ == '__main__':
     import webbrowser, threading
     threading.Timer(1.5, lambda: webbrowser.open('http://localhost:5000')).start()

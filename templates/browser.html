@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>S&O+ Browser</title>
+<link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{--bg:#0a0a14;--surface:#12121e;--border:#1e1e35;--text:#e2e8f0;--text-light:#64748b;--primary:#6366f1;--accent:#8b5cf6;--success:#22c55e;--danger:#ef4444;}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+
+/* ─── Tab bar ─── */
+.tab-bar{display:flex;align-items:center;background:var(--surface);border-bottom:1px solid var(--border);min-height:38px;padding:0 4px;gap:2px;}
+.tab{display:flex;align-items:center;gap:6px;padding:6px 14px;cursor:pointer;font-size:12px;border-radius:8px 8px 0 0;max-width:180px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;transition:all 0.15s;color:var(--text-light);border:1px solid transparent;}
+.tab:hover{background:rgba(99,102,241,0.06);}
+.tab.active{background:var(--bg);font-weight:700;color:var(--accent);border-color:var(--border);border-bottom-color:var(--bg);}
+.tab .fav{font-size:13px;}
+.tab .close{font-size:13px;color:var(--text-light);border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;margin-left:2px;}
+.tab .close:hover{background:rgba(239,68,68,0.15);color:var(--danger);}
+.tab-add{font-size:18px;cursor:pointer;padding:4px 10px;border-radius:6px;color:var(--text-light);transition:background 0.15s;}
+.tab-add:hover{background:rgba(99,102,241,0.1);}
+
+/* ─── URL bar ─── */
+.url-bar{display:flex;align-items:center;gap:6px;padding:5px 8px;background:var(--surface);border-bottom:1px solid var(--border);}
+.url-bar button{background:none;border:none;color:var(--text);font-size:16px;cursor:pointer;padding:4px 8px;border-radius:6px;transition:background 0.15s;}
+.url-bar button:hover{background:rgba(99,102,241,0.1);}
+.url-box{flex:1;display:flex;align-items:center;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:0 12px;transition:border-color 0.2s;}
+.url-box:focus-within{border-color:var(--primary);}
+.url-box .scheme{font-size:12px;font-weight:600;margin-right:6px;}
+.url-box .scheme.secure{color:var(--success);}
+.url-box .scheme.insecure{color:var(--text-light);}
+.url-box input{flex:1;border:none;background:none;padding:7px 0;color:var(--text);font-size:13px;outline:none;font-family:inherit;}
+.priv-badge{font-size:9px;background:rgba(99,102,241,0.15);color:var(--accent);padding:2px 8px;border-radius:10px;font-weight:700;white-space:nowrap;display:none;}
+.priv-badge.on{display:inline;}
+
+/* ─── Panels ─── */
+.browser-panel{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative;}
+.browser-panel iframe{flex:1;border:none;background:#fff;}
+.browser-loading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg);z-index:5;}
+.browser-loading .spinner{width:30px;height:30px;border:3px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin 0.8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* ─── Home page ─── */
+.home{flex:1;overflow-y:auto;padding:40px 24px;text-align:center;}
+.home h1{font-size:36px;font-weight:800;background:linear-gradient(135deg,var(--primary),var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:6px;}
+.home p{color:var(--text-light);font-size:14px;margin-bottom:28px;}
+.search-box{max-width:540px;margin:0 auto 32px;display:flex;gap:10px;}
+.search-box input{flex:1;padding:14px 18px;border-radius:14px;border:2px solid var(--border);background:var(--surface);color:var(--text);font-size:16px;outline:none;transition:border-color 0.2s;font-family:inherit;}
+.search-box input:focus{border-color:var(--primary);}
+.search-box button{padding:14px 28px;border-radius:14px;background:var(--primary);color:#fff;border:none;font-size:15px;font-weight:600;cursor:pointer;transition:transform 0.15s;font-family:inherit;}
+.search-box button:hover{transform:scale(1.03);}
+.sec-label{font-size:12px;font-weight:700;color:var(--text-light);margin-bottom:10px;text-align:left;max-width:600px;margin-left:auto;margin-right:auto;text-transform:uppercase;letter-spacing:0.5px;}
+.shortcuts{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px;max-width:600px;margin:0 auto 28px;}
+.shortcut{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 6px;text-align:center;cursor:pointer;transition:all 0.2s;}
+.shortcut:hover{border-color:var(--primary);transform:translateY(-2px);box-shadow:0 4px 12px rgba(99,102,241,0.15);}
+.shortcut .icon{font-size:26px;margin-bottom:4px;}
+.shortcut .name{font-size:11px;font-weight:600;}
+
+/* ─── History sidebar ─── */
+.history-panel{display:none;position:absolute;right:0;top:0;bottom:0;width:280px;background:var(--surface);border-left:1px solid var(--border);z-index:10;overflow-y:auto;padding:12px;}
+.history-panel.open{display:block;}
+.history-panel h3{font-size:13px;font-weight:700;margin-bottom:10px;color:var(--text-light);}
+.history-item{padding:8px 10px;border-radius:8px;cursor:pointer;font-size:12px;margin-bottom:4px;transition:background 0.15s;color:var(--text);}
+.history-item:hover{background:rgba(99,102,241,0.08);}
+.history-item .url{color:var(--primary);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+/* ─── Status bar ─── */
+.status-bar{display:flex;align-items:center;gap:12px;padding:2px 10px;background:var(--surface);border-top:1px solid var(--border);font-size:10px;color:var(--text-light);min-height:20px;}
+</style>
+</head>
+<body>
+
+<!-- Tab bar -->
+<div class="tab-bar" id="tabBar"></div>
+
+<!-- URL bar -->
+<div class="url-bar" id="urlBar"></div>
+
+<!-- Content area -->
+<div id="panels"></div>
+
+<!-- Status bar -->
+<div class="status-bar" id="statusBar"><span>Pronto</span></div>
+
+<script>
+const SHORTCUTS = [
+    {name:'Google',url:'https://www.google.pt',icon:'🔍'},
+    {name:'YouTube',url:'https://www.youtube.com',icon:'▶️'},
+    {name:'Wikipedia',url:'https://pt.wikipedia.org',icon:'📚'},
+    {name:'Gmail',url:'https://mail.google.com',icon:'📧'},
+    {name:'Drive',url:'https://drive.google.com',icon:'💾'},
+    {name:'Classroom',url:'https://classroom.google.com',icon:'🏫'},
+    {name:'GitHub',url:'https://github.com',icon:'💻'},
+    {name:'DeepL',url:'https://www.deepl.com',icon:'🌐'},
+    {name:'Canva',url:'https://www.canva.com',icon:'🎨'},
+    {name:'Khan',url:'https://pt.khanacademy.org',icon:'🎓'},
+    {name:'Quizlet',url:'https://quizlet.com',icon:'🃏'},
+    {name:'Reddit',url:'https://www.reddit.com',icon:'💬'},
+    {name:'Público',url:'https://www.publico.pt',icon:'📰'},
+    {name:'Wolfram',url:'https://www.wolframalpha.com',icon:'🧮'},
+    {name:'Spotify',url:'https://open.spotify.com',icon:'🎵'},
+];
+
+let tabs = [{url:'home',title:'Nova aba'}];
+let active = 0;
+let isPrivate = false;
+let historyOpen = false;
+
+// ═══════════════════════════════════════
+//   RENDER
+// ═══════════════════════════════════════
+function render() {
+    renderTabs();
+    renderUrlBar();
+    renderContent();
+}
+
+function renderTabs() {
+    document.getElementById('tabBar').innerHTML = tabs.map((t,i) => {
+        const domain = t.url !== 'home' ? new URL(t.url).hostname.replace('www.','') : '';
+        return `<div class="tab ${i===active?'active':''}" onclick="switchTab(${i})">
+            <span class="fav">${t.url==='home'?'🏠':'🌐'}</span>
+            <span>${escapeHTML(t.title)}</span>
+            <span class="close" onclick="event.stopPropagation();closeTab(${i})">✕</span>
+        </div>`;
+    }).join('') + '<span class="tab-add" onclick="newTab()">+</span>';
+}
+
+function renderUrlBar() {
+    const t = tabs[active];
+    const isHome = !t || t.url === 'home';
+    const url = isHome ? '' : t.url;
+    const isSecure = url.startsWith('https://');
+    document.getElementById('urlBar').innerHTML = `
+        <span class="priv-badge ${isPrivate?'on':''}" id="privBadge">🕶️ PRIVADO</span>
+        <button onclick="goBack()" title="Voltar" ${isHome?'disabled':''}>◀</button>
+        <button onclick="goForward()" title="Avançar" ${isHome?'disabled':''}>▶</button>
+        <button onclick="refreshPage()" title="Atualizar" ${isHome?'disabled':''}>🔄</button>
+        <div class="url-box">
+            <span class="scheme ${isSecure||isHome?'secure':'insecure'}">${isHome?'🏠':isSecure?'🔒':'🌐'}</span>
+            <input id="urlInput" value="${escapeHTML(url)}" placeholder="Pesquisar ou escrever URL..."
+                   onkeydown="if(event.key==='Enter')navigate(this.value)" onfocus="this.select()">
+        </div>
+        <button onclick="toggleBookmark()" title="Bookmark" id="bmBtn">${isBookmarked(url)?'⭐':'☆'}</button>
+        <button onclick="togglePrivate()" title="Modo Privado" id="privBtn">${isPrivate?'🕶️':'👤'}</button>
+        <button onclick="toggleHistory()" title="Histórico">📋</button>
+        <button onclick="openExternal()" title="Abrir no navegador do sistema">↗️</button>
+    `;
+}
+
+function renderContent() {
+    const t = tabs[active];
+    const isHome = !t || t.url === 'home';
+    const panels = document.getElementById('panels');
+
+    if (isHome) {
+        panels.innerHTML = `
+            <div class="home">
+                <h1>S&O+ Browser</h1>
+                <p>Navegador real — abre sites diretamente no teu computador</p>
+                <div class="search-box">
+                    <input id="homeInput" placeholder="Pesquisar na web ou escrever URL..."
+                           onkeydown="if(event.key==='Enter')navigate(this.value)" autofocus>
+                    <button onclick="navigate(document.getElementById('homeInput').value)">🔍 Pesquisar</button>
+                </div>
+                <div class="sec-label">🚀 Acesso rápido</div>
+                <div class="shortcuts">${SHORTCUTS.map(s => `
+                    <div class="shortcut" onclick="navigate('${s.url}')">
+                        <div class="icon">${s.icon}</div>
+                        <div class="name">${s.name}</div>
+                    </div>
+                `).join('')}</div>
+            </div>`;
+    } else {
+        panels.innerHTML = `
+            <div class="browser-panel" id="browserPanel">
+                <div class="browser-loading" id="loader"><div class="spinner"></div></div>
+                <iframe id="contentFrame" sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-downloads allow-modals allow-presentation allow-popups-to-escape-sandbox" allow="autoplay;encrypted-media;fullscreen;picture-in-picture" onload="onFrameLoad()" onerror="onFrameError()"></iframe>
+            </div>
+            <div class="history-panel" id="historyPanel"></div>
+        `;
+        document.getElementById('contentFrame').src = t.url;
+    }
+}
+
+// ═══════════════════════════════════════
+//   NAVIGATION
+// ═══════════════════════════════════════
+function navigate(raw) {
+    if (!raw || !raw.trim()) return;
+    let url = raw.trim();
+    if (!url.match(/^https?:\/\//i)) {
+        if (url.includes('.') && !url.includes(' ')) url = 'https://' + url;
+        else url = 'https://www.google.pt/search?q=' + encodeURIComponent(url);
+    }
+    tabs[active] = {url, title: _domain(url)};
+    render();
+    fetch('/api/browser/history', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url,title:tabs[active].title})}).catch(()=>{});
+}
+
+function onFrameLoad() {
+    const frame = document.getElementById('contentFrame');
+    const loader = document.getElementById('loader');
+    if (loader) loader.style.display = 'none';
+    try {
+        const title = frame.contentDocument?.title || tabs[active].title;
+        tabs[active].title = title;
+        renderTabs();
+        document.getElementById('statusBar').innerHTML = '<span>✅ ' + escapeHTML(title) + '</span>';
+        // Update URL bar with final URL
+        const finalUrl = frame.contentWindow?.location?.href || tabs[active].url;
+        document.getElementById('urlInput').value = finalUrl;
+    } catch(e) {
+        document.getElementById('statusBar').innerHTML = '<span>⚠️ Cross-origin — sem acesso ao conteúdo</span>';
+    }
+}
+
+function onFrameError() {
+    const loader = document.getElementById('loader');
+    if (loader) loader.innerHTML = '<div style="text-align:center;"><div style="font-size:40px;margin-bottom:12px;">⚠️</div><h3 style="font-size:16px;">Erro ao carregar</h3><p style="color:var(--text-light);font-size:13px;margin-top:8px;">Verifica o URL e tenta novamente</p></div>';
+}
+
+function newTab() { tabs.push({url:'home',title:'Nova aba'}); active=tabs.length-1; render(); }
+function switchTab(i) { active=i; render(); }
+function closeTab(i) { if(tabs.length<=1) return; tabs.splice(i,1); if(active>=tabs.length) active=tabs.length-1; render(); }
+function goBack() { try{document.getElementById('contentFrame')?.contentWindow.history.back();}catch(e){} }
+function goForward() { try{document.getElementById('contentFrame')?.contentWindow.history.forward();}catch(e){} }
+function refreshPage() {
+    const f = document.getElementById('contentFrame');
+    if (f) { const loader = document.getElementById('loader'); if(loader) loader.style.display='flex'; f.src = f.src; }
+}
+
+// ═══════════════════════════════════════
+//   BOOKMARKS
+// ═══════════════════════════════════════
+let bookmarks = JSON.parse(localStorage.getItem('br_bookmarks_v2')||'[]');
+function isBookmarked(url) { return bookmarks.some(b=>b.url===url); }
+function toggleBookmark() {
+    const t = tabs[active]; if(!t||t.url==='home') return;
+    if (isBookmarked(t.url)) {
+        bookmarks = bookmarks.filter(b=>b.url!==t.url);
+        fetch('/api/browser/bookmarks',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:t.url})}).catch(()=>{});
+    } else {
+        bookmarks.push({url:t.url,name:t.title});
+        fetch('/api/browser/bookmarks',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:t.url,name:t.title})}).catch(()=>{});
+    }
+    localStorage.setItem('br_bookmarks_v2',JSON.stringify(bookmarks));
+    renderUrlBar();
+}
+
+// ═══════════════════════════════════════
+//   PRIVATE MODE
+// ═══════════════════════════════════════
+function togglePrivate() {
+    isPrivate = !isPrivate;
+    renderUrlBar();
+}
+
+// ═══════════════════════════════════════
+//   HISTORY
+// ═══════════════════════════════════════
+function toggleHistory() {
+    const panel = document.getElementById('historyPanel');
+    if (!panel) return;
+    historyOpen = !historyOpen;
+    panel.classList.toggle('open', historyOpen);
+    if (historyOpen) loadHistory();
+}
+async function loadHistory() {
+    const panel = document.getElementById('historyPanel');
+    try {
+        const r = await fetch('/api/browser/history');
+        const data = await r.json();
+        panel.innerHTML = `<h3>📋 Histórico</h3>${data.map(h => `
+            <div class="history-item" onclick="navigate('${escapeHTML(h.url)}')">
+                <div>${escapeHTML(h.title)}</div>
+                <div class="url">${escapeHTML(h.url)}</div>
+            </div>
+        `).join('') || '<p style="font-size:12px;color:var(--text-light);">Sem histórico</p>'}`;
+    } catch(e) {
+        panel.innerHTML = '<h3>📋 Histórico</h3><p style="font-size:12px;color:var(--text-light);">Erro ao carregar</p>';
+    }
+}
+
+// ═══════════════════════════════════════
+//   EXTERNAL
+// ═══════════════════════════════════════
+function openExternal() {
+    const t = tabs[active];
+    if (t && t.url !== 'home') window.open(t.url, '_blank');
+}
+
+// ═══════════════════════════════════════
+//   HELPERS
+// ═══════════════════════════════════════
+function _domain(u) { try{return new URL(u).hostname.replace('www.','');}catch(e){return u.slice(0,30);} }
+function escapeHTML(s) { if(!s)return''; const d=document.createElement('div');d.textContent=s;return d.innerHTML; }
+
+// ═══════════════════════════════════════
+//   INIT
+// ═══════════════════════════════════════
+render();
+</script>
+</body>
+</html>

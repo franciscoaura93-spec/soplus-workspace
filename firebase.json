@@ -1,5 +1,6 @@
 {
   "hosting": {
+    "site": "s123o-f3e37",
     "public": "site",
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "rewrites": [],

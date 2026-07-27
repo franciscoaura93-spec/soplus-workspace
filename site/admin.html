@@ -1947,6 +1947,15 @@ function renderVersions(area) {
                     <div class="field"><label>Link de Download</label><input id="ver-v31-url" value="https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v3.1/S.O-Workspace-Instalador.exe"></div>
                     <div class="field"><label>Badge Texto</label><input id="ver-v31-badge" value="v3.1 Super Stable"></div>
                 </div>
+
+                <div style="background:var(--card);border:1px solid rgba(245,158,11,0.3);border-radius:12px;padding:20px;">
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+                        <span style="padding:4px 10px;background:rgba(245,158,11,0.15);color:#f59e0b;border-radius:6px;font-size:11px;font-weight:700;">v3.2</span>
+                        <span style="font-size:18px;font-weight:700;">v3.2 pywebview Browser</span>
+                    </div>
+                    <div class="field"><label>Link de Download</label><input id="ver-v32-url" value="https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v3.2/S.O-Workspace-Instalador.exe"></div>
+                    <div class="field"><label>Badge Texto</label><input id="ver-v32-badge" value="v3.2"></div>
+                </div>
             </div>
 
             <div style="display:flex;gap:10px;margin-top:20px;">
@@ -2019,6 +2028,8 @@ function saveVersions() {
         v3Badge: document.getElementById('ver-v3-badge').value,
         v31Url: document.getElementById('ver-v31-url').value,
         v31Badge: document.getElementById('ver-v31-badge').value,
+        v32Url: document.getElementById('ver-v32-url').value,
+        v32Badge: document.getElementById('ver-v32-badge').value,
         updatedAt: Date.now()
     });
     showToast('Links de versão guardados!');

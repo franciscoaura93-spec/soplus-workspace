@@ -154,12 +154,13 @@
         { id:'beta', label: 'v2.8 Beta', desc:'Beta test', url: 'https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v2.8-beta/S.O-Workspace-Instalador.exe', color:'#eab308' },
         { id:'dev', label: 'v2.9 Dev', desc:'Em desenvolvimento', url: 'https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v2.9-dev/S.O-Workspace-Instalador.exe', color:'#8b5cf6' },
         { id:'v3', label: 'v3.0', desc:'Browser integrado', url: 'https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v3.0/S.O-Workspace-Instalador.exe', color:'#22c55e' },
-        { id:'v31', label: 'v3.1 Super Stable', desc:'Tudo estable, sem browser', url: 'https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v3.1/S.O-Workspace-Instalador.exe', color:'#06b6d4' }
+        { id:'v31', label: 'v3.1 Super Stable', desc:'Tudo estable, sem browser', url: 'https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v3.1/S.O-Workspace-Instalador.exe', color:'#06b6d4' },
+        { id:'v32', label: 'v3.2', desc:'100% pywebview Browser', url: 'https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v3.2/S.O-Workspace-Instalador.exe', color:'#f59e0b' }
     ];
     let currentVersion = VERSIONS.length - 1;
 
     const DEFAULT_DATA = {
-        hero: { badge:"v3.0 — Browser Integrado", title:"O Workspace Escolar\ndefinitivo", subtitle:"Notas, provas, chat, videochamadas, IDE, editor de documentos, desenho, IA integrada e muito mais — tudo num só sítio.", ctaText:"Descarregar para Windows", ctaLink: VERSIONS[3].url, secondaryText:"Saber mais", secondaryLink:"#features-section" },
+        hero: { badge:"v3.2 — 100% pywebview Browser", title:"O Workspace Escolar\ndefinitivo", subtitle:"Notas, provas, chat, videochamadas, IDE, editor de documentos, desenho, IA integrada e muito mais — tudo num só sítio.", ctaText:"Descarregar para Windows", ctaLink: VERSIONS[5].url, secondaryText:"Saber mais", secondaryLink:"#features-section" },
         features: [
             { icon:"📊", title:"Notas e Provas", desc:"Regista notas, cria provas com questões, corrige automaticamente com IA e acompanha o teu desempenho." },
             { icon:"💬", title:"Chat e Videochamadas", desc:"Chat em tempo real com a turma e videochamadas integradas via Jitsi — sem contas extras." },
@@ -180,7 +181,7 @@
             { icon:"📊", name:"Analytics Avançado", desc:"Gráficos detalhados de desempenho por disciplina.", price:"€2.99", category:"produtividade", status:"coming" },
             { icon:"🎵", name:"Escrita Musical", desc:"Pentagrama profissional com 100+ instrumentos, mixer, playback e gravação de músicas multi-instrumento.", price:"€4.99", category:"criatividade", status:"available" }
         ],
-        footer: { title:"Feito para escolas", subtitle:"Interface moderna, escura e sem distrações", copyright:"S&O+ Ultra Workspace © 2026", downloadText:"Pronto para começar?", downloadSub:"Descarrega o instalador e tem o workspace a funcionar em menos de 1 minuto.", downloadBtn:"Descarregar v3.0 (~7MB)", downloadLink:"https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v3.0/S.O-Workspace-Instalador.exe", downloadInfo:"Windows 10/11 • Python instalado automaticamente • Grátis para sempre" },
+        footer: { title:"Feito para escolas", subtitle:"Interface moderna, escura e sem distrações", copyright:"S&O+ Ultra Workspace © 2026", downloadText:"Pronto para começar?", downloadSub:"Descarrega o instalador e tem o workspace a funcionar em menos de 1 minuto.", downloadBtn:"Descarregar v3.2 (~7MB)", downloadLink:"https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v3.2/S.O-Workspace-Instalador.exe", downloadInfo:"Windows 10/11 • Python instalado automaticamente • Grátis para sempre" },
         design: {}
     };
 
@@ -204,6 +205,8 @@
             if (v.v3Badge) VERSIONS[3].label = v.v3Badge;
             if (v.v31Url) VERSIONS[4].url = v.v31Url;
             if (v.v31Badge) VERSIONS[4].label = v.v31Badge;
+            if (v.v32Url) VERSIONS[5].url = v.v32Url;
+            if (v.v32Badge) VERSIONS[5].label = v.v32Badge;
         }
     });
 

@@ -6,8 +6,20 @@ import sys
 import time
 import threading
 import os
+import traceback
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
+LOG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'launcher_debug.log')
+
+def log(msg):
+    line = f"[{time.strftime('%H:%M:%S')}] {msg}"
+    print(line)
+    try:
+        with open(LOG_FILE, 'a', encoding='utf-8') as f:
+            f.write(line + '\n')
+    except Exception:
+        pass
 
 PORT = 5000
 
@@ -33,20 +45,55 @@ def wait_for_server(host='127.0.0.1', port=PORT, timeout=10):
     return False
 
 
+def patch_edge_tracking():
+    try:
+        import webview.platforms.edgechromium as ec
+        original_ready = ec.EdgeChrome.on_webview_ready
+
+        def patched_on_webview_ready(self, sender, args):
+            original_ready(self, sender, args)
+            if args.IsSuccess:
+                try:
+                    profile = sender.CoreWebView2.Profile
+                    from Microsoft.Web.WebView2.Core import CoreWebView2TrackingPreventionLevel
+                    level = CoreWebView2TrackingPreventionLevel(0)
+                    profile.set_PreferredTrackingPreventionLevel(level)
+                    log("Tracking prevention set to OFF via profile API")
+                except Exception as e:
+                    log(f"Profile tracking prevention: {e}")
+
+        ec.EdgeChrome.on_webview_ready = patched_on_webview_ready
+        log("EdgeChrome patched for tracking prevention")
+    except Exception as e:
+        log(f"Could not patch EdgeChrome: {e}")
+
+
 def main():
-    print("  A arrancar Flask...")
+    try:
+        os.remove(LOG_FILE)
+    except Exception:
+        pass
+
+    log("=== LAUNCHER START ===")
+    log(f"Python: {sys.executable}")
+    log(f"Port: {PORT}")
+
+    log("A arrancar Flask...")
     t = threading.Thread(target=start_flask, daemon=True)
     t.start()
 
     if not wait_for_server():
-        print("  [AVISO] Flask pode nao estar pronto, a continuar...")
+        log("[AVISO] Flask pode nao estar pronto, a continuar...")
 
-    print("  A abrir pywebview (Edge WebView2)...")
+    log("A abrir pywebview...")
     try:
         import webview
+        log(f"pywebview module loaded OK")
+
+        patch_edge_tracking()
 
         def on_started():
-            print("  pywebview aberto com sucesso!")
+            log("pywebview on_started callback OK")
 
         win = webview.create_window(
             'S+O Ultra Workspace',
@@ -57,18 +104,22 @@ def main():
             text_select=True,
             zoomable=True,
         )
-        webview.start(gui='edgechromium', debug=False, func=on_started)
+        log("Window created, calling webview.start()...")
+        webview.start(debug=True, func=on_started)
+        log("webview.start() RETURNED - window closed")
     except ImportError:
-        print("  [ERRO] pywebview nao instalado!")
-        print("  Corre: pip install pywebview")
+        log("[ERRO] pywebview nao instalado!")
         _fallback_browser()
     except Exception as e:
-        print(f"  [ERRO pywebview: {e}]")
+        log(f"[ERRO pywebview] {e}")
+        log(traceback.format_exc())
         _fallback_browser()
+
+    log("=== LAUNCHER END ===")
 
 
 def _fallback_browser():
-    print("  A abrir no navegador como fallback...")
+    log("A abrir no navegador como fallback...")
     import webbrowser
     webbrowser.open(f'http://127.0.0.1:{PORT}')
     try:

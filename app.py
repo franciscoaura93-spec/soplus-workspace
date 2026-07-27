@@ -15,8 +15,12 @@ import json
 import ssl
 import time
 import math
+import uuid
 import smtplib
 import http.client
+import hashlib
+import base64
+import secrets
 import traceback
 from email.mime.text import MIMEText
 try:
@@ -24,7 +28,7 @@ try:
     HAS_DDG = True
 except ImportError:
     HAS_DDG = False
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, redirect
 
 app = Flask(__name__, static_folder='static', template_folder='templates')
 app.config['SECRET_KEY'] = 'soplus-firebase-2026'
@@ -153,6 +157,103 @@ def index():
 @app.route('/app')
 def main_app():
     return render_template('app.html')
+
+
+# ─── GOOGLE OAUTH (system browser flow) ────────────────────
+GOOGLE_CLIENT_ID = '714841609825-3t9lubl5ovippnb86jfn23lul1bokl5s.apps.googleusercontent.com'
+FIREBASE_API_KEY = 'AIzaSyCEZO2Haz9W2OFmecNJG2wk6nicjpQvTTI'
+FIREBASE_AUTH_DOMAIN = 's123o-f3e37.firebaseapp.com'
+
+_google_auth_states = {}
+
+
+@app.route('/auth/google/start')
+def google_auth_start():
+    state = secrets.token_urlsafe(32)
+    _google_auth_states[state] = {'status': 'pending', 'time': time.time()}
+    nonce = secrets.token_urlsafe(16)
+    _google_auth_states[state]['nonce'] = nonce
+
+    callback_url = 'http://127.0.0.1:5000/auth/google/callback'
+    google_url = (
+        'https://accounts.google.com/o/oauth2/v2/auth'
+        f'?client_id={GOOGLE_CLIENT_ID}'
+        f'&redirect_uri={callback_url}'
+        f'&response_type=id_token'
+        f'&scope=openid%20email%20profile'
+        f'&nonce={nonce}'
+        f'&state={state}'
+        f'&prompt=select_account'
+    )
+
+    import webbrowser
+    webbrowser.open(google_url)
+
+    return jsonify({'state': state})
+
+
+@app.route('/auth/google/callback')
+def google_auth_callback():
+    return '''<!DOCTYPE html><html><head><meta charset="utf-8"><title>Google Auth</title>
+<script>
+(function() {
+    var hash = window.location.hash.substring(1);
+    var params = new URLSearchParams(hash);
+    var idToken = params.get('id_token');
+    var state = params.get('state') || params.get('state');
+    if (!idToken) {
+        var qs = new URLSearchParams(window.location.search);
+        idToken = qs.get('id_token');
+        state = state || qs.get('state');
+    }
+    if (!idToken) {
+        document.body.innerText = 'Erro: token nao recebido';
+        return;
+    }
+    fetch('/auth/google/exchange', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({id_token: idToken, state: state})
+    }).then(function(r){ return r.json(); }).then(function(d) {
+        document.body.innerText = d.ok ? 'Login concluido! Pode fechar esta janela.' : 'Erro: ' + d.error;
+        if (d.ok) setTimeout(function(){ window.close(); }, 1500);
+    });
+})();
+</script></head><body>A processar login...</body></html>'''
+
+
+@app.route('/auth/google/exchange', methods=['POST'])
+def google_auth_exchange():
+    data = request.json or {}
+    id_token = data.get('id_token', '')
+    state = data.get('state', '')
+
+    if state not in _google_auth_states:
+        return jsonify({'ok': False, 'error': 'Invalid state'})
+
+    _google_auth_states[state] = {
+        'status': 'done',
+        'google_id_token': id_token,
+    }
+    return jsonify({'ok': True})
+
+
+@app.route('/auth/google/status')
+def google_auth_status():
+    state = request.args.get('state', '')
+    info = _google_auth_states.get(state)
+    if not info:
+        return jsonify({'status': 'expired'})
+    if info['status'] == 'done':
+        _google_auth_states.pop(state, None)
+        return jsonify({
+            'status': 'done',
+            'google_id_token': info['google_id_token'],
+        })
+    if time.time() - info.get('time', 0) > 120:
+        _google_auth_states.pop(state, None)
+        return jsonify({'status': 'expired'})
+    return jsonify({'status': 'pending'})
 
 
 @app.route('/api/verify-prof-code', methods=['POST'])

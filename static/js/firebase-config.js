@@ -13,14 +13,12 @@ firebase.initializeApp(firebaseConfig);
 
 const auth = firebase.auth();
 const db = firebase.database();
-const storage = firebase.storage();
+const storage = typeof firebase.storage === 'function' ? firebase.storage() : null;
 
 // ─── AUTH HELPERS ───────────────────────────────────────
 function loginWithGoogle() {
     const provider = new firebase.auth.GoogleAuthProvider();
     return auth.signInWithRedirect(provider);
-}
-    return auth.signInWithPopup(provider);
 }
 
 function loginWithEmail(email, password) {
@@ -67,6 +65,7 @@ async function updateUserProfile(uid, data) {
 
 // ─── STORAGE ───────────────────────────────────────────
 async function uploadFile(file, path) {
+    if (!storage) throw new Error('Storage not available');
     const ref = storage.ref(path);
     await ref.put(file);
     return ref.getDownloadURL();

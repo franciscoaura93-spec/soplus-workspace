@@ -5,7 +5,7 @@ let brTabs = [];
 let brActive = -1;
 let brBookmarks = [];
 let brAdBlock = true;
-let brRenderMode = 'native'; // 'native' = pywebview | 'embedded' = iframe
+let brRenderMode = localStorage.getItem('br_render_mode') || 'embedded'; // 'native' = pywebview | 'embedded' = iframe
 
 const BR_START = 'about:home';
 const BR_HOME_ITEMS = [

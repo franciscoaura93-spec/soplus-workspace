@@ -974,21 +974,30 @@ def proxy_fetch():
 #   BROWSE — Playwright-powered real browser rendering
 # ════════════════════════════════════════════════════════════
 _pw_browser = None
+_pw_instance = None
 
 def _get_pw_browser():
-    global _pw_browser
+    global _pw_browser, _pw_instance
     if _pw_browser is None or not _pw_browser.is_connected():
         from playwright.sync_api import sync_playwright
-        pw = sync_playwright().start()
-        _pw_browser = pw.chromium.launch(
+        _pw_instance = sync_playwright().start()
+        _pw_browser = _pw_instance.chromium.launch(
             headless=True,
-            args=['--no-sandbox','--disable-dev-shm-usage','--disable-gpu','--disable-extensions']
+            args=['--no-sandbox','--disable-dev-shm-usage','--disable-gpu',
+                  '--disable-background-networking','--disable-default-apps',
+                  '--disable-sync','--disable-translate','--metrics-recording-only',
+                  '--no-first-run','--disable-blink-features=AutomationControlled']
         )
     return _pw_browser
+
+AD_DOMAINS = {'doubleclick.net','googlesyndication.com','googleadservices.com','adnxs.com',
+    'adsrvr.org','facebook.net','google-analytics.com','googletagmanager.com',
+    'ads.google.com','pagead2.googlesyndication.com','tpc.googlesyndication.com'}
 
 @app.route('/api/browse', methods=['GET'])
 def browse_page():
     url = request.args.get('url', '').strip()
+    mode = request.args.get('mode', 'auto').strip()
     if not url:
         return jsonify({'error': 'No URL'}), 400
     if not url.startswith(('http://', 'https://')):
@@ -996,22 +1005,64 @@ def browse_page():
     parsed = _urlparse.urlparse(url)
     if parsed.hostname in ('localhost', '127.0.0.1', '0.0.0.0'):
         return jsonify({'error': 'Blocked'}), 403
+
+    hostname = (parsed.hostname or '').replace('www.','')
+
+    if mode == 'lite':
+        return _browse_lite(url)
+
+    # Auto: simple text sites → lite, everything else → playwright
+    text_sites = {'wikipedia.org','britannica.com','mdn.io','developer.mozilla.org',
+        'stackoverflow.com','github.com','docs.python.org','docs.microsoft.com',
+        'medium.com','substack.com','arxiv.org','khanacademy.org','wolframalpha.com',
+        'dictionary.com','merriam-webster.com','geeksforgeeks.org','w3schools.com',
+        'tutorialspoint.com','reddit.com','quora.com'}
+    if mode == 'auto' and any(hostname.endswith(s) for s in text_sites):
+        return _browse_lite(url)
+
+    # ── Playwright: full JS render with video/image support ──
     try:
         browser = _get_pw_browser()
         page = browser.new_page(
             user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
-            viewport={'width': 1280, 'height': 800}
+            viewport={'width': 1280, 'height': 800},
+            java_script_enabled=True
         )
         try:
-            page.goto(url, wait_until='commit', timeout=30000)
+            # Block ONLY ads and trackers — keep images, videos, fonts
+            def _route_handler(route):
+                req_url = route.request.url
+                req_host = _urlparse.urlparse(req_url).hostname or ''
+                if any(d in req_host for d in AD_DOMAINS):
+                    return route.abort()
+                return route.continue_()
+            page.route('**/*', _route_handler)
+
+            page.goto(url, wait_until='commit', timeout=25000)
             try:
-                page.wait_for_load_state('domcontentloaded', timeout=15000)
+                page.wait_for_load_state('domcontentloaded', timeout=12000)
             except:
                 pass
             try:
                 page.wait_for_load_state('networkidle', timeout=10000)
             except:
                 pass
+
+            # Remove only ads/overlays/popups — keep videos, images, iframes
+            page.evaluate("""() => {
+                // Remove ad elements
+                document.querySelectorAll('[class*="ad-"],[class*="ads-"],[id*="ad-"],[id*="ads-"],[class*="advert"],[data-ad]').forEach(e => e.remove());
+                // Remove cookie/consent banners
+                document.querySelectorAll('[class*="cookie"],[class*="consent"],[id*="cookie"],[id*="consent"],[class*="gdpr"]').forEach(e => e.remove());
+                // Remove fixed overlays (but keep nav/header)
+                document.querySelectorAll('[style*="position: fixed"],[style*="position:fixed"]').forEach(e => {
+                    const tag = e.tagName;
+                    if (tag !== 'NAV' && tag !== 'HEADER' && !e.querySelector('video,iframe')) e.remove();
+                });
+                // Remove social share popups
+                document.querySelectorAll('[class*="share-popup"],[class*="social-modal"],[class*="newsletter-popup"]').forEach(e => e.remove());
+            }""")
+
             html = page.content()
             final_url = page.url
             base_parsed = _urlparse.urlparse(final_url)
@@ -1019,11 +1070,41 @@ def browse_page():
             html = _re.sub(r'<base\s+[^>]*>', '', html, flags=_re.IGNORECASE)
             html = f'<base href="{base_origin}/">' + html
             title = page.title() or _br_extract_title(html)
-            return jsonify({'html': html, 'title': title, 'url': final_url})
+            return jsonify({'html': html, 'title': title, 'url': final_url, 'mode': 'playwright'})
         finally:
             page.close()
     except Exception as e:
-        return jsonify({'error': str(e)[:200]}), 502
+        print(f"[Playwright falhou para {url}: {e}] — fallback lite")
+        return _browse_lite(url)
+
+
+def _browse_lite(url):
+    """Fetch rápido — sem JS, só HTML. Para sites de texto/artigos."""
+    try:
+        req = _urllib.request.Request(url, headers={
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+            'Accept': 'text/html,application/xhtml+xml',
+            'Accept-Language': 'pt-PT,pt;q=0.9,en;q=0.8'
+        })
+        with _urllib.request.urlopen(req, context=SSL_CTX, timeout=12) as resp:
+            ct = resp.headers.get('Content-Type', '')
+            if 'text/html' not in ct:
+                return jsonify({'error': 'Não é HTML', 'url': url}), 400
+            raw = resp.read(2_000_000).decode('utf-8', errors='replace')
+            final_url = resp.url
+        # Clean: remove scripts, keep images/videos/styles
+        raw = _re.sub(r'<script[^>]*>.*?</script>', '', raw, flags=_re.IGNORECASE|_re.DOTALL)
+        raw = _re.sub(r'<!--.*?-->', '', raw, flags=_re.DOTALL)
+        raw = _re.sub(r'<(iframe|video|audio|object|embed|noscript)[^>]*>.*?</\1>', '', raw, flags=_re.IGNORECASE|_re.DOTALL)
+        base_parsed = _urlparse.urlparse(final_url)
+        base_origin = f"{base_parsed.scheme}://{base_parsed.netloc}"
+        raw = _re.sub(r'<base\s+[^>]*>', '', raw, flags=_re.IGNORECASE)
+        raw = f'<base href="{base_origin}/"><style>body{{font-family:system-ui,sans-serif;max-width:800px;margin:0 auto;padding:20px;line-height:1.7;color:#1a1a1a;background:#fff;img{{max-width:100%}}}}</style>' + raw
+        title_m = _re.search(r'<title[^>]*>(.*?)</title>', raw, _re.IGNORECASE|_re.DOTALL)
+        title = title_m.group(1).strip() if title_m else _br_extract_title(raw)
+        return jsonify({'html': raw, 'title': title, 'url': final_url, 'mode': 'lite'})
+    except Exception as e:
+        return jsonify({'error': str(e)[:200], 'url': url}), 502
 
 def _br_extract_title(html):
     m = _re.search(r'<title[^>]*>(.*?)</title>', html, _re.IGNORECASE|_re.DOTALL)

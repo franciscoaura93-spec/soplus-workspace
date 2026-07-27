@@ -5,6 +5,7 @@ let brTabs = [];
 let brActive = -1;
 let brBookmarks = [];
 let brAdBlock = true;
+let brForceMode = 'auto'; // 'auto', 'lite', 'full'
 
 const BR_START = 'about:home';
 const BR_HOME_ITEMS = [
@@ -208,11 +209,13 @@ function _pesqBrowserPanel() {
             <button onclick="brBack()" title="Voltar" style="background:none;border:none;font-size:14px;cursor:pointer;padding:3px 6px;border-radius:6px;color:var(--text-light);">◀</button>
             <button onclick="brForward()" title="Avançar" style="background:none;border:none;font-size:14px;cursor:pointer;padding:3px 6px;border-radius:6px;color:var(--text-light);">▶</button>
             <button onclick="brRefresh()" title="Atualizar" style="background:none;border:none;font-size:14px;cursor:pointer;padding:3px 6px;border-radius:6px;color:var(--text-light);">🔄</button>
+            ${!isHome && tab?.loadMode ? `<span style="font-size:8px;padding:2px 6px;border-radius:6px;font-weight:700;background:${tab.loadMode==='playwright'?'rgba(99,102,241,0.15);color:var(--primary)':'rgba(34,197,94,0.15);color:var(--success)'}">${tab.loadMode==='playwright'?'⚡ FULL':'📄 LITE'}</span>` : ''}
             <div style="flex:1;display:flex;align-items:center;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:0 10px;">
                 <span style="font-size:12px;margin-right:5px;">${isHome ? '🏠' : (pesqPrivado ? '🛡️' : (tab?.url?.startsWith('https') ? '🔒' : '🌐'))}</span>
                 <input id="br-url" value="${escapeHTML(tab?.url === BR_START ? '' : (tab?.url || ''))}" placeholder="Endereço ou pesquisa..." style="flex:1;border:none;background:none;padding:6px 0;font-size:12px;color:var(--text);outline:none;" onkeydown="if(event.key==='Enter')brNavigate(this.value)">
             </div>
             <button onclick="brToggleAdBlock()" title="Bloqueador de anúncios" style="background:none;border:none;font-size:14px;cursor:pointer;padding:3px 6px;border-radius:6px;${brAdBlock ? 'color:var(--success);' : 'color:var(--text-light);'}">🛡️</button>
+            <button onclick="brToggleMode()" title="Modo de carregamento (lite/rápido vs full/completo)" style="background:none;border:none;font-size:14px;cursor:pointer;padding:3px 6px;border-radius:6px;color:${brForceMode==='lite'?'var(--success)':'var(--text-light)'}">${brForceMode==='lite'?'⚡':'🔧'}</button>
             <button onclick="brBookmarkPage()" title="Bookmark" style="background:none;border:none;font-size:14px;cursor:pointer;padding:3px 6px;border-radius:6px;color:${_brIsBookmarked(tab?.url) ? 'var(--accent)' : 'var(--text-light)'};">${_brIsBookmarked(tab?.url) ? '⭐' : '☆'}</button>
             <button onclick="brReaderMode()" title="Reader Mode" style="background:none;border:none;font-size:14px;cursor:pointer;padding:3px 6px;border-radius:6px;color:var(--text-light);">📖</button>
             <button onclick="brAiSummarize()" title="Resumo IA" style="background:none;border:none;font-size:14px;cursor:pointer;padding:3px 6px;border-radius:6px;color:var(--text-light);">🤖</button>
@@ -304,17 +307,18 @@ function brNavigate(raw) {
         if (url.includes('.') && !url.includes(' ')) url = 'https://' + url;
         else url = 'https://www.google.pt/search?q=' + encodeURIComponent(url);
     }
-    brTabs[brActive] = { url, title: _brDomain(url), loading: true, html: null };
+    brTabs[brActive] = { url, title: _brDomain(url), loading: true, html: null, loadMode: brForceMode };
     _pesqRefreshBrowser();
-    _brFetchPage(url);
+    _brFetchPage(url, brForceMode);
 }
 
-async function _brFetchPage(url) {
+async function _brFetchPage(url, mode) {
+    const m = mode || 'auto';
     try {
-        const r = await fetch('/api/browse?url=' + encodeURIComponent(url));
+        const r = await fetch('/api/browse?url=' + encodeURIComponent(url) + '&mode=' + m);
         const data = await r.json();
         if (data.html) {
-            brTabs[brActive] = { ...brTabs[brActive], html: data.html, title: data.title || brTabs[brActive].title, loading: false, finalUrl: data.url };
+            brTabs[brActive] = { ...brTabs[brActive], html: data.html, title: data.title || brTabs[brActive].title, loading: false, finalUrl: data.url, loadMode: data.mode || m };
         } else {
             brTabs[brActive].loading = false;
             brTabs[brActive].error = data.error || 'Erro ao carregar';
@@ -346,7 +350,13 @@ async function brTryProxy() {
 }
 function brBack() { window.history.back(); }
 function brForward() { window.history.forward(); }
-function brRefresh() { brTabs[brActive].loading = true; _pesqRefreshBrowser(); setTimeout(() => { if(brTabs[brActive]) { brTabs[brActive].loading = false; _pesqRefreshBrowser(); } }, 3000); }
+function brRefresh() {
+    const tab = brTabs[brActive];
+    if (!tab || tab.url === BR_START) return;
+    brTabs[brActive] = { ...tab, loading: true, error: null, html: null };
+    _pesqRefreshBrowser();
+    _brFetchPage(tab.url, tab.loadMode || 'auto');
+}
 function _brDomain(u) { try { return new URL(u).hostname.replace('www.',''); } catch(e) { return u.slice(0,30); } }
 function _pesqRefreshBrowser() { const bp = document.getElementById('pesq-browser-panel'); if (bp) bp.innerHTML = _pesqBrowserPanel(); }
 
@@ -362,6 +372,14 @@ function brRemoveBookmark(i) { brBookmarks.splice(i,1); localStorage.setItem('br
 
 // ─── Ad blocker ───
 function brToggleAdBlock() { brAdBlock = !brAdBlock; showToast(brAdBlock ? '🛡️ Bloqueador ON' : 'Bloqueador OFF', brAdBlock?'success':'info'); _pesqRefreshBrowser(); }
+function brToggleMode() {
+    const modes = ['auto','lite','full'];
+    const idx = (modes.indexOf(brForceMode) + 1) % modes.length;
+    brForceMode = modes[idx];
+    const labels = { auto:'🔄 Auto (inteligente)', lite:'⚡ Lite (rápido, sem JS)', full:'🔧 Full (Playwright completo)' };
+    showToast(labels[brForceMode], 'info');
+    _pesqRefreshBrowser();
+}
 
 // ─── AI Summarize ───
 async function brAiSummarize() {

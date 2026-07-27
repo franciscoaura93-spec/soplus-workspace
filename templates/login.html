@@ -281,22 +281,7 @@
         async function doGoogleLogin() {
             try {
                 const provider = new firebase.auth.GoogleAuthProvider();
-                googleCred = await auth.signInWithPopup(provider);
-                const snap = await firebase.database().ref('users/' + googleCred.user.uid).once('value');
-                if (!snap.val()) {
-                    isGoogleUser = true;
-                    showScreen('screen-register');
-                    document.getElementById('reg-nome').value = googleCred.user.displayName || '';
-                    document.getElementById('reg-email').value = googleCred.user.email || '';
-                    document.getElementById('reg-email').disabled = true;
-                    document.getElementById('reg-email').style.opacity = '0.5';
-                    document.getElementById('reg-pass').parentElement.style.display = 'none';
-                    document.getElementById('reg-pass').required = false;
-                    document.getElementById('reg-btn').textContent = t('login_create_account_btn');
-                    showSuccess(t('login_complete_google'));
-                    return;
-                }
-                window.location.href = '/app';
+                await auth.signInWithRedirect(provider);
             } catch(e) {
                 if (e.code === 'auth/popup-closed-by-user') return;
                 showError(t('login_google_err') + e.message);

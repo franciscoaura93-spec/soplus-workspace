@@ -48,7 +48,7 @@ def main():
         def on_started():
             print("  pywebview aberto com sucesso!")
 
-        webview.create_window(
+        win = webview.create_window(
             'S+O Ultra Workspace',
             f'http://127.0.0.1:{PORT}',
             width=1400,
@@ -57,7 +57,7 @@ def main():
             text_select=True,
             zoomable=True,
         )
-        webview.start(debug=False, func=on_started)
+        webview.start(gui='edgechromium', debug=False, func=on_started)
     except ImportError:
         print("  [ERRO] pywebview nao instalado!")
         print("  Corre: pip install pywebview")

@@ -18,6 +18,8 @@ const storage = firebase.storage();
 // ─── AUTH HELPERS ───────────────────────────────────────
 function loginWithGoogle() {
     const provider = new firebase.auth.GoogleAuthProvider();
+    return auth.signInWithRedirect(provider);
+}
     return auth.signInWithPopup(provider);
 }
 

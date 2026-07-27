@@ -2657,8 +2657,17 @@ function renderExtPage(area, extId) {
         return;
     }
 
+    const existingScript = document.querySelector(`script[src*="${pageType}.js"]`);
+    if (existingScript) {
+        if (typeof window[renderFn] === 'function') {
+            window[renderFn](area, ext);
+        } else {
+            renderGenericExt(area, ext);
+        }
+        return;
+    }
     const script = document.createElement('script');
-    script.src = `/static/js/extensions/${pageType}.js?v=3.0`;
+    script.src = `/static/js/extensions/${pageType}.js?v=3.2`;
     script.onload = () => {
         if (typeof window[renderFn] === 'function') {
             window[renderFn](area, ext);

@@ -259,20 +259,7 @@ function _brRenderEmbedded(tab) {
         ${tab.loading ? '<div style="height:3px;background:var(--border);overflow:hidden;"><div style="height:100%;width:40%;background:linear-gradient(90deg,transparent,var(--primary),transparent);animation:brLoad 1.2s infinite;"></div></div>' : ''}
         ${blocked ? '<div style="padding:5px 10px;background:rgba(34,197,94,0.1);border-bottom:1px solid rgba(34,197,94,0.2);font-size:10px;color:var(--success);text-align:center;">🛡️ Anúncios bloqueados</div>' : ''}
         <div style="flex:1;position:relative;">
-            ${tab.html
-                ? `<iframe id="br-iframe" srcdoc="${encodeURIComponent(tab.html)}" style="width:100%;height:100%;border:none;"></iframe>`
-                : tab.error
-                    ? `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;padding:30px;">
-                        <div style="font-size:40px;margin-bottom:12px;">⚠️</div>
-                        <h3 style="font-size:16px;margin-bottom:6px;">Erro ao carregar</h3>
-                        <p style="font-size:12px;color:var(--text-light);margin-bottom:16px;">${escapeHTML(tab.error)}</p>
-                        <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
-                            <button class="btn btn-primary" onclick="brRefresh()" style="font-size:11px;">🔄 Tentar novamente</button>
-                            <button class="btn btn-outline" onclick="brTryProxy()" style="font-size:11px;">🔌 Tentar com proxy</button>
-                        </div>
-                    </div>`
-                    : `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-light);">A carregar...</div>`
-            }
+            <iframe id="br-iframe" style="width:100%;height:100%;border:none;"></iframe>
         </div>
     </div>`;
 }
@@ -346,7 +333,34 @@ function brRefresh() {
 }
 
 function _brDomain(u) { try { return new URL(u).hostname.replace('www.',''); } catch(e) { return u.slice(0,30); } }
-function _pesqRefreshBrowser() { const bp = document.getElementById('pesq-browser-panel'); if (bp) bp.innerHTML = _pesqBrowserPanel(); }
+function _pesqRefreshBrowser() {
+    const bp = document.getElementById('pesq-browser-panel');
+    if (bp) bp.innerHTML = _pesqBrowserPanel();
+    _brLoadIframeContent();
+}
+
+function _brLoadIframeContent() {
+    const iframe = document.getElementById('br-iframe');
+    if (!iframe) return;
+    const tab = brTabs[brActive] || brTabs[0];
+    const content = document.getElementById('br-content');
+    if (tab.error) {
+        content.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;padding:30px;">
+            <div style="font-size:40px;margin-bottom:12px;">⚠️</div>
+            <h3 style="font-size:16px;margin-bottom:6px;">Erro ao carregar</h3>
+            <p style="font-size:12px;color:var(--text-light);margin-bottom:16px;">${escapeHTML(tab.error)}</p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
+                <button class="btn btn-primary" onclick="brRefresh()" style="font-size:11px;">🔄 Tentar novamente</button>
+                <button class="btn btn-outline" onclick="brTryProxy()" style="font-size:11px;">🔌 Tentar com proxy</button>
+            </div>
+        </div>`;
+        return;
+    }
+    if (!tab.html) return;
+    const blob = new Blob([tab.html], { type: 'text/html; charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    iframe.src = url;
+}
 
 // ═══════════════════════════════════════
 //   BOOKMARKS

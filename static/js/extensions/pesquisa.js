@@ -200,6 +200,7 @@ function _pesqBrowserPanel() {
             </div>
             <button onclick="brToggleAdBlock()" title="Bloqueador" style="background:none;border:none;font-size:14px;cursor:pointer;padding:3px 6px;border-radius:6px;${brAdBlock ? 'color:var(--success);' : 'color:var(--text-light);'}">🛡️</button>
             <button onclick="brBookmarkPage()" title="Bookmark" style="background:none;border:none;font-size:14px;cursor:pointer;padding:3px 6px;border-radius:6px;color:${_brIsBookmarked(tab?.url) ? 'var(--accent)' : 'var(--text-light)'};">${_brIsBookmarked(tab?.url) ? '⭐' : '☆'}</button>
+            <button onclick="brOpenNative()" title="Abrir em janela nativa Edge" style="background:none;border:none;font-size:14px;cursor:pointer;padding:3px 6px;border-radius:6px;color:var(--success);">🖥️</button>
             <button onclick="brReaderMode()" title="Reader Mode" style="background:none;border:none;font-size:14px;cursor:pointer;padding:3px 6px;border-radius:6px;color:var(--text-light);">📖</button>
             <button onclick="brAiSummarize()" title="Resumo IA" style="background:none;border:none;font-size:14px;cursor:pointer;padding:3px 6px;border-radius:6px;color:var(--text-light);">🤖</button>
         </div>
@@ -259,7 +260,7 @@ function _brRenderEmbedded(tab) {
         ${blocked ? '<div style="padding:5px 10px;background:rgba(34,197,94,0.1);border-bottom:1px solid rgba(34,197,94,0.2);font-size:10px;color:var(--success);text-align:center;">🛡️ Anúncios bloqueados</div>' : ''}
         <div style="flex:1;position:relative;">
             ${tab.html
-                ? `<iframe id="br-iframe" srcdoc="${escapeHTML(tab.html)}" sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-downloads" style="width:100%;height:100%;border:none;"></iframe>`
+                ? `<iframe id="br-iframe" srcdoc="${escapeHTML(tab.html)}" style="width:100%;height:100%;border:none;"></iframe>`
                 : tab.error
                     ? `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;padding:30px;">
                         <div style="font-size:40px;margin-bottom:12px;">⚠️</div>
@@ -358,6 +359,26 @@ function brBookmarkPage() {
     localStorage.setItem('br_bookmarks', JSON.stringify(brBookmarks)); _pesqRefreshBrowser();
 }
 function brRemoveBookmark(i) { brBookmarks.splice(i,1); localStorage.setItem('br_bookmarks',JSON.stringify(brBookmarks)); showToast('Bookmark removido','info'); _pesqRefreshBrowser(); }
+
+// ─── Native window ───
+async function brOpenNative() {
+    const tab = brTabs[brActive];
+    if (!tab || tab.url === BR_START) { showToast('Abre uma página primeiro','warning'); return; }
+    try {
+        const r = await fetch('/api/browser/open-native', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({ url: tab.url, title: tab.title || '' })
+        });
+        const data = await r.json();
+        if (data.ok) {
+            showToast('🖥️ Aberto em janela nativa Edge','success');
+        } else {
+            showToast('Erro: ' + (data.error || 'Desconhecido'), 'warning');
+        }
+    } catch(e) {
+        showToast('Erro ao abrir janela nativa','warning');
+    }
+}
 
 // ─── Ad blocker ───
 function brToggleAdBlock() { brAdBlock = !brAdBlock; showToast(brAdBlock ? '🛡️ Bloqueador ON' : 'Bloqueador OFF', brAdBlock?'success':'info'); }

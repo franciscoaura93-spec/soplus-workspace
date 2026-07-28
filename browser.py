@@ -1,11 +1,12 @@
 """
-S&O+ Browser Module v3.2 — embedded server-fetched content in main pywebview window.
+S&O+ Browser Module v3.2 — embedded + optional native pywebview window.
 """
 import re as _re
 import ssl
 import json
 import urllib.parse as _urlparse
 import urllib.request as _urllib_request
+import multiprocessing as _mp
 from flask import Blueprint, request, jsonify, render_template
 
 browser_bp = Blueprint('browser', __name__)
@@ -13,6 +14,45 @@ browser_bp = Blueprint('browser', __name__)
 SSL_CTX = ssl.create_default_context()
 SSL_CTX.check_hostname = False
 SSL_CTX.verify_mode = ssl.CERT_NONE
+
+# ═══════════════════════════════════════════════════════════
+#  PYWEBVIEW — optional secondary native window
+# ═══════════════════════════════════════════════════════════
+_pw_process = None
+_pw_url = None
+
+
+def _pw_worker(url):
+    try:
+        import webview
+        win = webview.create_window(
+            'S&O+ Browser Nativo', url,
+            width=1280, height=800,
+            min_size=(640, 400),
+            text_select=True,
+            zoomable=True,
+        )
+        webview.start(debug=False)
+    except Exception as e:
+        print(f"[pywebview fatal: {e}]")
+
+
+def _open_pywebview(url):
+    global _pw_process, _pw_url
+    if _pw_process and _pw_process.is_alive():
+        try:
+            _pw_process.terminate()
+            _pw_process.join(timeout=2)
+        except Exception:
+            pass
+    _pw_url = url
+    _pw_process = _mp.Process(target=_pw_worker, args=(url,), daemon=True)
+    _pw_process.start()
+    return True
+
+
+def _pw_alive():
+    return _pw_process is not None and _pw_process.is_alive()
 
 # ═══════════════════════════════════════════════════════════
 #  DOMAINS
@@ -120,6 +160,45 @@ def _extract_title(html):
 @browser_bp.route('/browser')
 def browser_page():
     return render_template('browser.html')
+
+
+# ─── native pywebview: open/navigate ───
+@browser_bp.route('/api/browser/open-native', methods=['POST'])
+def browser_open_native():
+    """Open URL in a separate native pywebview window."""
+    data = request.json or {}
+    url = data.get('url', '')
+    if not url:
+        return jsonify({'error': 'Sem URL'}), 400
+    if not url.startswith(('http://', 'https://')):
+        url = 'https://' + url
+    try:
+        _open_pywebview(url)
+        title = data.get('title', '')
+        if url and title:
+            _add_history(url, title)
+        return jsonify({'ok': True, 'mode': 'native', 'url': url})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)[:200]}), 500
+
+
+@browser_bp.route('/api/browser/native-status', methods=['GET'])
+def browser_native_status():
+    return jsonify({'alive': _pw_alive(), 'url': _pw_url})
+
+
+@browser_bp.route('/api/browser/close-native', methods=['POST'])
+def browser_close_native():
+    global _pw_process, _pw_url
+    if _pw_process and _pw_process.is_alive():
+        try:
+            _pw_process.terminate()
+            _pw_process.join(timeout=2)
+        except Exception:
+            pass
+    _pw_process = None
+    _pw_url = None
+    return jsonify({'ok': True})
 
 
 # ─── embedded browse (lite/proxy fallback) ───

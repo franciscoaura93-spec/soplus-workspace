@@ -1,16 +1,11 @@
 """
-S&O+ Browser Module v3.2 — pywebview PRIMARY, all features optimized.
-- pywebview (Edge WebView2) opens native windows for real browsing
-- Proxy fallback for blocked sites
-- Bookmarks, history, AI summarize
-- Clean, fast, single-file architecture
+S&O+ Browser Module v3.2 — embedded server-fetched content in main pywebview window.
 """
 import re as _re
 import ssl
 import json
 import urllib.parse as _urlparse
 import urllib.request as _urllib_request
-import multiprocessing as _mp
 from flask import Blueprint, request, jsonify, render_template
 
 browser_bp = Blueprint('browser', __name__)
@@ -34,49 +29,6 @@ TEXT_SITES = {
     'medium.com', 'substack.com', 'arxiv.org', 'khanacademy.org',
     'dictionary.com', 'geeksforgeeks.org', 'w3schools.com', 'reddit.com',
 }
-
-# ═══════════════════════════════════════════════════════════
-#  PYWEBVIEW — singleton native browser process
-# ═══════════════════════════════════════════════════════════
-_pw_process = None
-_pw_url = None
-
-
-def _pw_worker(url):
-    """Run pywebview in its own process with its own main thread."""
-    try:
-        import webview
-        win = webview.create_window(
-            'S&O+ Browser', url,
-            width=1280, height=800,
-            min_size=(640, 400),
-            text_select=True,
-            zoomable=True,
-        )
-        webview.start(debug=False)
-    except Exception as e:
-        print(f"[pywebview fatal: {e}]")
-
-
-def _open_pywebview(url):
-    """Open or navigate pywebview. Kill existing window first if any."""
-    global _pw_process, _pw_url
-    # Kill previous window
-    if _pw_process and _pw_process.is_alive():
-        try:
-            _pw_process.terminate()
-            _pw_process.join(timeout=2)
-        except Exception:
-            pass
-    _pw_url = url
-    _pw_process = _mp.Process(target=_pw_worker, args=(url,), daemon=True)
-    _pw_process.start()
-    return True
-
-
-def _pw_alive():
-    return _pw_process is not None and _pw_process.is_alive()
-
 
 # ═══════════════════════════════════════════════════════════
 #  IN-MEMORY STORE
@@ -170,48 +122,7 @@ def browser_page():
     return render_template('browser.html')
 
 
-# ─── pywebview: open/navigate ───
-@browser_bp.route('/api/browser/open', methods=['POST'])
-def browser_open():
-    """Open URL in native pywebview window (Edge WebView2)."""
-    data = request.json or {}
-    url = data.get('url', '')
-    if not url:
-        return jsonify({'error': 'Sem URL'}), 400
-    if not url.startswith(('http://', 'https://')):
-        url = 'https://' + url
-    try:
-        _open_pywebview(url)
-        title = data.get('title', '')
-        if url and title:
-            _add_history(url, title)
-        return jsonify({'ok': True, 'mode': 'pywebview', 'url': url})
-    except Exception as e:
-        return jsonify({'ok': False, 'error': str(e)[:200]}), 500
-
-
-@browser_bp.route('/api/browser/status', methods=['GET'])
-def browser_status():
-    """Check if pywebview window is alive."""
-    return jsonify({'alive': _pw_alive(), 'url': _pw_url})
-
-
-@browser_bp.route('/api/browser/close', methods=['POST'])
-def browser_close():
-    """Close pywebview window."""
-    global _pw_process, _pw_url
-    if _pw_process and _pw_process.is_alive():
-        try:
-            _pw_process.terminate()
-            _pw_process.join(timeout=2)
-        except Exception:
-            pass
-    _pw_process = None
-    _pw_url = None
-    return jsonify({'ok': True})
-
-
-# ─── embedded browse (iframe fallback) ───
+# ─── embedded browse (lite/proxy fallback) ───
 @browser_bp.route('/api/browse', methods=['GET'])
 def browse_embedded():
     """Fetch page HTML for iframe rendering (lite/proxy fallback)."""

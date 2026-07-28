@@ -1,11 +1,10 @@
-// S&O+ Extension: Pesquisa Web + Browser v3.2 — pywebview primary
+// S&O+ Extension: Pesquisa Web + Browser v3.2 — embedded (server-fetched content in main window)
 let pesqPrivado = false;
 let pesqMode = 'search';
 let brTabs = [];
 let brActive = -1;
 let brBookmarks = [];
 let brAdBlock = true;
-let brRenderMode = localStorage.getItem('br_render_mode') || 'embedded'; // 'native' = pywebview | 'embedded' = iframe
 
 const BR_START = 'about:home';
 const BR_HOME_ITEMS = [
@@ -33,7 +32,6 @@ function renderPesquisa(area, ext) {
     brTabs = [{ url: BR_START, title: 'Início', loading: false }];
     brActive = 0;
     brBookmarks = JSON.parse(localStorage.getItem('br_bookmarks') || '[]');
-    brRenderMode = localStorage.getItem('br_render_mode') || 'native';
     area.innerHTML = `
         <div class="page-header">
             <h2>${ext.icon} ${ext.name}</h2><p>${ext.desc}</p>
@@ -180,7 +178,6 @@ async function clearSearchHistory() {
 function _pesqBrowserPanel() {
     const tab = brTabs[brActive] || brTabs[0];
     const isHome = !tab || tab.url === BR_START;
-    const isNative = brRenderMode === 'native';
     return `
     <div style="display:flex;flex-direction:column;height:calc(100vh - 180px);overflow:hidden;border-radius:14px;border:1px solid var(--border);background:var(--bg);">
         <div style="display:flex;align-items:center;background:var(--surface);border-bottom:1px solid var(--border);padding:0 6px;gap:2px;min-height:36px;overflow-x:auto;">
@@ -198,17 +195,16 @@ function _pesqBrowserPanel() {
             <button onclick="brForward()" title="Avançar" style="background:none;border:none;font-size:14px;cursor:pointer;padding:3px 6px;border-radius:6px;color:var(--text-light);">▶</button>
             <button onclick="brRefresh()" title="Atualizar" style="background:none;border:none;font-size:14px;cursor:pointer;padding:3px 6px;border-radius:6px;color:var(--text-light);">🔄</button>
             <div style="flex:1;display:flex;align-items:center;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:0 10px;">
-                <span style="font-size:12px;margin-right:5px;">${isHome ? '🏠' : (isNative ? '🖥️' : '🌐')}</span>
+                <span style="font-size:12px;margin-right:5px;">${isHome ? '🏠' : '🌐'}</span>
                 <input id="br-url" value="${escapeHTML(tab?.url === BR_START ? '' : (tab?.url || ''))}" placeholder="Endereço ou pesquisa..." style="flex:1;border:none;background:none;padding:6px 0;font-size:12px;color:var(--text);outline:none;" onkeydown="if(event.key==='Enter')brNavigate(this.value)">
             </div>
-            <button onclick="brToggleRenderMode()" title="Modo: ${isNative ? 'pywebview nativo' : 'iframe embebido'}" style="background:none;border:none;font-size:14px;cursor:pointer;padding:3px 6px;border-radius:6px;color:${isNative?'var(--success)':'var(--text-light)'};">${isNative ? '🖥️' : '📄'}</button>
             <button onclick="brToggleAdBlock()" title="Bloqueador" style="background:none;border:none;font-size:14px;cursor:pointer;padding:3px 6px;border-radius:6px;${brAdBlock ? 'color:var(--success);' : 'color:var(--text-light);'}">🛡️</button>
             <button onclick="brBookmarkPage()" title="Bookmark" style="background:none;border:none;font-size:14px;cursor:pointer;padding:3px 6px;border-radius:6px;color:${_brIsBookmarked(tab?.url) ? 'var(--accent)' : 'var(--text-light)'};">${_brIsBookmarked(tab?.url) ? '⭐' : '☆'}</button>
             <button onclick="brReaderMode()" title="Reader Mode" style="background:none;border:none;font-size:14px;cursor:pointer;padding:3px 6px;border-radius:6px;color:var(--text-light);">📖</button>
             <button onclick="brAiSummarize()" title="Resumo IA" style="background:none;border:none;font-size:14px;cursor:pointer;padding:3px 6px;border-radius:6px;color:var(--text-light);">🤖</button>
         </div>
         <div id="br-content" style="flex:1;overflow:hidden;position:relative;">
-            ${isHome ? _brRenderHome() : (isNative ? _brRenderNative(tab) : _brRenderEmbedded(tab))}
+            ${isHome ? _brRenderHome() : _brRenderEmbedded(tab)}
         </div>
     </div>
     <style>@keyframes brLoad{0%{transform:translateX(-100%)}100%{transform:translateX(350%)}}</style>
@@ -221,9 +217,7 @@ function _brRenderHome() {
         <div style="text-align:center;margin-bottom:22px;">
             <div style="font-size:26px;font-weight:800;background:linear-gradient(135deg,var(--primary),var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;">S&O+ Browser</div>
             <div style="font-size:12px;color:var(--text-light);margin-top:4px;">
-                ${brRenderMode === 'native'
-                    ? '<span style="background:rgba(34,197,94,0.15);color:var(--success);padding:2px 10px;border-radius:10px;font-size:10px;font-weight:700;">🖥️ pywebview Edge WebView2</span>'
-                    : '<span style="background:rgba(99,102,241,0.15);color:var(--primary);padding:2px 10px;border-radius:10px;font-size:10px;font-weight:700;">📄 Modo Embebido</span>'}
+                <span style="background:rgba(34,197,94,0.15);color:var(--success);padding:2px 10px;border-radius:10px;font-size:10px;font-weight:700;">🌐 Servidor local — conteúdo real</span>
             </div>
         </div>
         <div style="max-width:460px;margin:0 auto;">
@@ -256,31 +250,7 @@ function _brRenderHome() {
     </div>`;
 }
 
-// ─── Native mode: pywebview window indicator ───
-function _brRenderNative(tab) {
-    if (tab.loading) {
-        return `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;">
-            <div class="spinner" style="margin:0 auto 16px;"></div>
-            <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:6px;">A abrir em pywebview...</div>
-            <div style="font-size:12px;color:var(--text-light);">${escapeHTML(tab.url)}</div>
-        </div>`;
-    }
-    return `<div style="height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:30px;">
-        <div style="font-size:48px;margin-bottom:16px;">🖥️</div>
-        <div style="font-size:16px;font-weight:700;color:var(--text);margin-bottom:6px;">Browser Nativo Aberto</div>
-        <div style="font-size:12px;color:var(--text-light);margin-bottom:4px;">${escapeHTML(tab.title || '')}</div>
-        <div style="font-size:11px;color:var(--primary);margin-bottom:20px;word-break:break-all;max-width:400px;">${escapeHTML(tab.url)}</div>
-        <div style="font-size:11px;color:var(--text-light);margin-bottom:16px;">A página está aberta numa janela Edge nativa (WebView2).<br>Usa a janela para navegar. Esta barra controla tudo.</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
-            <button class="btn btn-primary" onclick="brRefresh()" style="font-size:11px;">🔄 Reabrir página</button>
-            <button class="btn btn-outline" onclick="brAiSummarize()" style="font-size:11px;">🤖 Resumo IA</button>
-            <button class="btn btn-outline" onclick="brReaderMode()" style="font-size:11px;">📖 Reader</button>
-            <button class="btn btn-outline" onclick="brBookmarkPage()" style="font-size:11px;">⭐ Bookmark</button>
-        </div>
-    </div>`;
-}
-
-// ─── Embedded mode: iframe ───
+// ─── Embedded mode: iframe with server-fetched content ───
 function _brRenderEmbedded(tab) {
     const blocked = brAdBlock && BR_BLOCKED.some(d => tab.url.includes(d));
     return `
@@ -298,7 +268,6 @@ function _brRenderEmbedded(tab) {
                         <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center;">
                             <button class="btn btn-primary" onclick="brRefresh()" style="font-size:11px;">🔄 Tentar novamente</button>
                             <button class="btn btn-outline" onclick="brTryProxy()" style="font-size:11px;">🔌 Tentar com proxy</button>
-                            <button class="btn btn-outline" onclick="brOpenNativeTab()" style="font-size:11px;">🖥️ Abrir nativo</button>
                         </div>
                     </div>`
                     : `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-light);">A carregar...</div>`
@@ -327,39 +296,20 @@ function brNavigate(raw) {
 }
 
 async function _brOpenPage(url, title) {
-    if (brRenderMode === 'native') {
-        // Open in pywebview native window
-        try {
-            const r = await fetch('/api/browser/open', {
-                method: 'POST', headers: {'Content-Type':'application/json'},
-                body: JSON.stringify({ url, title: title || '' })
-            });
-            const data = await r.json();
-            if (data.ok) {
-                brTabs[brActive] = { ...brTabs[brActive], loading: false, title: title || _brDomain(url) };
-                if (!pesqPrivado && currentUser) dbPush(`browser_history/${currentUser.uid}`, { url, title: title||url, timestamp: Date.now() });
-            } else {
-                brTabs[brActive] = { ...brTabs[brActive], loading: false, error: data.error || 'Erro ao abrir' };
-            }
-        } catch(e) {
-            brTabs[brActive] = { ...brTabs[brActive], loading: false, error: 'Erro de ligação ao servidor' };
+    // Fetch HTML from server for iframe rendering
+    try {
+        const r = await fetch('/api/browse?url=' + encodeURIComponent(url) + '&mode=auto');
+        const data = await r.json();
+        if (data.html) {
+            brTabs[brActive] = { ...brTabs[brActive], html: data.html, title: data.title || brTabs[brActive].title, loading: false, finalUrl: data.url };
+        } else {
+            brTabs[brActive] = { ...brTabs[brActive], loading: false, error: data.error || 'Erro ao carregar' };
         }
-        _pesqRefreshBrowser();
-    } else {
-        // Embedded: fetch HTML for iframe
-        try {
-            const r = await fetch('/api/browse?url=' + encodeURIComponent(url) + '&mode=auto');
-            const data = await r.json();
-            if (data.html) {
-                brTabs[brActive] = { ...brTabs[brActive], html: data.html, title: data.title || brTabs[brActive].title, loading: false, finalUrl: data.url };
-            } else {
-                brTabs[brActive] = { ...brTabs[brActive], loading: false, error: data.error || 'Erro ao carregar' };
-            }
-        } catch(e) {
-            brTabs[brActive] = { ...brTabs[brActive], loading: false, error: 'Erro de ligação' };
-        }
-        _pesqRefreshBrowser();
+    } catch(e) {
+        brTabs[brActive] = { ...brTabs[brActive], loading: false, error: 'Erro de ligação' };
     }
+    if (!pesqPrivado && currentUser) dbPush(`browser_history/${currentUser.uid}`, { url, title: title||url, timestamp: Date.now() });
+    _pesqRefreshBrowser();
 }
 
 function brGoHome() { brTabs[brActive] = { url: BR_START, title: 'Início', loading: false }; _pesqRefreshBrowser(); }
@@ -396,17 +346,6 @@ function brRefresh() {
 
 function _brDomain(u) { try { return new URL(u).hostname.replace('www.',''); } catch(e) { return u.slice(0,30); } }
 function _pesqRefreshBrowser() { const bp = document.getElementById('pesq-browser-panel'); if (bp) bp.innerHTML = _pesqBrowserPanel(); }
-
-// ═══════════════════════════════════════
-//   MODE TOGGLE
-// ═══════════════════════════════════════
-function brToggleRenderMode() {
-    brRenderMode = brRenderMode === 'native' ? 'embedded' : 'native';
-    localStorage.setItem('br_render_mode', brRenderMode);
-    const labels = { native: '🖥️ pywebview nativo (Edge WebView2)', embedded: '📄 iframe embebido (sem JS)' };
-    showToast('Modo: ' + labels[brRenderMode], 'info');
-    _pesqRefreshBrowser();
-}
 
 // ═══════════════════════════════════════
 //   BOOKMARKS

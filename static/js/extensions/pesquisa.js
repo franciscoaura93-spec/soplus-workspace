@@ -260,7 +260,7 @@ function _brRenderEmbedded(tab) {
         ${blocked ? '<div style="padding:5px 10px;background:rgba(34,197,94,0.1);border-bottom:1px solid rgba(34,197,94,0.2);font-size:10px;color:var(--success);text-align:center;">🛡️ Anúncios bloqueados</div>' : ''}
         <div style="flex:1;position:relative;">
             ${tab.html
-                ? `<iframe id="br-iframe" srcdoc="${escapeHTML(tab.html)}" style="width:100%;height:100%;border:none;"></iframe>`
+                ? `<iframe id="br-iframe" srcdoc="${encodeURIComponent(tab.html)}" style="width:100%;height:100%;border:none;"></iframe>`
                 : tab.error
                     ? `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;padding:30px;">
                         <div style="font-size:40px;margin-bottom:12px;">⚠️</div>

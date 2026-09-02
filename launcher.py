@@ -105,7 +105,7 @@ def main():
             zoomable=True,
         )
         log("Window created, calling webview.start()...")
-        webview.start(debug=True, func=on_started)
+        webview.start(debug=False, func=on_started)
         log("webview.start() RETURNED - window closed")
     except ImportError:
         log("[ERRO] pywebview nao instalado!")

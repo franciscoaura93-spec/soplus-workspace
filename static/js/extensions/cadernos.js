@@ -241,8 +241,8 @@ function cnRenderNotebook() {
             <button class="btn btn-sm btn-outline" onclick="cnOpenElementsMenu()">🌳 Árvores</button>
             <button class="btn btn-sm btn-outline" onclick="cnOpenElementsMenu()">📊 Gráficos</button>
         </div>
-        <div id="cn-flip-wrap" style="position:relative;width:100%;max-width:900px;margin:0 auto;min-height:600px;">
-            <div id="cn-flip-book" style="position:relative;">
+        <div id="cn-flip-wrap" style="position:relative;width:100%;max-width:900px;margin:0 auto;height:640px;overflow:hidden;">
+            <div id="cn-flip-book" style="position:relative;width:100%;height:600px;">
                 ${nb.pages.map((pg, idx) => cnPageHtml(pg, idx)).join('')}
             </div>
         </div>
@@ -290,6 +290,29 @@ function cnPaperLinesCSS() {
 function cnInitFlip() {
     const book = document.getElementById('cn-flip-book');
     if (!book) return;
+    if (typeof StPageFlip === 'undefined') {
+        console.warn('Cadernos: StPageFlip indisponível, a usar modo estático.');
+        const pages = book.querySelectorAll('.cn-page');
+        pages.forEach((pg, i) => {
+            pg.style.position = 'relative';
+            pg.style.width = '100%';
+            pg.style.height = '600px';
+            pg.style.marginBottom = '16px';
+            pg.style.display = i === 0 ? 'block' : 'none';
+        });
+        const first = pages[0];
+        if (first) {
+            const prevBtn = '<button class="btn btn-sm btn-outline" onclick="cnFlipStatic(-1)">← Pág. anterior</button>';
+            const nextBtn = '<button class="btn btn-sm btn-outline" onclick="cnFlipStatic(1)">Página seguinte →</button>';
+            const nav = document.createElement('div');
+            nav.style.cssText = 'display:flex;justify-content:center;gap:10px;margin:12px 0;';
+            nav.innerHTML = prevBtn + ' <span id="cn-static-page" style="align-self:center;font-size:13px;color:var(--text-light);"></span> ' + nextBtn;
+            first.parentNode.insertBefore(nav, first);
+            cnFlipStatic(0);
+        }
+        cnSetupCanvasEvents();
+        return;
+    }
     try {
         if (CN.pageFlip) { try { CN.pageFlip.destroy(); } catch(e){} CN.pageFlip = null; }
         CN.pageFlip = new StPageFlip(book, {
@@ -321,6 +344,24 @@ function cnInitFlip() {
         console.warn('Cadernos: erro pageflip', e);
         CN.pageFlip = null;
     }
+    cnSetupCanvasEvents();
+}
+
+function cnFlipStatic(dir) {
+    const book = document.getElementById('cn-flip-book');
+    if (!book) return;
+    const pages = book.querySelectorAll('.cn-page');
+    if (!pages.length) return;
+    let idx = 0;
+    for (let i = 0; i < pages.length; i++) { if (pages[i].style.display !== 'none') { idx = i; break; } }
+    if (dir === 0) idx = CN.currentPage || 0;
+    else idx = Math.max(0, Math.min(pages.length - 1, idx + dir));
+    pages.forEach((pg, i) => { pg.style.display = (i === idx) ? 'block' : 'none'; });
+    const lbl = document.getElementById('cn-static-page');
+    if (lbl) lbl.textContent = `Página ${idx + 1} de ${pages.length}`;
+    CN.currentPage = idx;
+    cnDrawAllPages();
+    cnRestoreElements();
     cnSetupCanvasEvents();
 }
 

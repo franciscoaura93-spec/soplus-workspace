@@ -1,7 +1,7 @@
 // S&O+ Extension: Noticias
 function renderNoticias(area, ext) {
     area.innerHTML = `
-        <div class="page-header"><h2>${ext.icon} ${ext.name}</h2><p>${ext.desc}</p></div>
+        <div class="page-header"><h2>${ext?.icon || "🔧"} ${ext?.name || "Extensão"}</h2><p>${ext?.desc || ""}</p></div>
         <div id="noticias-content"><div style="text-align:center;padding:40px;color:var(--text-light);"><div class="spinner" style="margin:0 auto 12px;"></div>A carregar notícias...</div></div>
     `;
     loadNoticias();

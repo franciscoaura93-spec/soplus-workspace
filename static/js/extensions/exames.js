@@ -29,7 +29,7 @@ function renderExames(area, ext) {
     area.innerHTML = `
     <div style="max-width:800px;margin:0 auto;padding:24px;">
       <div style="margin-bottom:24px;">
-        <h2 style="font-size:20px;font-weight:700;">${ext.icon||'📝'} ${ext.name||'Pacote de Exames'}</h2>
+        <h2 style="font-size:20px;font-weight:700;">${ext?.icon||'📝'} ${ext?.name||'Pacote de Exames'}</h2>
         <p style="font-size:13px;color:var(--text-light);margin-top:4px;">Gera exames profissionais com IA — exporta, imprime ou faz online</p>
       </div>
 

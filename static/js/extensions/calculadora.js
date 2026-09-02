@@ -1,7 +1,7 @@
 // S&O+ Extension: Calculadora
 function renderCalculadora(area, ext) {
     area.innerHTML = `
-        <div class="page-header"><h2>${ext.icon} ${ext.name}</h2><p>${ext.desc}</p></div>
+        <div class="page-header"><h2>${ext?.icon || "🔧"} ${ext?.name || "Extensão"}</h2><p>${ext?.desc || ""}</p></div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;max-width:700px;">
             <div class="card" style="max-width:400px;">
                 <input class="form-input" id="calc-display" readonly style="font-size:28px;text-align:right;margin-bottom:12px;height:60px;" value="0">

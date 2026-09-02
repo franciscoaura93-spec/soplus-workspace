@@ -2,7 +2,7 @@
 
 function renderJogos(area, ext) {
     area.innerHTML = `
-        <div class="page-header"><h2>${ext.icon} ${ext.name}</h2><p>${ext.desc}</p></div>
+        <div class="page-header"><h2>${ext?.icon || "🔧"} ${ext?.name || "Extensão"}</h2><p>${ext?.desc || ""}</p></div>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;">
             <div class="card" style="cursor:pointer;text-align:center;padding:30px;transition:transform 0.2s;" onmouseover="this.style.transform='scale(1.03)'" onmouseout="this.style.transform='scale(1)'">
                 <div style="font-size:40px;margin-bottom:8px;">❓</div><h3>Quiz Rápido</h3><p style="font-size:12px;color:var(--text-light);">5 perguntas de conhecimento geral</p>

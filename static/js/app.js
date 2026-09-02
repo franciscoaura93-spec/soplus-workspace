@@ -87,9 +87,6 @@ const PAGES = [
     { id: 'desenho', icon: '🎨', label: 'Desenho' },
     { id: 'mail', icon: '✉️', label: 'Mail' },
     { id: 'tradutor', icon: '🌐', label: 'Tradutor' },
-    { id: 'pdf', icon: '📄', label: 'PDF' },
-    { id: 'estudo-ia', icon: '🧠', label: 'Estudo IA' },
-    { id: 'livros', icon: '📚', label: 'Livros' },
     { id: 'cadernos', icon: '📓', label: 'Cadernos' },
     { id: 'configuracoes', icon: '🔧', label: 'Config.' },
 ];
@@ -106,7 +103,7 @@ async function loadUserExtensions() {
         ]);
         extensionsEnabled = settingsSnap !== false;
         userExtensions = extSnap ? Object.keys(extSnap).filter(k => extSnap[k]) : [];
-        allExtensions = allExtSnap || {};
+        allExtensions = Object.assign({}, DEFAULT_EXTENSIONS, allExtSnap || {});
         if (userExtensions.length > 0) {
             for (const extId of userExtensions) {
                 const ext = allExtensions[extId];
@@ -185,20 +182,26 @@ function renderPageExtension(area, extName) {
     const fnName = 'render' + extName.split('_').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join('');
     if (typeof window[fnName] === 'function') {
         window[fnName](area);
-    } else {
-        const script = document.querySelector(`script[src*="extensions/${extName}.js"]`);
-        if (script && typeof window[fnName] === 'function') {
-            window[fnName](area);
-        } else if (!script) {
-            const s = document.createElement('script');
-            s.src = `/static/js/extensions/${extName}.js?v=3.4`;
-            s.onload = () => { if (typeof window[fnName] === 'function') window[fnName](area); else area.innerHTML = `<div class="empty-state"><div class="icon">🚧</div><h3>A carregar...</h3></div>`; };
-            s.onerror = () => { area.innerHTML = `<div class="empty-state"><div class="icon">🚧</div><h3>Erro ao carregar</h3></div>`; };
-            document.head.appendChild(s);
-        } else {
-            area.innerHTML = `<div class="empty-state"><div class="icon">🚧</div><h3>A carregar...</h3></div>`;
-        }
+        return;
     }
+    const script = document.querySelector(`script[src*="extensions/${extName}.js"]`);
+    if (script) {
+        const checkLoad = () => {
+            if (typeof window[fnName] === 'function') {
+                window[fnName](area);
+            } else {
+                area.innerHTML = `<div class="empty-state"><div class="icon">🚧</div><h3>Erro ao carregar</h3></div>`;
+            }
+        };
+        if (script.readyState) script.onreadystatechange = checkLoad;
+        else checkLoad();
+        return;
+    }
+    const s = document.createElement('script');
+    s.src = `/static/js/extensions/${extName}.js?v=3.4`;
+    s.onload = () => { if (typeof window[fnName] === 'function') window[fnName](area); else area.innerHTML = `<div class="empty-state"><div class="icon">🚧</div><h3>Erro ao carregar</h3></div>`; };
+    s.onerror = () => { area.innerHTML = `<div class="empty-state"><div class="icon">🚧</div><h3>Erro ao carregar</h3></div>`; };
+    document.head.appendChild(s);
 }
 
 function renderPage(page) {
@@ -226,9 +229,6 @@ function renderPage(page) {
         case 'loja': renderLoja(area); break;
         case 'mail': renderPageExtension(area, 'mail'); break;
         case 'tradutor': renderPageExtension(area, 'tradutor'); break;
-        case 'pdf': renderPageExtension(area, 'pdf'); break;
-        case 'estudo-ia': renderPageExtension(area, 'estudo_ia'); break;
-        case 'livros': renderPageExtension(area, 'livros'); break;
         case 'cadernos': renderPageExtension(area, 'cadernos'); break;
         case 'configuracoes': renderPageExtension(area, 'configuracoes'); break;
         default:
@@ -293,7 +293,8 @@ async function loadDashboardStats() {
     const media = notas.length > 0 ? (notas.reduce((a,n) => a + n.valor, 0) / notas.length).toFixed(1) : '—';
     const totalAlunos = isProf ? profTurmas.length : 0;
 
-    document.getElementById('dash-stats').innerHTML = `
+    const elStats = document.getElementById('dash-stats');
+    if (elStats) elStats.innerHTML = `
         <div class="stat-card"><div class="stat-icon">📚</div><div class="stat-value">${notas.length}</div><div class="stat-label">${isProf ? 'Notas dadas' : t('nav_notas')}</div></div>
         <div class="stat-card"><div class="stat-icon">📝</div><div class="stat-value">${provas.length}</div><div class="stat-label">${t('nav_provas')}</div></div>
         <div class="stat-card"><div class="stat-icon">📊</div><div class="stat-value">${media}</div><div class="stat-label">${t('notas_average')}${isProf ? ' geral' : ''}</div></div>
@@ -301,7 +302,8 @@ async function loadDashboardStats() {
     `;
 
     if (notas.length > 0) {
-        document.getElementById('dash-notas').innerHTML = notas.slice(-5).reverse().map(n => `
+        const elNotas = document.getElementById('dash-notas');
+        if (elNotas) elNotas.innerHTML = notas.slice(-5).reverse().map(n => `
             <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);">
                 <span>${n.disciplina} <small style="color:var(--text-light)">(${n.tipo})</small></span>
                 <strong style="color:${n.valor >= 10 ? 'var(--success)' : 'var(--danger)'}">${n.valor}/20</strong>
@@ -310,7 +312,8 @@ async function loadDashboardStats() {
     }
 
     if (provas.length > 0) {
-        document.getElementById('dash-provas').innerHTML = provas.slice(0,5).map(p => `
+        const elProvas = document.getElementById('dash-provas');
+        if (elProvas) elProvas.innerHTML = provas.slice(0,5).map(p => `
             <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);">
                 <span>${p.titulo} <small style="color:var(--text-light)">(${p.disciplina})</small></span>
                 <button class="btn btn-sm btn-primary" onclick="navigateTo('provas')">Ver</button>
@@ -322,8 +325,9 @@ async function loadDashboardStats() {
     if (notas.length > 0) {
         const labels = notas.map(n => n.disciplina);
         const data = notas.map(n => n.valor);
+        const dashChart = document.getElementById('dashChart');
         if (chartInstance) chartInstance.destroy();
-        chartInstance = new Chart(document.getElementById('dashChart'), {
+        if (dashChart) chartInstance = new Chart(dashChart, {
             type: 'bar',
             data: { labels, datasets: [{ label: 'Notas', data, backgroundColor: data.map(v => v >= 10 ? 'rgba(16,185,129,0.7)' : 'rgba(239,68,68,0.7)'), borderRadius: 8 }] },
             options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, max: 20, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#64748B' } }, x: { grid: { display: false }, ticks: { color: '#64748B' } } } }
@@ -392,7 +396,8 @@ async function loadHorarios() {
         });
     });
     html += '</div>';
-    document.getElementById('horario-grid').innerHTML = html;
+    const horarioGrid = document.getElementById('horario-grid');
+    if (horarioGrid) horarioGrid.innerHTML = html;
 }
 
 async function deleteHorario(id) {
@@ -486,7 +491,8 @@ async function loadNotas() {
             html += '</table></div>';
         }
     }
-    document.getElementById('notas-list').innerHTML = html;
+    const notasList = document.getElementById('notas-list');
+    if (notasList) notasList.innerHTML = html;
 }
 
 // ── PROVAS ──
@@ -509,12 +515,14 @@ async function loadProvas() {
         isProf ? v.professorId === currentUser.uid : (v.turma === userProfile?.turma && v.ativa !== false)
     ).map(([k,v]) => ({id:k,...v})) : [];
 
+    const provasGrid = document.getElementById('provas-grid');
     if (provas.length === 0) {
-        document.getElementById('provas-grid').innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><div class="icon">📝</div><h3>Sem provas</h3></div>';
+        if (provasGrid) provasGrid.innerHTML = '<div class="empty-state" style="grid-column:1/-1;"><div class="icon">📝</div><h3>Sem provas</h3></div>';
         return;
     }
+    if (!provasGrid) return;
 
-    document.getElementById('provas-grid').innerHTML = provas.map(p => `
+    provasGrid.innerHTML = provas.map(p => `
         <div class="exam-card">
             <div style="display:flex;justify-content:space-between;align-items:start;margin-bottom:12px;">
                 <div><h3 style="font-size:17px;">${p.titulo}</h3><span style="color:var(--text-light);font-size:13px;">${p.disciplina} · ${p.turma}</span></div>
@@ -940,7 +948,8 @@ function endVideo() {
 async function loadRecentRooms() {
     const snap = await dbGet('video_salas');
     const salas = snap ? Object.entries(snap).map(([k,v]) => ({id:k,...v})).sort((a,b) => b.createdAt - a.createdAt).slice(0,10) : [];
-    document.getElementById('rooms-list').innerHTML = salas.length === 0
+    const roomsList = document.getElementById('rooms-list');
+    if (roomsList) roomsList.innerHTML = salas.length === 0
         ? '<p style="color:var(--text-light);">Nenhuma sala ainda</p>'
         : salas.map(s => `
             <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border);">
@@ -1326,12 +1335,13 @@ async function loadRecursosStats() {
     const users = usersSnap ? Object.entries(usersSnap) : [];
     const alunos = users.filter(([k,v]) => v.turma === userProfile?.turma && v.role === 'aluno');
 
-    document.getElementById('count-alunos').textContent = alunos.length;
-    document.getElementById('count-provas').textContent = provasSnap ? Object.values(provasSnap).filter(p => p.professorId === currentUser.uid).length : 0;
-    document.getElementById('count-msgs').textContent = chatSnap ? Object.keys(chatSnap).length : 0;
-    document.getElementById('count-files').textContent = filesSnap ? Object.keys(filesSnap).length : 0;
+    const elCA = document.getElementById('count-alunos'); if (elCA) elCA.textContent = alunos.length;
+    const elCP = document.getElementById('count-provas'); if (elCP) elCP.textContent = provasSnap ? Object.values(provasSnap).filter(p => p.professorId === currentUser.uid).length : 0;
+    const elCM = document.getElementById('count-msgs'); if (elCM) elCM.textContent = chatSnap ? Object.keys(chatSnap).length : 0;
+    const elCF = document.getElementById('count-files'); if (elCF) elCF.textContent = filesSnap ? Object.keys(filesSnap).length : 0;
 
-    document.getElementById('alunos-list').innerHTML = alunos.length === 0
+    const elAlunos = document.getElementById('alunos-list');
+    if (elAlunos) elAlunos.innerHTML = alunos.length === 0
         ? '<p style="color:var(--text-light);">Sem alunos na turma</p>'
         : '<div class="table-wrap"><table class="sheet-table"><tr><th>Nome</th><th>Email</th><th>UID</th></tr>' +
           alunos.map(([uid, a]) => `<tr><td><strong>${a.nome}</strong></td><td>${a.email}</td><td><code style="font-size:11px;">${uid.slice(0,12)}...</code></td></tr>`).join('') +
@@ -1493,6 +1503,7 @@ async function loadFaltaResumo(alunoId) {
     const snap = await dbGet(`faltas/${alunoId}`);
     const faltas = snap ? Object.values(snap) : [];
     const el = document.getElementById('faltas-resumo');
+    if (!el) return;
     const atraso = faltas.filter(f => f.tipo === 'atraso').length;
     const presenca = faltas.filter(f => f.tipo === 'presenca').length;
     const disc = faltas.reduce((s, f) => s + (f.tipo === 'disciplinar' ? (f.severidade || 1) : 0), 0);
@@ -1516,6 +1527,7 @@ async function loadFaltaResumo(alunoId) {
 
 async function loadAllFaltasHistory(profTurmas) {
     const el = document.getElementById('faltas-historico');
+    if (!el) return;
     const usersSnap = await dbGet('users') || {};
     const allFaltas = [];
     for (const [uid, u] of Object.entries(usersSnap)) {
@@ -2024,7 +2036,8 @@ async function loadConvites() {
     const recebidos = convites.filter(c => c.para === myEmail || c.para === myName || c.para === currentUser.uid);
     const enviados = convites.filter(c => c.de === currentUser.uid);
 
-    document.getElementById('convites-recebidos').innerHTML = recebidos.length === 0
+    const elRecebidos = document.getElementById('convites-recebidos');
+    if (elRecebidos) elRecebidos.innerHTML = recebidos.length === 0
         ? '<p style="color:var(--text-light);padding:10px 0;">Sem convites</p>'
         : recebidos.map(c => `
             <div style="padding:12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
@@ -2037,7 +2050,8 @@ async function loadConvites() {
             </div>
         `).join('');
 
-    document.getElementById('convites-enviados').innerHTML = enviados.length === 0
+    const elEnviados = document.getElementById('convites-enviados');
+    if (elEnviados) elEnviados.innerHTML = enviados.length === 0
         ? '<p style="color:var(--text-light);padding:10px 0;">Sem convites enviados</p>'
         : enviados.map(c => `
             <div style="padding:12px;border-bottom:1px solid var(--border);">
@@ -2072,7 +2086,8 @@ async function loadProjetosColab() {
         return membros[currentUser.uid] || v.criadorId === currentUser.uid;
     }).map(([k,v]) => ({id:k,...v})) : [];
 
-    document.getElementById('projetos-list').innerHTML = projetos.length === 0
+    const elProjetos = document.getElementById('projetos-list');
+    if (elProjetos) elProjetos.innerHTML = projetos.length === 0
         ? '<p style="color:var(--text-light);">Sem projetos colaborativos</p>'
         : projetos.map(p => `
             <div style="padding:14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
@@ -2588,6 +2603,15 @@ function confettiBurst(x, y) {
 
 // ─── LOJA / EXTENSÕES ──────────────────────────────────────
 let allExtensions = {};
+
+// Extensões premium (bloqueadas até serem desbloqueadas na Loja).
+// Fallback local para garantir que aparecem sempre na Loja, mesmo sem
+// dados no Firebase. Os dados do Firebase (extensions) têm prioridade.
+const DEFAULT_EXTENSIONS = {
+    livros: { name: 'Livros', icon: '📚', label: 'Livros', desc: 'A tua biblioteca digital com os livros do curso.', price: '5€', category: 'recursos', status: 'available', pageType: 'livros' },
+    estudo_ia: { name: 'Estudo IA', icon: '🧠', label: 'Estudo IA', desc: 'Assistente de estudo inteligente com IA.', price: '5€', category: 'ia', status: 'available', pageType: 'estudo_ia' },
+    pdf: { name: 'PDF', icon: '📄', label: 'PDF', desc: 'Editor e organizador de ficheiros PDF.', price: '3€', category: 'produtividade', status: 'available', pageType: 'pdf_editor', renderFn: 'renderPdf' }
+};
 let extensionsEnabled = true;
 
 async function callAI(q) {
@@ -2603,7 +2627,7 @@ async function callAI(q) {
 
 async function renderLoja(area) {
     const snap = await dbGet('extensions');
-    allExtensions = snap || {};
+    allExtensions = Object.assign({}, DEFAULT_EXTENSIONS, snap || {});
     const extEntries = Object.entries(allExtensions);
 
     const purchasesSnap = await dbGet('extension_purchases');
@@ -2684,9 +2708,9 @@ function renderExtPage(area, extId) {
         return;
     }
     const ext = allExtensions[extId] || {};
-    const knownPageTypes = { flash_cards:'flash_cards', escrita_musical:'escrita_musical', exames:'exames', ia_professor:'ia_professor', musica:'musica' };
+    const knownPageTypes = { flash_cards:'flash_cards', escrita_musical:'escrita_musical', exames:'exames', ia_professor:'ia_professor', musica:'musica', livros:'livros', estudo_ia:'estudo_ia', pdf:'pdf_editor' };
     const pageType = ext.pageType || knownPageTypes[extId] || 'generic';
-    const renderFn = 'render' + pageType.split('_').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join('');
+    const renderFn = ext.renderFn || ('render' + pageType.split('_').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(''));
 
     if (typeof window[renderFn] === 'function') {
         window[renderFn](area, ext);

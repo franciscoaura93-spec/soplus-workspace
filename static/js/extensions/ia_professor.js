@@ -1,7 +1,7 @@
 // S&O+ Extension: IA Professor
 function renderIaProfessor(area, ext) {
     area.innerHTML = `
-        <div class="page-header"><h2>${ext.icon} ${ext.name}</h2><p>${ext.desc}</p></div>
+        <div class="page-header"><h2>${ext?.icon || "🔧"} ${ext?.name || "Extensão"}</h2><p>${ext?.desc || ""}</p></div>
         <div class="card" style="margin-bottom:16px;">
             <h3 style="margin-bottom:12px;">🤖 Correção Automática</h3>
             <div class="form-group"><label>Disciplina</label><input id="prof-subject" placeholder="Ex: Português"></div>

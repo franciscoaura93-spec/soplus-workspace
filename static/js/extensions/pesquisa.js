@@ -34,7 +34,7 @@ function renderPesquisa(area, ext) {
     brBookmarks = JSON.parse(localStorage.getItem('br_bookmarks') || '[]');
     area.innerHTML = `
         <div class="page-header">
-            <h2>${ext.icon} ${ext.name}</h2><p>${ext.desc}</p>
+            <h2>${ext?.icon || '🔍'} ${ext?.name || 'Pesquisa'}</h2><p>${ext?.desc || ''}</p>
             <div style="display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap;">
                 <button id="pesq-tab-search" onclick="pesqSetMode('search')" style="padding:6px 16px;border-radius:20px;border:1px solid var(--primary);background:rgba(99,102,241,0.12);color:var(--primary);font-size:12px;font-weight:700;cursor:pointer;">🔍 Pesquisa</button>
                 <button id="pesq-tab-browser" onclick="pesqSetMode('browser')" style="padding:6px 16px;border-radius:20px;border:1px solid var(--border);background:var(--surface);color:var(--text-light);font-size:12px;font-weight:700;cursor:pointer;">🌐 Browser</button>

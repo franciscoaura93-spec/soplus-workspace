@@ -1,7 +1,7 @@
 // S&O+ Extension: Ferramentas
 function renderFerramentas(area, ext) {
     area.innerHTML = `
-        <div class="page-header"><h2>${ext.icon} ${ext.name}</h2><p>${ext.desc}</p></div>
+        <div class="page-header"><h2>${ext?.icon || "🔧"} ${ext?.name || "Extensão"}</h2><p>${ext?.desc || ""}</p></div>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;">
             <div class="card">
                 <div style="font-size:32px;margin-bottom:8px;">⏱️</div>

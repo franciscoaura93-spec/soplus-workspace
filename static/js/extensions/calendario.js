@@ -14,7 +14,7 @@ function renderCalendario(area, ext) {
         days += `<div style="aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:10px;font-size:14px;cursor:pointer;transition:all 0.2s;${isToday ? 'background:var(--primary);color:#fff;font-weight:700;box-shadow:0 0 12px rgba(37,99,235,0.3);' : 'background:var(--surface);border:1px solid var(--border);'}" onmouseover="if(!this.style.background.includes('rgb(37'))this.style.borderColor='rgba(37,99,235,0.4)'" onmouseout="if(!this.style.background.includes('rgb(37'))this.style.borderColor='var(--border)'">${d}</div>`;
     }
     area.innerHTML = `
-        <div class="page-header"><h2>${ext.icon} ${ext.name}</h2><p>${ext.desc}</p></div>
+        <div class="page-header"><h2>${ext?.icon || "🔧"} ${ext?.name || "Extensão"}</h2><p>${ext?.desc || ""}</p></div>
         <div class="card">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
                 <button class="btn btn-outline" onclick="calNav(-1)" style="font-size:18px;padding:8px 14px;">◀</button>

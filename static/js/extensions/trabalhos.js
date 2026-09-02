@@ -1,7 +1,7 @@
 // S&O+ Extension: Trabalhos
 function renderTrabalhos(area, ext) {
     area.innerHTML = `
-        <div class="page-header"><h2>${ext.icon} ${ext.name}</h2><p>${ext.desc}</p></div>
+        <div class="page-header"><h2>${ext?.icon || "🔧"} ${ext?.name || "Extensão"}</h2><p>${ext?.desc || ""}</p></div>
         <div class="card" style="margin-bottom:16px;">
             <h3 style="margin-bottom:12px;">📤 Submeter Trabalho</h3>
             <div class="form-group"><label>Nome do Trabalho</label><input id="work-name" placeholder="Ex: Relatório de Ciências"></div>

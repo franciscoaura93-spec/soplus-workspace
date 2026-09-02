@@ -1,7 +1,7 @@
 // S&O+ Extension: Gravacao Prof
 function renderGravacaoProf(area, ext) {
     area.innerHTML = `
-        <div class="page-header"><h2>${ext.icon} ${ext.name}</h2><p>${ext.desc}</p></div>
+        <div class="page-header"><h2>${ext?.icon || "🔧"} ${ext?.name || "Extensão"}</h2><p>${ext?.desc || ""}</p></div>
         <div class="card" style="margin-bottom:16px;">
             <h3 style="margin-bottom:12px;">🎤 Gravação de Áudio</h3>
             <p style="font-size:13px;color:var(--text-light);margin-bottom:16px;">Grava explicações e feedback em áudio para os teus alunos.</p>

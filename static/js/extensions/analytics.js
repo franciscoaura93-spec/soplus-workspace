@@ -1,7 +1,7 @@
 // S&O+ Extension: Analytics
 function renderAnalytics(area, ext) {
     area.innerHTML = `
-        <div class="page-header"><h2>${ext.icon} ${ext.name}</h2><p>${ext.desc}</p></div>
+        <div class="page-header"><h2>${ext?.icon || "🔧"} ${ext?.name || "Extensão"}</h2><p>${ext?.desc || ""}</p></div>
         <div class="card" style="margin-bottom:16px;">
             <h3 style="margin-bottom:12px;">📊 As Tuas Estatísticas</h3>
             <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;" id="analytics-stats"></div>

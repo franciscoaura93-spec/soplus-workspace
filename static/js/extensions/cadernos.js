@@ -463,7 +463,14 @@ function cnDrawPage(canvas) {
     const pageIdx = canvas.getAttribute('data-canvas-page');
     const pg = CN.activeNotebook.pages[pageIdx];
     const rect = canvas.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return;
     const w = rect.width, h = rect.height;
+    if (canvas.width !== Math.round(w) || canvas.height !== Math.round(h)) {
+        canvas.width = Math.round(w * (window.devicePixelRatio || 1));
+        canvas.height = Math.round(h * (window.devicePixelRatio || 1));
+        const ctx0 = canvas.getContext('2d');
+        ctx0.setTransform((window.devicePixelRatio || 1), 0, 0, (window.devicePixelRatio || 1), 0, 0);
+    }
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, w, h);
     if (!pg.strokes) return;
@@ -541,6 +548,7 @@ function cnRenderToolbar() {
             <button class="btn btn-sm ${CN.currentTool === 'pen' ? 'btn-primary' : 'btn-outline'} cn-tool-btn" data-tool="pen" onclick="cnSetTool('pen')">🖊️ Caneta</button>
             <button class="btn btn-sm ${CN.currentTool === 'highlighter' ? 'btn-primary' : 'btn-outline'} cn-tool-btn" data-tool="highlighter" onclick="cnSetTool('highlighter')">🖍️ Marcador</button>
             <button class="btn btn-sm ${CN.currentTool === 'eraser' ? 'btn-primary' : 'btn-outline'} cn-tool-btn" data-tool="eraser" onclick="cnSetTool('eraser')">🧹 Borracha</button>
+            <button class="btn btn-sm btn-outline" style="padding:6px 14px;font-weight:700;" onclick="cnInsertText()">✍️ Texto</button>
             <span style="width:1px;height:22px;background:var(--border);"></span>
             <div id="cn-color-row" style="display:flex;gap:6px;flex-wrap:wrap;">
                 ${cnColorSwatches()}
@@ -765,6 +773,30 @@ function cnRebuildChart(el, store) {
     if (holder && store.chartRows && store.chartRows.length) cnBuildChart(holder.id, store.chartType || 'bar', store.chartRows);
 }
 
+function cnInsertText() {
+    const pg = cnGetPage();
+    const elLayer = document.querySelector(`.cn-element-layer[data-element-page="${CN.currentPage}"]`);
+    if (!elLayer) return;
+    const elId = 'cel_' + Date.now();
+    const elData = {
+        id: elId, x: 50, y: 50, w: 260, h: 60, type: 'text',
+        html: `<div class="cn-text-box" contenteditable="true" style="font-size:15px;color:#0f172a;line-height:1.5;padding:6px 10px;font-family:inherit;outline:none;white-space:pre-wrap;">Escreve aqui...</div>`
+    };
+    pg.elements = pg.elements || [];
+    pg.elements.push(elData);
+    cnRenderPageElement(elLayer, elData, pg.elements.length - 1);
+    cnSave();
+    const el = elLayer.lastElementChild;
+    if (el) {
+        setTimeout(() => {
+            const box = el.querySelector('.cn-text-box') || el;
+            box.focus();
+            if (box.select) box.select();
+            el.style.zIndex = '6';
+        }, 30);
+    }
+}
+
 function cnInsertElementHTML(html, w, h, after, type, extra) {
     const pg = cnGetPage();
     const elLayer = document.querySelector(`.cn-element-layer[data-element-page="${CN.currentPage}"]`);
@@ -793,14 +825,43 @@ function cnRenderPageElement(layer, elData, index) {
     newEl.style.transform = 'translate(-50%,-50%)';
     newEl.style.width = (elData.w || 300) + 'px';
     newEl.style.minHeight = (elData.h || 200) + 'px';
-    newEl.style.background = '#fff';
-    newEl.style.borderRadius = '10px';
-    newEl.style.boxShadow = '0 4px 14px rgba(0,0,0,0.15)';
+    if (elData.type === 'text') {
+        newEl.style.background = 'transparent';
+        newEl.style.border = '1px dashed rgba(100,116,139,0.4)';
+        newEl.style.borderRadius = '4px';
+        newEl.style.boxShadow = 'none';
+        newEl.style.minWidth = '120px';
+        newEl.style.cursor = 'default';
+    } else {
+        newEl.style.background = '#fff';
+        newEl.style.borderRadius = '10px';
+        newEl.style.boxShadow = '0 4px 14px rgba(0,0,0,0.15)';
+        newEl.style.cursor = 'move';
+    }
     newEl.style.pointerEvents = 'auto';
-    newEl.style.cursor = 'move';
     newEl.style.zIndex = '5';
+    if (elData.type === 'text') {
+        const handle = document.createElement('div');
+        handle.style.cssText = 'position:absolute;top:-8px;left:50%;transform:translateX(-50%);width:56px;height:16px;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.4);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;color:#6366f1;cursor:grab;user-select:none;z-index:7;';
+        handle.textContent = '✥ arrastar';
+        handle.addEventListener('pointerdown', e => {
+            e.preventDefault();
+            e.stopPropagation();
+            cnMakeElementDraggable(newEl);
+            newEl.dispatchEvent(new PointerEvent('pointerdown', { bubbles: false, clientX: e.clientX, clientY: e.clientY, pointerId: e.pointerId }));
+        });
+        newEl.appendChild(handle);
+        const del = document.createElement('div');
+        del.style.cssText = 'position:absolute;top:-8px;right:-8px;width:24px;height:24px;border-radius:50%;background:#ef4444;color:#fff;font-size:14px;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:7;font-weight:700;';
+        del.textContent = '✕';
+        del.addEventListener('click', e => {
+            e.stopPropagation();
+            cnDeleteElement(newEl);
+        });
+        newEl.appendChild(del);
+    }
     layer.appendChild(newEl);
-    cnMakeElementDraggable(newEl);
+    if (elData.type !== 'text') cnMakeElementDraggable(newEl);
     if (elData.type === 'chart' && elData.chartId) cnRebuildChart(newEl, elData);
     const editable = newEl.querySelectorAll('[contenteditable="true"]');
     if (editable.length) {
@@ -852,6 +913,20 @@ function cnFindElementStore(el) {
     const idx = el.dataset.elIndex;
     if (idx != null) return pg.elements[parseInt(idx)];
     return null;
+}
+
+function cnDeleteElement(el) {
+    const pg = cnGetPage();
+    const layer = el.parentElement;
+    if (pg && pg.elements && el.dataset.elIndex != null) {
+        pg.elements.splice(parseInt(el.dataset.elIndex), 1);
+        el.remove();
+        if (layer) {
+            Array.from(layer.children).forEach((c, i) => { c.dataset.elIndex = i; });
+        }
+        cnSave();
+        cnDrawAllPages();
+    }
 }
 
 // ---------------- AI Summary ----------------

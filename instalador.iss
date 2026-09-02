@@ -49,7 +49,7 @@ Name: "{group}\Desinstalar S+O Ultra Workspace"; Filename: "{uninstallexe}"
 Name: "{autodesktop}\S+O Ultra Workspace"; Filename: "{app}\iniciar.bat"; WorkingDir: "{app}"; Tasks: desktopicon; IconFilename: "{app}\static\favicon.ico"
 
 [Run]
-Filename: "{cmd}"; Parameters: "/C powershell -ExecutionPolicy Bypass -File ""{app}\instalar_deps.ps1"""; StatusMsg: "A configurar dependencias..."; Flags: waituntilterminated runhidden
+Filename: "{cmd}"; Parameters: "/C powershell -ExecutionPolicy Bypass -File ""{app}\instalar_deps.ps1"""; StatusMsg: "A configurar dependencias..."; Flags: waituntilterminated
 Filename: "{app}\iniciar.bat"; Description: "Abrir S+O Ultra Workspace agora"; Flags: nowait postinstall skipifsilent
 
 [Code]

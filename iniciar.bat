@@ -4,7 +4,7 @@ color 0B
 cls
 echo.
 echo   ╔══════════════════════════════════════╗
-echo   ║   S^&O+ Ultra Workspace v3.2         ║
+echo   ║   S^&O+ Ultra Workspace v3.4         ║
 echo   ║   A arrancar em pywebview...         ║
 echo   ╚══════════════════════════════════════╝
 echo.

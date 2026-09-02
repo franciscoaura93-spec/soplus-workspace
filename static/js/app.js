@@ -12,6 +12,8 @@ let chartInstance = null;
 
 let deviceInfo = { ip: '', mac: '' };
 
+initTheme();
+
 // ─── DEVICE DETECTION ─────────────────────────────────────
 async function detectDeviceInfo() {
     try {
@@ -1708,7 +1710,7 @@ async function loadSuporteMessages() {
     el.innerHTML = msgs.length === 0 ?
         `<div style="background:var(--primary);color:#fff;padding:10px 14px;border-radius:12px 12px 12px 4px;font-size:13px;max-width:80%;align-self:flex-start;">${t('suporte_ola')}</div>` :
         msgs.map(m => `
-            <div style="padding:10px 14px;border-radius:12px;font-size:13px;max-width:80%;${m.from === 'admin' ? 'background:var(--primary);color:#fff;align-self:flex-start;border-radius:12px 12px 12px 4px;' : 'background:var(--card);color:var(--text);align-self:flex-end;border-radius:12px 12px 4px 12px;border:1px solid var(--border);'}">
+            <div style="padding:10px 14px;border-radius:12px;font-size:13px;max-width:80%;${m.from === 'admin' ? 'background:var(--primary);color:#fff;align-self:flex-start;border-radius:12px 12px 12px 4px;' : 'background:var(--surface);color:var(--text);align-self:flex-end;border-radius:12px 12px 4px 12px;border:1px solid var(--border);'}">
                 ${escapeHTML(m.text || '')}
                 <div style="font-size:10px;opacity:0.5;margin-top:4px;">${new Date(m.createdAt).toLocaleTimeString('pt-PT', {hour:'2-digit',minute:'2-digit'})}</div>
             </div>
@@ -1767,6 +1769,17 @@ function renderPerfil(area) {
                     `).join('')}
                 </div>
 
+                <div class="card-title" style="margin-bottom:12px;">🎨 ${t('perfil_theme')}</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:20px;">
+                    ${[['light', t('perfil_light'), '☀️'], ['dark', t('perfil_dark'), '🌙'], ['system', t('perfil_system'), '🖥️']].map(([val, label, icon]) => `
+                        <button class="btn ${getTheme() === val ? 'btn-primary' : 'btn-outline'}" 
+                            onclick="setTheme('${val}')" 
+                            style="padding:10px 8px;font-size:13px;">
+                            <span style="font-size:16px;">${icon}</span> ${label}
+                        </button>
+                    `).join('')}
+                </div>
+
                 <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:8px;">
                     <div class="card-title" style="margin-bottom:12px;">ℹ️ Conta</div>
                     <div style="font-size:13px;color:var(--text-light);line-height:2;">
@@ -1808,6 +1821,39 @@ function changeProfileLang(lang) {
     buildNav();
     navigateTo('perfil');
     showToast(t('perfil_lang') + ': ' + (LANGUAGES[lang]?._name || lang), 'success');
+}
+
+function getTheme() {
+    return localStorage.getItem('soplus_theme') || 'system';
+}
+
+function setTheme(theme) {
+    if (!['light', 'dark', 'system'].includes(theme)) theme = 'system';
+    localStorage.setItem('soplus_theme', theme);
+    applyTheme();
+    buildNav();
+    navigateTo('perfil');
+    const names = { light: t('perfil_light'), dark: t('perfil_dark'), system: t('perfil_system') };
+    showToast(t('perfil_theme') + ': ' + names[theme], 'success');
+}
+
+function applyTheme() {
+    const theme = getTheme();
+    const html = document.documentElement;
+    if (theme === 'system') {
+        html.removeAttribute('data-theme');
+    } else {
+        html.setAttribute('data-theme', theme);
+    }
+}
+
+function initTheme() {
+    applyTheme();
+    try {
+        window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
+            if (getTheme() === 'system') applyTheme();
+        });
+    } catch (e) {}
 }
 
 async function doLogout() {

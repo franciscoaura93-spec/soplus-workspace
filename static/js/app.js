@@ -85,6 +85,13 @@ const PAGES = [
     { id: 'word', icon: '📝', label: 'Word' },
     { id: 'powerpoint', icon: '📽️', label: 'PowerPoint' },
     { id: 'desenho', icon: '🎨', label: 'Desenho' },
+    { id: 'mail', icon: '✉️', label: 'Mail' },
+    { id: 'tradutor', icon: '🌐', label: 'Tradutor' },
+    { id: 'pdf', icon: '📄', label: 'PDF' },
+    { id: 'estudo-ia', icon: '🧠', label: 'Estudo IA' },
+    { id: 'livros', icon: '📚', label: 'Livros' },
+    { id: 'cadernos', icon: '📓', label: 'Cadernos' },
+    { id: 'configuracoes', icon: '🔧', label: 'Config.' },
 ];
 
 let userExtensions = [];
@@ -174,6 +181,26 @@ function closeSidebar() {
 
 // ─── PAGE RENDERERS ───────────────────────────────────────
 
+function renderPageExtension(area, extName) {
+    const fnName = 'render' + extName.split('_').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join('');
+    if (typeof window[fnName] === 'function') {
+        window[fnName](area);
+    } else {
+        const script = document.querySelector(`script[src*="extensions/${extName}.js"]`);
+        if (script && typeof window[fnName] === 'function') {
+            window[fnName](area);
+        } else if (!script) {
+            const s = document.createElement('script');
+            s.src = `/static/js/extensions/${extName}.js?v=3.4`;
+            s.onload = () => { if (typeof window[fnName] === 'function') window[fnName](area); else area.innerHTML = `<div class="empty-state"><div class="icon">🚧</div><h3>A carregar...</h3></div>`; };
+            s.onerror = () => { area.innerHTML = `<div class="empty-state"><div class="icon">🚧</div><h3>Erro ao carregar</h3></div>`; };
+            document.head.appendChild(s);
+        } else {
+            area.innerHTML = `<div class="empty-state"><div class="icon">🚧</div><h3>A carregar...</h3></div>`;
+        }
+    }
+}
+
 function renderPage(page) {
     const area = document.getElementById('content-area');
     switch(page) {
@@ -182,7 +209,7 @@ function renderPage(page) {
         case 'notas': renderNotas(area); break;
         case 'provas': renderProvas(area); break;
         case 'ficheiros': renderFicheiros(area); break;
-        case 'chat': renderChat(area); break;
+        case 'chat': (typeof window.renderChat === 'function' ? window.renderChat : renderChat)(area); break;
         case 'video': renderVideo(area); break;
         case 'estudar': renderEstudar(area); break;
         case 'estudio-ia': renderEstudioIA(area); break;
@@ -190,13 +217,20 @@ function renderPage(page) {
         case 'perfil': renderPerfil(area); break;
         case 'ide': renderIDE(area); break;
         case 'colaboracao': renderColaboracao(area); break;
-        case 'excel': renderExcel(area); break;
-        case 'word': renderWord(area); break;
-        case 'powerpoint': renderPowerPoint(area); break;
-        case 'desenho': renderDesenho(area); break;
+        case 'excel': (typeof window.renderExcel === 'function' ? window.renderExcel : renderExcel)(area); break;
+        case 'word': (typeof window.renderWord === 'function' ? window.renderWord : renderWord)(area); break;
+        case 'powerpoint': (typeof window.renderPowerpoint === 'function' ? window.renderPowerpoint : renderPowerPoint)(area); break;
+        case 'desenho': (typeof window.renderDesenho === 'function' ? window.renderDesenho : renderDesenho)(area); break;
         case 'faltas': renderFaltas(area); break;
         case 'sumarios': renderSumarios(area); break;
         case 'loja': renderLoja(area); break;
+        case 'mail': renderPageExtension(area, 'mail'); break;
+        case 'tradutor': renderPageExtension(area, 'tradutor'); break;
+        case 'pdf': renderPageExtension(area, 'pdf'); break;
+        case 'estudo-ia': renderPageExtension(area, 'estudo_ia'); break;
+        case 'livros': renderPageExtension(area, 'livros'); break;
+        case 'cadernos': renderPageExtension(area, 'cadernos'); break;
+        case 'configuracoes': renderPageExtension(area, 'configuracoes'); break;
         default:
             if (PAGES.find(p => p.id === page && p.extPage)) {
                 renderExtPage(area, page);
@@ -2667,7 +2701,7 @@ function renderExtPage(area, extId) {
         return;
     }
     const script = document.createElement('script');
-    script.src = `/static/js/extensions/${pageType}.js?v=3.2`;
+    script.src = `/static/js/extensions/${pageType}.js?v=3.4`;
     script.onload = () => {
         if (typeof window[renderFn] === 'function') {
             window[renderFn](area, ext);

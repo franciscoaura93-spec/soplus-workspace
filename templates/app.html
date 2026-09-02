@@ -4,8 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>S&O+ Ultra Workspace</title>
+    <meta name="google-site-verification" content="QQq-ndcDBhil7D9BwtY_oZjKKrxIKOHU0TResT4KE14" />
     <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
-    <link rel="stylesheet" href="/static/css/app.css?v=3.2">
+    <link rel="stylesheet" href="/static/css/app.css?v=3.4">
+    <link rel="manifest" href="/manifest.json">
     <script src="/static/js/firebase-app-compat.js"></script>
     <script src="/static/js/firebase-auth-compat.js"></script>
     <script src="/static/js/firebase-database-compat.js"></script>
@@ -88,8 +90,54 @@
             document.documentElement.style.setProperty('--primary-rgb', r+','+g+','+b);
         }
     });
+    // FCM messaging setup
+    if ('serviceWorker' in navigator && 'Notification' in window) {
+        Notification.requestPermission().then(perm => {
+            if (perm === 'granted') {
+                navigator.serviceWorker.register('/firebase-messaging-sw.js').then(reg => {
+                    console.log('[FCM] Service worker registered');
+                }).catch(err => {
+                    console.warn('[FCM] SW registration failed:', err);
+                });
+            }
+        });
+    }
+    // Check for version updates
+    function checkVersionUpdate() {
+        db.ref('version_notification').once('value', snap => {
+            const v = snap.val();
+            if (v && v.version) {
+                const lastVer = localStorage.getItem('soplus_version_seen');
+                if (lastVer !== v.version) {
+                    setTimeout(() => {
+                        const modal = document.createElement('div');
+                        modal.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:10000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.8);';
+                        modal.innerHTML = `
+                            <div style="background:linear-gradient(135deg,#1e1b4b,#312e81);border:2px solid #a78bfa;border-radius:20px;padding:40px;max-width:480px;width:90%;text-align:center;">
+                                <div style="font-size:48px;margin-bottom:12px;">🚀</div>
+                                <h2 style="color:#fff;font-size:22px;margin-bottom:8px;">${v.title || 'Nova atualização!'}</h2>
+                                <p style="color:var(--text-light);margin-bottom:20px;">${v.body || `Versão ${v.version} disponível.`}</p>
+                                <button onclick="this.closest('[style]').remove();localStorage.setItem('soplus_version_seen','${v.version}')" 
+                                    style="padding:12px 32px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border:none;border-radius:12px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;">
+                                    ✅ OK
+                                </button>
+                            </div>`;
+                        document.body.appendChild(modal);
+                    }, 5000);
+                }
+            }
+        });
+    }
+    setTimeout(checkVersionUpdate, 3000);
     </script>
-    <script src="/static/js/app.js?v=3.2"></script>
+    <script src="/static/js/app.js?v=3.4"></script>
+    <!-- Enhanced extensions (override inline versions) -->
+    <script src="/static/js/extensions/word.js?v=3.4"></script>
+    <script src="/static/js/extensions/excel.js?v=3.4"></script>
+    <script src="/static/js/extensions/powerpoint.js?v=3.4"></script>
+    <script src="/static/js/extensions/desenho.js?v=3.4"></script>
+    <script src="/static/js/extensions/chat.js?v=3.4"></script>
+    <script src="/static/js/extensions/configuracoes.js?v=3.4"></script>
     <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.50.0/min/vs/loader.js"></script>
 </body>
 </html>

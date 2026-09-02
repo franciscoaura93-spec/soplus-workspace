@@ -452,6 +452,32 @@ def _require_admin():
     return None
 
 
+@app.route('/api/mail/send', methods=['POST'])
+def mail_send():
+    """Send email notification from the mail system (for S&O Mail)."""
+    data = request.json if request.is_json else {}
+    to = data.get('to', '')
+    subject = data.get('subject', '')
+    body = data.get('body', '')
+    if not to or not subject or not body:
+        return jsonify({'erro': 'Campos em falta'}), 400
+    if not SMTP_USER or not SMTP_PASS:
+        return jsonify({'erro': 'SMTP não configurado no servidor'}), 503
+    try:
+        msg = MIMEText(body, 'plain', 'utf-8')
+        msg['From'] = SMTP_FROM
+        msg['To'] = to
+        msg['Subject'] = subject
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
+            server.starttls()
+            server.login(SMTP_USER, SMTP_PASS)
+            server.sendmail(SMTP_FROM, to, msg.as_string())
+        return jsonify({'ok': True})
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'erro': str(e)}), 500
+
+
 @app.route('/api/admin/send-email', methods=['POST'])
 def send_email():
     admin_err = _require_admin()
@@ -642,6 +668,28 @@ def moodle_update_course():
         return jsonify(m.atualizar_curso(d['courseid'], d.get('fullname'), d.get('shortname')))
     except (PermissionError, ValueError) as e:
         return jsonify({'erro': str(e)}), 403
+
+
+@app.route('/api/notify/version', methods=['POST'])
+def notify_version():
+    """Send FCM-style notification about new version (stored in Firebase, fetched by clients)."""
+    data = request.json if request.is_json else {}
+    version = data.get('version', '')
+    title = data.get('title', 'Nova atualização disponível!')
+    body = data.get('body', f'Versão {version} do S&O+ Ultra Workspace está disponível.')
+    if not version:
+        return jsonify({'erro': 'version é obrigatório'}), 400
+    try:
+        _fb_put('version_notification', {
+            'version': version,
+            'title': title,
+            'body': body,
+            'createdAt': int(time.time() * 1000)
+        })
+        return jsonify({'ok': True})
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'erro': str(e)}), 500
 
 
 @app.route('/api/admin/gift', methods=['POST'])

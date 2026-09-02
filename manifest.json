@@ -1,0 +1,19 @@
+{
+    "name": "S&O+ Ultra Workspace",
+    "short_name": "S&O+",
+    "description": "Plataforma educativa completa com IA, Office, comunicação e muito mais.",
+    "start_url": "/app",
+    "display": "standalone",
+    "background_color": "#0A0A1A",
+    "theme_color": "#2563EB",
+    "orientation": "any",
+    "scope": "/",
+    "icons": [
+        { "src": "/static/favicon.ico", "sizes": "48x48", "type": "image/x-icon" },
+        { "src": "/static/icon-192.png", "sizes": "192x192", "type": "image/png" },
+        { "src": "/static/icon-512.png", "sizes": "512x512", "type": "image/png" }
+    ],
+    "categories": ["education", "productivity"],
+    "lang": "pt-PT",
+    "dir": "ltr"
+}

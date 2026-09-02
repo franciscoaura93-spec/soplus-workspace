@@ -130,6 +130,7 @@
 
             <!-- ALUNO fields -->
             <div id="aluno-fields" class="reg-extra">
+                <div class="auth-field"><label data-i18n="login_escola">Escola</label><input type="text" id="reg-escola" placeholder="Ex: Escola Secundária de ..."></div>
                 <div class="auth-field"><label data-i18n="login_turma">Turma</label><input type="text" id="reg-turma" placeholder="Ex: 10A"></div>
                 <div class="form-row">
                     <div class="auth-field"><label data-i18n="login_year">Ano</label><input type="number" id="reg-ano" placeholder="Ex: 10" min="1" max="12"></div>
@@ -146,6 +147,7 @@
                 <div style="font-size:11px;color:rgba(255,255,255,.25);margin-top:-10px;margin-bottom:16px;" data-i18n="login_prof_code_hint">
                     Solicita o código ao administrador
                 </div>
+                <div class="auth-field"><label data-i18n="login_escola">Escola</label><input type="text" id="reg-escola-prof" placeholder="Ex: Escola Secundária de ..."></div>
                 <div class="auth-field">
                     <label data-i18n="login_your_turmas">As Tuas Turmas</label>
                     <input type="text" id="reg-turmas-prof" placeholder="Ex: 10A, 10B, 11A">
@@ -376,7 +378,7 @@
                 const snap = await firebase.database().ref('users/' + cred.user.uid).once('value');
                 if (!snap.val()) {
                     await firebase.database().ref('users/' + cred.user.uid).set({
-                        nome: 'Convidado', email: '', role: 'aluno', turma: '',
+                        nome: 'Convidado', email: '', role: 'aluno', escola: '', turma: '',
                         ano: '', idade: '', photoURL: '', createdAt: Date.now()
                     });
                 }
@@ -398,14 +400,16 @@
                 const photoURL = googleCred.user.photoURL || '';
 
                 if (role === 'aluno') {
+                    const escola = document.getElementById('reg-escola').value.trim();
                     const turma = document.getElementById('reg-turma').value.trim();
                     const ano = document.getElementById('reg-ano').value.trim();
                     const idade = document.getElementById('reg-idade').value.trim();
+                    if (!escola) return showError(t('login_err_escola'));
                     if (!turma) return showError(t('login_err_turma'));
                     if (!ano) return showError(t('login_err_year'));
 
                     await firebase.database().ref('users/' + uid).set({
-                        nome, email, role: 'aluno', turma,
+                        nome, email, role: 'aluno', escola, turma,
                         ano: parseInt(ano), idade: idade ? parseInt(idade) : '',
                         photoURL, createdAt: Date.now()
                     });
@@ -413,8 +417,10 @@
                 }
 
                 if (role === 'professor') {
+                    const escola = document.getElementById('reg-escola-prof').value.trim();
                     const codigo = document.getElementById('reg-codigo-prof').value.trim();
                     const turmas = document.getElementById('reg-turmas-prof').value.trim();
+                    if (!escola) return showError(t('login_err_escola'));
                     try {
                         const resp = await fetch('/api/verify-prof-code', {
                             method: 'POST',
@@ -426,7 +432,7 @@
                     } catch(err) { return showError(t('error') + ': ' + err.message); }
 
                     await firebase.database().ref('users/' + uid).set({
-                        nome, email, role: 'professor', turma: '', turmas, ano: '', idade: '',
+                        nome, email, role: 'professor', escola, turma: '', turmas, ano: '', idade: '',
                         photoURL, createdAt: Date.now()
                     });
                     window.location.href = '/app';
@@ -439,14 +445,16 @@
                 const email = auth.currentUser.email || '';
 
                 if (role === 'aluno') {
+                    const escola = document.getElementById('reg-escola').value.trim();
                     const turma = document.getElementById('reg-turma').value.trim();
                     const ano = document.getElementById('reg-ano').value.trim();
                     const idade = document.getElementById('reg-idade').value.trim();
+                    if (!escola) return showError(t('login_err_escola'));
                     if (!turma) return showError(t('login_err_turma'));
                     if (!ano) return showError(t('login_err_year'));
 
                     await firebase.database().ref('users/' + uid).set({
-                        nome, email, role: 'aluno', turma,
+                        nome, email, role: 'aluno', escola, turma,
                         ano: parseInt(ano), idade: idade ? parseInt(idade) : '',
                         photoURL: '', createdAt: Date.now()
                     });
@@ -454,8 +462,10 @@
                 }
 
                 if (role === 'professor') {
+                    const escola = document.getElementById('reg-escola-prof').value.trim();
                     const codigo = document.getElementById('reg-codigo-prof').value.trim();
                     const turmas = document.getElementById('reg-turmas-prof').value.trim();
+                    if (!escola) return showError(t('login_err_escola'));
                     try {
                         const resp = await fetch('/api/verify-prof-code', {
                             method: 'POST',
@@ -467,7 +477,7 @@
                     } catch(err) { return showError(t('error') + ': ' + err.message); }
 
                     await firebase.database().ref('users/' + uid).set({
-                        nome, email, role: 'professor', turma: '', turmas, ano: '', idade: '',
+                        nome, email, role: 'professor', escola, turma: '', turmas, ano: '', idade: '',
                         photoURL: '', createdAt: Date.now()
                     });
                     window.location.href = '/app';
@@ -481,16 +491,18 @@
             if (!pass || pass.length < 6) return showError(t('login_err_pass'));
 
             if (role === 'aluno') {
+                const escola = document.getElementById('reg-escola').value.trim();
                 const turma = document.getElementById('reg-turma').value.trim();
                 const ano = document.getElementById('reg-ano').value.trim();
                 const idade = document.getElementById('reg-idade').value.trim();
+                if (!escola) return showError(t('login_err_escola'));
                 if (!turma) return showError(t('login_err_turma'));
                 if (!ano) return showError(t('login_err_year'));
 
                 try {
                     const cred = await auth.createUserWithEmailAndPassword(email, pass);
                     await firebase.database().ref('users/' + cred.user.uid).set({
-                        nome, email, role: 'aluno', turma,
+                        nome, email, role: 'aluno', escola, turma,
                         ano: parseInt(ano), idade: idade ? parseInt(idade) : '',
                         photoURL: '', createdAt: Date.now()
                     });
@@ -502,8 +514,10 @@
             }
 
             if (role === 'professor') {
+                const escola = document.getElementById('reg-escola-prof').value.trim();
                 const codigo = document.getElementById('reg-codigo-prof').value.trim();
                 const turmas = document.getElementById('reg-turmas-prof').value.trim();
+                if (!escola) return showError(t('login_err_escola'));
                 try {
                     const resp = await fetch('/api/verify-prof-code', {
                         method: 'POST',
@@ -517,7 +531,7 @@
                 try {
                     const cred = await auth.createUserWithEmailAndPassword(email, pass);
                     await firebase.database().ref('users/' + cred.user.uid).set({
-                        nome, email, role: 'professor', turma: '', turmas, ano: '', idade: '',
+                        nome, email, role: 'professor', escola, turma: '', turmas, ano: '', idade: '',
                         photoURL: '', createdAt: Date.now()
                     });
                     window.location.href = '/app';

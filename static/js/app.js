@@ -1727,6 +1727,7 @@ function renderPerfil(area) {
                     <div class="form-group"><label>${t('perfil_name')}</label><input class="form-input" name="nome" value="${userProfile?.nome || ''}" required></div>
                     <div class="form-group"><label>${t('perfil_email')}</label><input class="form-input" value="${currentUser?.email || 'Anónimo'}" disabled style="opacity:0.5;"></div>
                     <div class="form-group"><label>${t('perfil_role')}</label><input class="form-input" value="${isProf ? '👨‍🏫 ' + t('professor') : '🎓 ' + t('student')}" disabled style="opacity:0.5;"></div>
+                    <div class="form-group"><label>🏫 Escola</label><input class="form-input" name="escola" value="${userProfile?.escola || ''}" placeholder="Ex: Escola Secundária de ..."></div>
                     ${isProf ? `
                     <div class="form-group">
                         <label>As Minhas Turmas</label>
@@ -1761,6 +1762,7 @@ function renderPerfil(area) {
                         <div><strong>Email:</strong> ${currentUser?.email || 'Anónimo'}</div>
                         <div><strong>Tipo:</strong> ${currentUser?.isAnonymous ? t('guest') : t('register')}</div>
                         ${isProf ? `<div><strong>Turmas:</strong> ${userProfile?.turmas || 'Não definidas'}</div>` : `<div><strong>${t('perfil_turma')}:</strong> ${userProfile?.turma || 'Não definida'}</div>`}
+                        <div><strong>🏫 Escola:</strong> ${userProfile?.escola || 'Não definida'}</div>
                         <div><strong>Membro desde:</strong> ${new Date(userProfile?.createdAt || Date.now()).toLocaleDateString('pt-PT')}</div>
                     </div>
                 </div>
@@ -1774,7 +1776,7 @@ function renderPerfil(area) {
     document.getElementById('form-perfil').onsubmit = async (e) => {
         e.preventDefault();
         const fd = new FormData(e.target);
-        const update = { nome: fd.get('nome') };
+        const update = { nome: fd.get('nome'), escola: fd.get('escola') || '' };
         if (isProf) {
             update.turmas = fd.get('turmas') || '';
         } else {

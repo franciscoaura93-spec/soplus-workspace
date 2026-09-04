@@ -1824,7 +1824,7 @@ function changeProfileLang(lang) {
 }
 
 function getTheme() {
-    return localStorage.getItem('soplus_theme') || 'system';
+    return localStorage.getItem('soplus_theme') || 'dark';
 }
 
 function setTheme(theme) {

@@ -30,6 +30,27 @@ const CN = {
     customColors: ['#2563EB', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#0EA5E9', '#22C55E', '#f8fafc', '#1E293B']
 };
 
+(function cnInjectPaperCSS() {
+    if (document.querySelector('#cn-paper-style')) return;
+    const st = document.createElement('style');
+    st.id = 'cn-paper-style';
+    st.textContent = `
+        #cn-flip-book .cn-page {
+            font-family: 'Inter', system-ui, sans-serif;
+        }
+        .cn-page { box-shadow: inset 0 0 30px rgba(80,60,20,0.06); }
+        .cn-page[data-side="left"] { border-radius: 6px 0 0 6px; }
+        .cn-page[data-side="right"] { border-radius: 0 6px 6px 0; }
+        .cn-page.cn-paper-blank { background-image: radial-gradient(rgba(90,70,30,0.025) 1px, transparent 1.2px); background-size: 4px 4px; }
+        .cn-page::after {
+            content: ''; position: absolute; top: 0; bottom: 0; pointer-events: none; z-index: 1;
+        }
+        .cn-page[data-side="left"]::after { right: -1px; width: 14px; background: linear-gradient(to left, rgba(0,0,0,0.10), transparent); }
+        .cn-page[data-side="right"]::after { left: -1px; width: 14px; background: linear-gradient(to right, rgba(0,0,0,0.10), transparent); }
+    `;
+    document.head.appendChild(st);
+})();
+
 function cnLoad() {
     try {
         const raw = localStorage.getItem(CN.CACHE_KEY) || '[]';
@@ -270,21 +291,33 @@ function cnNotebookNavHTML(nb) {
 
 function cnPageHtml(pg, idx) {
     const nb = CN.activeNotebook;
-    const paper = nb.paper === 'grid' ? cnPaperGridCSS() : nb.paper === 'blank' ? 'background-color:#fff;' : cnPaperLinesCSS();
+    const paperType = nb.paper === 'grid' ? 'grid' : nb.paper === 'blank' ? 'blank' : 'lines';
+    const paper = cnPaperCSS(paperType);
     return `
-        <div class="cn-page" data-cn-page="${idx}" style="${paper} position:relative;overflow:hidden;padding:0;box-sizing:border-box;">
+        <div class="cn-page cn-paper-${paperType}" data-cn-page="${idx}" data-side="${idx % 2 === 1 ? 'left' : 'right'}" style="${paper} position:relative;overflow:hidden;padding:0;box-sizing:border-box;">
             <canvas class="cn-canvas" data-canvas-page="${idx}" style="position:absolute;top:0;left:0;width:100%;height:100%;touch-action:none;z-index:2;"></canvas>
             <div class="cn-element-layer" data-element-page="${idx}" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:hidden;z-index:3;"></div>
         </div>
     `;
 }
 
+function cnPaperCSS(type) {
+    const base = 'background-color:#fbfaf6;box-shadow:inset 0 0 28px rgba(80,60,20,0.07), inset 1px 0 3px rgba(0,0,0,0.04);';
+    if (type === 'grid') {
+        return base + cnPaperGridCSS();
+    }
+    if (type === 'blank') {
+        return base;
+    }
+    return base + cnPaperLinesCSS();
+}
+
 function cnPaperGridCSS() {
-    return `background-image:linear-gradient(rgba(99,102,241,0.25) 1px,transparent 1px),linear-gradient(90deg,rgba(99,102,241,0.25) 1px,transparent 1px);background-size:30px 30px;background-color:#fff;`;
+    return `background-image:linear-gradient(rgba(99,102,241,0.18) 1px,transparent 1px),linear-gradient(90deg,rgba(99,102,241,0.18) 1px,transparent 1px);background-size:23px 23px;`;
 }
 
 function cnPaperLinesCSS() {
-    return `background-image:repeating-linear-gradient(transparent,transparent 35px,var(--tb-line,#c7d2fe) 36px);background-attachment:local;background-color:#fff;`;
+    return `background-image:repeating-linear-gradient(transparent,transparent 34px,rgba(180,120,150,0.5) 1px);background-position:0 14px;`;
 }
 
 function cnInitFlip() {
@@ -317,17 +350,18 @@ function cnInitFlip() {
         if (CN.pageFlip) { try { CN.pageFlip.destroy(); } catch(e){} CN.pageFlip = null; }
         CN.pageFlip = new StPageFlip(book, {
             width: 440,
-            height: 600,
+            height: 622,
             size: 'stretch',
-            minWidth: 280,
+            minWidth: 320,
             maxWidth: 460,
-            minHeight: 380,
-            maxHeight: 620,
+            minHeight: 450,
+            maxHeight: 650,
             drawShadow: true,
-            flippingTime: 500,
+            flippingTime: 650,
             maxShadowOpacity: 0.5,
             showCover: false,
             usePortrait: false,
+            autoSize: true,
             startPage: CN.currentPage || 0,
             mobileScrollSupport: false,
             swipeDistance: 20,

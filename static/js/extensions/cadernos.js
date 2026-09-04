@@ -4,7 +4,13 @@
     if (typeof StPageFlip !== 'undefined' || document.querySelector('script[data-cadernos-pageflip]')) return;
     const s = document.createElement('script');
     s.setAttribute('data-cadernos-pageflip', '1');
-    s.src = 'https://unpkg.com/page-flip/dist/js/page-flip.browser.js';
+    s.src = '/static/js/vendor/page-flip.browser.js';
+    s.onerror = function() {
+        const f = document.createElement('script');
+        f.setAttribute('data-cadernos-pageflip', '1');
+        f.src = 'https://unpkg.com/page-flip/dist/js/page-flip.browser.js';
+        document.head.appendChild(f);
+    };
     document.head.appendChild(s);
 })();
 
@@ -47,6 +53,13 @@ const CN = {
         }
         .cn-page[data-side="left"]::after { right: -1px; width: 14px; background: linear-gradient(to left, rgba(0,0,0,0.10), transparent); }
         .cn-page[data-side="right"]::after { left: -1px; width: 14px; background: linear-gradient(to right, rgba(0,0,0,0.10), transparent); }
+        .stf__parent { position: relative; display: block; box-sizing: border-box; transform: translateZ(0); -ms-touch-action: pan-y; touch-action: pan-y; }
+        .stf__wrapper, .sft__wrapper { position: relative; width: 100%; box-sizing: border-box; }
+        .stf__parent canvas { position: absolute; width: 100%; height: 100%; left: 0; top: 0; }
+        .stf__block { position: absolute; width: 100%; height: 100%; box-sizing: border-box; perspective: 2000px; }
+        .stf__item { display: none; position: absolute; transform-style: preserve-3d; }
+        .stf__outerShadow, .stf__innerShadow, .stf__hardShadow, .stf__hardInnerShadow { position: absolute; left: 0; top: 0; }
+        #cn-flip-book { user-select: none; touch-action: pan-y; }
     `;
     document.head.appendChild(st);
 })();
@@ -227,7 +240,11 @@ function cnEditorSave(isNew) {
 }
 
 function cnNewPage() {
-    return [{ id: 'pg_' + Date.now(), strokes: [], elements: [], bg: null }];
+    const t0 = Date.now();
+    return [
+        { id: 'pg_' + t0, strokes: [], elements: [], bg: null },
+        { id: 'pg_' + (t0 + 1), strokes: [], elements: [], bg: null }
+    ];
 }
 
 function cnOpenNotebook(id) {
@@ -238,6 +255,7 @@ function cnOpenNotebook(id) {
     CN.currentPage = 0;
     CN.currentView = 'notebook';
     if (!nb.pages || nb.pages.length === 0) nb.pages = cnNewPage();
+    else if (nb.pages.length === 1) nb.pages.push({ id: 'pg_' + Date.now(), strokes: [], elements: [], bg: null });
     cnRenderNotebook();
 }
 
@@ -317,35 +335,55 @@ function cnPaperGridCSS() {
 }
 
 function cnPaperLinesCSS() {
-    return `background-image:repeating-linear-gradient(transparent,transparent 34px,rgba(180,120,150,0.5) 1px);background-position:0 14px;`;
+    return `background-image:linear-gradient(90deg,transparent 39px,rgba(220,60,90,0.45) 39px,rgba(220,60,90,0.45) 40px,transparent 40px),repeating-linear-gradient(transparent,transparent 33px,rgba(80,75,150,0.5) 33px,rgba(80,75,150,0.5) 34px);background-position:0 0,0 14px;`;
 }
 
 function cnInitFlip() {
     const book = document.getElementById('cn-flip-book');
     if (!book) return;
     if (typeof StPageFlip === 'undefined') {
-        console.warn('Cadernos: StPageFlip indisponível, a usar modo estático.');
-        const pages = book.querySelectorAll('.cn-page');
-        pages.forEach((pg, i) => {
-            pg.style.position = 'relative';
-            pg.style.width = '100%';
-            pg.style.height = '600px';
-            pg.style.marginBottom = '16px';
-            pg.style.display = i === 0 ? 'block' : 'none';
-        });
-        const first = pages[0];
-        if (first) {
-            const prevBtn = '<button class="btn btn-sm btn-outline" onclick="cnFlipStatic(-1)">← Pág. anterior</button>';
-            const nextBtn = '<button class="btn btn-sm btn-outline" onclick="cnFlipStatic(1)">Página seguinte →</button>';
-            const nav = document.createElement('div');
-            nav.style.cssText = 'display:flex;justify-content:center;gap:10px;margin:12px 0;';
-            nav.innerHTML = prevBtn + ' <span id="cn-static-page" style="align-self:center;font-size:13px;color:var(--text-light);"></span> ' + nextBtn;
-            first.parentNode.insertBefore(nav, first);
-            cnFlipStatic(0);
-        }
-        cnSetupCanvasEvents();
+        console.warn('Cadernos: StPageFlip a carregar, a aguardar…');
+        let tries = 0;
+        (function waitFlip() {
+            tries++;
+            if (typeof StPageFlip !== 'undefined') { cnStartFlip(); return; }
+            if (tries > 20) {
+                console.warn('Cadernos: StPageFlip indisponível, a usar modo estático.');
+                cnStaticFlip(book);
+                return;
+            }
+            setTimeout(waitFlip, 100);
+        })();
         return;
     }
+    cnStartFlip();
+}
+
+function cnStaticFlip(book) {
+    const pages = book.querySelectorAll('.cn-page');
+    pages.forEach((pg, i) => {
+        pg.style.position = 'relative';
+        pg.style.width = '100%';
+        pg.style.height = '600px';
+        pg.style.marginBottom = '16px';
+        pg.style.display = i === 0 ? 'block' : 'none';
+    });
+    const first = pages[0];
+    if (first) {
+        const prevBtn = '<button class="btn btn-sm btn-outline" onclick="cnFlipStatic(-1)">← Pág. anterior</button>';
+        const nextBtn = '<button class="btn btn-sm btn-outline" onclick="cnFlipStatic(1)">Página seguinte →</button>';
+        const nav = document.createElement('div');
+        nav.style.cssText = 'display:flex;justify-content:center;gap:10px;margin:12px 0;';
+        nav.innerHTML = prevBtn + ' <span id="cn-static-page" style="align-self:center;font-size:13px;color:var(--text-light);"></span> ' + nextBtn;
+        first.parentNode.insertBefore(nav, first);
+        cnFlipStatic(0);
+    }
+    cnSetupCanvasEvents();
+}
+
+function cnStartFlip() {
+    const book = document.getElementById('cn-flip-book');
+    if (!book) return;
     try {
         if (CN.pageFlip) { try { CN.pageFlip.destroy(); } catch(e){} CN.pageFlip = null; }
         CN.pageFlip = new StPageFlip(book, {

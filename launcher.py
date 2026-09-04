@@ -95,9 +95,11 @@ def main():
         def on_started():
             log("pywebview on_started callback OK")
 
+        tab = os.environ.get('SOPLUS_TAB') or ''
+        url = f'http://127.0.0.1:{PORT}' + (f'/?tab={tab}' if tab else '')
         win = webview.create_window(
             'S+O Ultra Workspace',
-            f'http://127.0.0.1:{PORT}',
+            url,
             width=1400,
             height=900,
             min_size=(800, 600),
@@ -121,7 +123,9 @@ def main():
 def _fallback_browser():
     log("A abrir no navegador como fallback...")
     import webbrowser
-    webbrowser.open(f'http://127.0.0.1:{PORT}')
+    tab = os.environ.get('SOPLUS_TAB') or ''
+    url = f'http://127.0.0.1:{PORT}' + (f'/?tab={tab}' if tab else '')
+    webbrowser.open(url)
     try:
         while True:
             time.sleep(1)

@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://s123o-f3e37.web.app/sitemap.xml

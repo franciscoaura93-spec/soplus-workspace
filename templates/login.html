@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt">
+<html lang="pt" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,12 +9,14 @@
     <link rel="stylesheet" href="/static/css/app.css">
     <script>
         (function() {
-            var tTheme = localStorage.getItem('soplus_theme') || 'dark';
-            if (tTheme === 'system') {
-                document.documentElement.removeAttribute('data-theme');
-            } else {
-                document.documentElement.setAttribute('data-theme', tTheme);
-            }
+            try {
+                var tTheme = localStorage.getItem('soplus_theme');
+                if (tTheme === 'light') {
+                    document.documentElement.setAttribute('data-theme', 'light');
+                } else if (tTheme === 'system') {
+                    document.documentElement.removeAttribute('data-theme');
+                }
+            } catch (e) {}
         })();
     </script>
     <script src="/static/js/firebase-app-compat.js"></script>

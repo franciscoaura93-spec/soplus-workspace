@@ -1,6 +1,6 @@
 [Setup]
 AppName=S+O Ultra Workspace
-AppVersion=3.4
+AppVersion=3.4.1
 AppPublisher=S+O+
 DefaultDirName={autopf}\S+O Workspace
 DefaultGroupName=S+O Ultra Workspace
@@ -12,7 +12,7 @@ Compression=lzma2/ultra64
 SolidCompression=yes
 PrivilegesRequired=lowest
 DisableProgramGroupPage=yes
-VersionInfoVersion=3.4.0.0
+VersionInfoVersion=3.4.1.0
 VersionInfoDescription=S.O+ Ultra Workspace Installer
 
 [Languages]

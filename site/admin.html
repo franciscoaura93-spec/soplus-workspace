@@ -551,6 +551,10 @@ function renderFooterEditor(area) {
         <div class="section-block">
             <h3>📎 Rodapé</h3>
             <div class="field"><label>Copyright</label><input value="${esc(f.copyright)}" onchange="siteData.footer.copyright=this.value"></div>
+            <div class="field" style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+                <label style="margin:0;cursor:pointer;">Mostrar copyright no site</label>
+                <input type="checkbox" ${f.showCopyright ? 'checked' : ''} onchange="siteData.footer.showCopyright=this.checked" style="width:auto;height:18px;width:18px;cursor:pointer;">
+            </div>
         </div>
     `;
 }
@@ -1956,6 +1960,33 @@ function renderVersions(area) {
                     <div class="field"><label>Link de Download</label><input id="ver-v32-url" value="https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v3.2/S.O-Workspace-Instalador.exe"></div>
                     <div class="field"><label>Badge Texto</label><input id="ver-v32-badge" value="v3.2"></div>
                 </div>
+
+                <div style="background:var(--card);border:1px solid rgba(236,72,153,0.3);border-radius:12px;padding:20px;">
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+                        <span style="padding:4px 10px;background:rgba(236,72,153,0.15);color:#ec4899;border-radius:6px;font-size:11px;font-weight:700;">v3.3</span>
+                        <span style="font-size:18px;font-weight:700;">v3.3 Browser embedded</span>
+                    </div>
+                    <div class="field"><label>Link de Download</label><input id="ver-v33-url" value="https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v3.3/S.O-Workspace-Instalador-v3.3.exe"></div>
+                    <div class="field"><label>Badge Texto</label><input id="ver-v33-badge" value="v3.3"></div>
+                </div>
+
+                <div style="background:var(--card);border:1px solid rgba(168,85,247,0.3);border-radius:12px;padding:20px;">
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+                        <span style="padding:4px 10px;background:rgba(168,85,247,0.15);color:#a855f7;border-radius:6px;font-size:11px;font-weight:700;">v3.4</span>
+                        <span style="font-size:18px;font-weight:700;">v3.4 Cadernos + IA</span>
+                    </div>
+                    <div class="field"><label>Link de Download</label><input id="ver-v34-url" value="https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v3.4/S.O-Workspace-Instalador-v3.4.exe"></div>
+                    <div class="field"><label>Badge Texto</label><input id="ver-v34-badge" value="v3.4"></div>
+                </div>
+
+                <div style="background:var(--card);border:1px solid rgba(244,114,182,0.3);border-radius:12px;padding:20px;">
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+                        <span style="padding:4px 10px;background:rgba(244,114,182,0.15);color:#f472b6;border-radius:6px;font-size:11px;font-weight:700;">v3.4.1</span>
+                        <span style="font-size:18px;font-weight:700;">v3.4.1 Cadernos A4 + tema escuro</span>
+                    </div>
+                    <div class="field"><label>Link de Download</label><input id="ver-v341-url" value="https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v3.4.1/S.O-Workspace-Instalador-v3.4.1.exe"></div>
+                    <div class="field"><label>Badge Texto</label><input id="ver-v341-badge" value="v3.4.1"></div>
+                </div>
             </div>
 
             <div style="display:flex;gap:10px;margin-top:20px;">
@@ -2005,12 +2036,32 @@ async function loadVersions() {
         const snap = await db.ref('admin_config/versions').once('value');
         const v = snap.val();
         if (v) {
-            if (v.stableUrl) document.getElementById('ver-stable-url').value = v.stableUrl;
-            if (v.stableBadge) document.getElementById('ver-stable-badge').value = v.stableBadge;
-            if (v.betaUrl) document.getElementById('ver-beta-url').value = v.betaUrl;
-            if (v.betaBadge) document.getElementById('ver-beta-badge').value = v.betaBadge;
+            const map = {
+                'ver-stable-url': 'stableUrl',
+                'ver-stable-badge': 'stableBadge',
+                'ver-beta-url': 'betaUrl',
+                'ver-beta-badge': 'betaBadge',
+                'ver-dev-url': 'devUrl',
+                'ver-dev-badge': 'devBadge',
+                'ver-v3-url': 'v3Url',
+                'ver-v3-badge': 'v3Badge',
+                'ver-v31-url': 'v31Url',
+                'ver-v31-badge': 'v31Badge',
+                'ver-v32-url': 'v32Url',
+                'ver-v32-badge': 'v32Badge',
+                'ver-v33-url': 'v33Url',
+                'ver-v33-badge': 'v33Badge',
+                'ver-v34-url': 'v34Url',
+                'ver-v34-badge': 'v34Badge',
+                'ver-v341-url': 'v341Url',
+                'ver-v341-badge': 'v341Badge'
+            };
+            for (const id in map) {
+                if (v[map[id]]) document.getElementById(id).value = v[map[id]];
+            }
             if (v.currentStable) document.getElementById('ver-current-stable').value = v.currentStable;
             if (v.currentBeta) document.getElementById('ver-current-beta').value = v.currentBeta;
+            if (v.currentDev) document.getElementById('ver-current-dev').value = v.currentDev;
             if (v.appVersion) document.getElementById('ver-app-version').value = v.appVersion;
         }
     } catch(e) {}
@@ -2030,6 +2081,12 @@ function saveVersions() {
         v31Badge: document.getElementById('ver-v31-badge').value,
         v32Url: document.getElementById('ver-v32-url').value,
         v32Badge: document.getElementById('ver-v32-badge').value,
+        v33Url: document.getElementById('ver-v33-url').value,
+        v33Badge: document.getElementById('ver-v33-badge').value,
+        v34Url: document.getElementById('ver-v34-url').value,
+        v34Badge: document.getElementById('ver-v34-badge').value,
+        v341Url: document.getElementById('ver-v341-url').value,
+        v341Badge: document.getElementById('ver-v341-badge').value,
         updatedAt: Date.now()
     });
     showToast('Links de versão guardados!');

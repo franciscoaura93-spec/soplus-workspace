@@ -227,7 +227,7 @@
             { icon:"📊", name:"Analytics Avançado", desc:"Gráficos detalhados de desempenho por disciplina.", price:"€2.99", category:"produtividade", status:"coming" },
             { icon:"🎵", name:"Escrita Musical", desc:"Pentagrama profissional com 100+ instrumentos, mixer, playback e gravação de músicas multi-instrumento.", price:"€4.99", category:"criatividade", status:"available" }
         ],
-        footer: { title:"Feito para escolas", subtitle:"Interface moderna, escura e sem distrações", copyright:"S&O+ Ultra Workspace © 2026", downloadText:"Pronto para começar?", downloadSub:"Descarrega o instalador e tem o workspace a funcionar em menos de 1 minuto.", downloadBtn:"Descarregar v3.4.1 (~7MB)", downloadLink:"https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v3.4.1/S.O-Workspace-Instalador-v3.4.1.exe", downloadInfo:"Windows 10/11 • Python instalado automaticamente • Grátis para sempre" },
+        footer: { title:"Feito para escolas", subtitle:"Interface moderna, escura e sem distrações", copyright:"S&O+ Ultra Workspace © 2026", showCopyright:false, downloadText:"Pronto para começar?", downloadSub:"Descarrega o instalador e tem o workspace a funcionar em menos de 1 minuto.", downloadBtn:"Descarregar v3.4.1 (~7MB)", downloadLink:"https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v3.4.1/S.O-Workspace-Instalador-v3.4.1.exe", downloadInfo:"Windows 10/11 • Python instalado automaticamente • Grátis para sempre" },
         design: {}
     };
 
@@ -253,6 +253,12 @@
             if (v.v31Badge) VERSIONS[4].label = v.v31Badge;
             if (v.v32Url) VERSIONS[5].url = v.v32Url;
             if (v.v32Badge) VERSIONS[5].label = v.v32Badge;
+            if (v.v33Url) VERSIONS[6].url = v.v33Url;
+            if (v.v33Badge) VERSIONS[6].label = v.v33Badge;
+            if (v.v34Url) VERSIONS[7].url = v.v34Url;
+            if (v.v34Badge) VERSIONS[7].label = v.v34Badge;
+            if (v.v341Url) VERSIONS[8].url = v.v341Url;
+            if (v.v341Badge) VERSIONS[8].label = v.v341Badge;
         }
     });
 
@@ -402,7 +408,7 @@
         `;
 
         document.getElementById('footer-section').innerHTML = `
-            <p>${f.copyright || ''}</p>
+            ${f.showCopyright ? `<p>${f.copyright || ''}</p>` : ''}
             <p style="margin-top:8px;"><a href="#">Política de Privacidade</a></p>
             <div style="margin-top:20px;display:flex;align-items:center;justify-content:center;gap:8px;">
                 <input type="password" id="dev-pass" placeholder="Área de desenvolvimento" autocomplete="off"

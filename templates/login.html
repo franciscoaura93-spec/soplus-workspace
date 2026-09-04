@@ -7,6 +7,16 @@
     <meta name="google-site-verification" content="QQq-ndcDBhil7D9BwtY_oZjKKrxIKOHU0TResT4KE14" />
     <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
     <link rel="stylesheet" href="/static/css/app.css">
+    <script>
+        (function() {
+            var tTheme = localStorage.getItem('soplus_theme') || 'dark';
+            if (tTheme === 'system') {
+                document.documentElement.removeAttribute('data-theme');
+            } else {
+                document.documentElement.setAttribute('data-theme', tTheme);
+            }
+        })();
+    </script>
     <script src="/static/js/firebase-app-compat.js"></script>
     <script src="/static/js/firebase-auth-compat.js"></script>
     <script src="/static/js/firebase-database-compat.js"></script>

@@ -1996,6 +1996,15 @@ function renderVersions(area) {
                     <div class="field"><label>Link de Download</label><input id="ver-v342-url" value="https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v3.4.2/S.O-Workspace-Instalador-v3.4.2.exe"></div>
                     <div class="field"><label>Badge Texto</label><input id="ver-v342-badge" value="v3.4.2"></div>
                 </div>
+
+                <div style="background:var(--card);border:1px solid rgba(20,184,166,0.3);border-radius:12px;padding:20px;">
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+                        <span style="padding:4px 10px;background:rgba(20,184,166,0.15);color:#14b8a6;border-radius:6px;font-size:11px;font-weight:700;">v3.4.3</span>
+                        <span style="font-size:18px;font-weight:700;">v3.4.3 Cadernos: escrever nas linhas</span>
+                    </div>
+                    <div class="field"><label>Link de Download</label><input id="ver-v343-url" value="https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v3.4.3/S.O-Workspace-Instalador-v3.4.3.exe"></div>
+                    <div class="field"><label>Badge Texto</label><input id="ver-v343-badge" value="v3.4.3"></div>
+                </div>
             </div>
 
             <div style="display:flex;gap:10px;margin-top:20px;">
@@ -2065,7 +2074,9 @@ async function loadVersions() {
                 'ver-v341-url': 'v341Url',
                 'ver-v341-badge': 'v341Badge',
                 'ver-v342-url': 'v342Url',
-                'ver-v342-badge': 'v342Badge'
+                'ver-v342-badge': 'v342Badge',
+                'ver-v343-url': 'v343Url',
+                'ver-v343-badge': 'v343Badge'
             };
             for (const id in map) {
                 if (v[map[id]]) document.getElementById(id).value = v[map[id]];
@@ -2100,6 +2111,8 @@ function saveVersions() {
         v341Badge: document.getElementById('ver-v341-badge').value,
         v342Url: document.getElementById('ver-v342-url').value,
         v342Badge: document.getElementById('ver-v342-badge').value,
+        v343Url: document.getElementById('ver-v343-url').value,
+        v343Badge: document.getElementById('ver-v343-badge').value,
         updatedAt: Date.now()
     });
     showToast('Links de versão guardados!');

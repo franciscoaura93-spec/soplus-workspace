@@ -28,6 +28,10 @@ const CN = {
     currentTool: 'navigate',
     currentColor: '#2563EB',
     currentWidth: 3,
+    writeRow: 0,
+    writeBlocked: false,
+    writeMaxChars: 0,
+    writeCharW: 0,
     CACHE_KEY: 'soplus_cadernos',
     aiModal: null,
     tablesEnabled: true,
@@ -60,6 +64,10 @@ const CN = {
         .stf__item { display: none; position: absolute; transform-style: preserve-3d; }
         .stf__outerShadow, .stf__innerShadow, .stf__hardShadow, .stf__hardInnerShadow { position: absolute; left: 0; top: 0; }
         #cn-flip-book { user-select: none; touch-action: pan-y; }
+        #cn-flip-wrap { max-width: 880px; }
+        #cn-flip-book { width: 100%; height: auto; aspect-ratio: 1.4148 / 1; max-width: min(880px, calc((100vh - 210px) * 1.4148)); margin: 0 auto; }
+        .cn-caret { display: inline-block; width: 2px; height: 20px; background: #334155; vertical-align: middle; margin-left: 1px; animation: cnCaretBlink 1s steps(1) infinite; }
+        @keyframes cnCaretBlink { 50% { opacity: 0; } }
     `;
     document.head.appendChild(st);
 })();
@@ -254,6 +262,10 @@ function cnOpenNotebook(id) {
     CN.activeNotebook = nb;
     CN.currentPage = 0;
     CN.currentView = 'notebook';
+    CN.writeRow = 0;
+    CN.writeBlocked = false;
+    CN.writeMaxChars = 0;
+    CN.writeCharW = 0;
     if (!nb.pages || nb.pages.length === 0) nb.pages = cnNewPage();
     else if (nb.pages.length === 1) nb.pages.push({ id: 'pg_' + Date.now(), strokes: [], elements: [], bg: null });
     cnRenderNotebook();
@@ -280,14 +292,15 @@ function cnRenderNotebook() {
             <button class="btn btn-sm btn-outline" onclick="cnOpenElementsMenu()">🌳 Árvores</button>
             <button class="btn btn-sm btn-outline" onclick="cnOpenElementsMenu()">📊 Gráficos</button>
         </div>
-        <div id="cn-flip-wrap" style="position:relative;width:100%;max-width:900px;margin:0 auto;height:640px;overflow:hidden;">
-            <div id="cn-flip-book" style="position:relative;width:100%;height:600px;">
+        <div id="cn-flip-wrap" style="position:relative;width:100%;margin:0 auto;overflow:hidden;">
+            <div id="cn-flip-book" style="position:relative;width:100%;aspect-ratio:1.4148/1;max-width:min(880px,calc((100vh - 210px) * 1.4148));margin:0 auto;">
                 ${nb.pages.map((pg, idx) => cnPageHtml(pg, idx)).join('')}
             </div>
         </div>
     `;
     cnRenderToolbar();
     cnInitFlip();
+    cnRenderWritingAll();
 }
 
 function cnNotebookNavHTML(nb) {
@@ -313,6 +326,7 @@ function cnPageHtml(pg, idx) {
     const paper = cnPaperCSS(paperType);
     return `
         <div class="cn-page cn-paper-${paperType}" data-cn-page="${idx}" data-side="${idx % 2 === 1 ? 'left' : 'right'}" style="${paper} position:relative;overflow:hidden;padding:0;box-sizing:border-box;">
+            <div class="cn-writing-layer" data-writing-page="${idx}" style="position:absolute;top:14px;left:52px;right:20px;bottom:16px;overflow:hidden;pointer-events:none;z-index:1;"></div>
             <canvas class="cn-canvas" data-canvas-page="${idx}" style="position:absolute;top:0;left:0;width:100%;height:100%;touch-action:none;z-index:2;"></canvas>
             <div class="cn-element-layer" data-element-page="${idx}" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:hidden;z-index:3;"></div>
         </div>
@@ -379,6 +393,7 @@ function cnStaticFlip(book) {
         cnFlipStatic(0);
     }
     cnSetupCanvasEvents();
+    cnRenderWritingAll();
 }
 
 function cnStartFlip() {
@@ -407,11 +422,19 @@ function cnStartFlip() {
         });
         CN.pageFlip.loadFromHTML(document.querySelectorAll('.cn-page'));
         if (CN.pageFlip.on) {
-            CN.pageFlip.on('flip', e => { CN.currentPage = e.data; cnRefreshPageNav(); });
+            CN.pageFlip.on('flip', e => {
+                let i = parseInt(e.data);
+                if (isNaN(i)) i = 0;
+                if (CN.activeNotebook) i = Math.max(0, Math.min(CN.activeNotebook.pages.length - 1, i));
+                CN.currentPage = i;
+                cnRefreshPageNav();
+                cnRenderWriting(CN.currentPage);
+            });
         }
         setTimeout(() => CN.pageFlip.update(), 50);
         setTimeout(() => cnDrawAllPages(), 100);
         setTimeout(() => cnRestoreElements(), 120);
+        setTimeout(() => cnRenderWritingAll(), 140);
     } catch (e) {
         console.warn('Cadernos: erro pageflip', e);
         CN.pageFlip = null;
@@ -434,6 +457,7 @@ function cnFlipStatic(dir) {
     CN.currentPage = idx;
     cnDrawAllPages();
     cnRestoreElements();
+    cnRenderWriting(idx);
     cnSetupCanvasEvents();
 }
 
@@ -495,7 +519,7 @@ function cnCanvasForPage(pageIdx) {
 
 function cnPointerDown(e) {
     const canvas = e.target.closest('.cn-canvas');
-    if (!canvas || CN.currentTool === 'navigate') { CN.drawing = false; return; }
+    if (!canvas || CN.currentTool === 'navigate' || CN.currentTool === 'write') { CN.drawing = false; return; }
     CN.drawing = true;
     CN.lastX = cnX(e, canvas);
     CN.lastY = cnY(e, canvas);
@@ -575,12 +599,172 @@ function cnDrawAllPages() {
     document.querySelectorAll('.cn-canvas').forEach(canvas => cnDrawPage(canvas));
 }
 
+// ---------------- Escrita nas linhas ----------------
+function cnWriteCharWidth() {
+    if (CN.writeCharW) return CN.writeCharW;
+    const span = document.createElement('span');
+    span.style.cssText = 'position:absolute;visibility:hidden;white-space:pre;font-size:21px;font-family:Inter,system-ui,sans-serif;';
+    span.textContent = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789.,;:!? ';
+    document.body.appendChild(span);
+    CN.writeCharW = span.getBoundingClientRect().width / span.textContent.length;
+    span.remove();
+    return CN.writeCharW;
+}
+
+function cnWriteRowCount(h) {
+    if (!h || h < 120) h = 600;
+    return Math.max(4, Math.floor((h - 14 - 16) / 34));
+}
+
+function cnWriteRowsFor(pageIdx) {
+    const canvas = document.querySelector(`.cn-canvas[data-canvas-page="${pageIdx}"]`);
+    return cnWriteRowCount(canvas ? canvas.getBoundingClientRect().height : 600);
+}
+
+function cnWriteMaxCharsFor(pageIdx) {
+    const canvas = document.querySelector(`.cn-canvas[data-canvas-page="${pageIdx}"]`);
+    let w = canvas ? canvas.getBoundingClientRect().width : 440;
+    if (!w || w < 100) w = 440;
+    const usable = w - 52 - 20 - 6;
+    return Math.max(10, Math.floor(usable / cnWriteCharWidth()));
+}
+
+function cnRenderWriting(pageIdx) {
+    const layer = document.querySelector(`.cn-writing-layer[data-writing-page="${pageIdx}"]`);
+    if (!layer) return;
+    const pg = CN.activeNotebook && CN.activeNotebook.pages[pageIdx];
+    if (!pg) return;
+    const rows = cnWriteRowsFor(pageIdx);
+    const writing = Array.isArray(pg.writing) ? pg.writing : [];
+    let html = '';
+    for (let r = 0; r < rows; r++) {
+        const txt = (writing[r] || '');
+        const isCur = (r === CN.writeRow && pageIdx === CN.currentPage && CN.currentTool === 'write');
+        html += `<div style="height:34px;line-height:34px;white-space:nowrap;overflow:hidden;font-size:21px;color:#0f172a;">${cnEscape(txt)}${isCur ? '<span class="cn-caret"></span>' : ''}</div>`;
+    }
+    layer.innerHTML = html;
+}
+
+function cnRenderWritingAll() {
+    const nb = CN.activeNotebook;
+    if (!nb) return;
+    (nb.pages || []).forEach((pg, i) => cnRenderWriting(i));
+}
+
+function cnWriteCurrentPage() {
+    return CN.activeNotebook && CN.activeNotebook.pages[CN.currentPage];
+}
+
+function cnWriteInsert(ch) {
+    const pg = cnWriteCurrentPage();
+    if (!pg) return false;
+    pg.writing = Array.isArray(pg.writing) ? pg.writing : [];
+    pg.writing[CN.writeRow] = (pg.writing[CN.writeRow] || '') + ch;
+    if (pg.writing[CN.writeRow].length > (CN.writeMaxChars || 40)) {
+        const line = pg.writing[CN.writeRow];
+        pg.writing[CN.writeRow] = line.slice(0, -1);
+        if (!cnWriteToNextRow()) { pg.writing[CN.writeRow] = line; return true; }
+        pg.writing[CN.writeRow] = (pg.writing[CN.writeRow] || '') + ch;
+    }
+    return true;
+}
+
+function cnWriteNewLine() {
+    return cnWriteToNextRow();
+}
+
+function cnWriteBackspace() {
+    const pg = cnWriteCurrentPage();
+    if (!pg) return;
+    pg.writing = Array.isArray(pg.writing) ? pg.writing : [];
+    const row = pg.writing[CN.writeRow] || '';
+    if (row.length) {
+        pg.writing[CN.writeRow] = row.slice(0, -1);
+        return;
+    }
+    if (CN.writeRow > 0) CN.writeRow--;
+}
+
+function cnWriteToNextRow() {
+    const rows = cnWriteRowsFor(CN.currentPage);
+    if (CN.writeRow + 1 >= rows) return cnWriteEndOfPage();
+    CN.writeRow++;
+    if (!CN.activeNotebook) return true;
+    const pg = cnWriteCurrentPage();
+    if (pg) { pg.writing = Array.isArray(pg.writing) ? pg.writing : []; if (!pg.writing[CN.writeRow]) pg.writing[CN.writeRow] = ''; }
+    return true;
+}
+
+function cnWriteEndOfPage() {
+    if (CN.writeBlocked) return false;
+    CN.writeBlocked = true;
+    const ok = window.confirm('Chegaste ao fim da página. Queres passar para a página seguinte?');
+    CN.writeBlocked = false;
+    if (ok) { cnWriteGoNextPage(); return true; }
+    return false;
+}
+
+function cnWriteGoNextPage() {
+    const nb = CN.activeNotebook;
+    if (!nb) return;
+    let target = CN.currentPage + 1;
+    while (target >= nb.pages.length) nb.pages.push({ id: 'pg_' + Date.now(), strokes: [], elements: [], writing: [] });
+    CN.writeRow = 0;
+    CN.currentPage = target;
+    cnSave();
+    if (CN.pageFlip && typeof CN.pageFlip.turnToPage === 'function') {
+        try {
+            CN.pageFlip.turnToPage(target);
+        } catch (e) {
+            cnRenderNotebook();
+        }
+    } else {
+        cnRenderNotebook();
+    }
+    cnRenderWriting(CN.currentPage);
+}
+
+function cnWriteKeydown(e) {
+    if (CN.currentView !== 'notebook' || CN.currentTool !== 'write') return;
+    if (CN.activeId == null) return;
+    const t = e.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+    if (document.getElementById('cn-elements-modal') || document.getElementById('cn-ai-modal')) return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    const pg = cnWriteCurrentPage();
+    if (!pg) return;
+    CN.writeMaxChars = cnWriteMaxCharsFor(CN.currentPage);
+    e.preventDefault();
+    if (e.key === 'Enter') {
+        if (cnWriteNewLine()) { cnSave(); cnRenderWriting(CN.currentPage); }
+        return;
+    }
+    if (e.key === 'Backspace') {
+        cnWriteBackspace();
+        cnSave();
+        cnRenderWriting(CN.currentPage);
+        return;
+    }
+    if (e.key === 'Tab') {
+        cnWriteInsert('    ');
+        cnSave();
+        cnRenderWriting(CN.currentPage);
+        return;
+    }
+    if (e.key.length === 1) {
+        if (cnWriteInsert(e.key)) { cnSave(); cnRenderWriting(CN.currentPage); }
+    }
+}
+
+if (!window.__cnKeydownBound) { document.addEventListener('keydown', cnWriteKeydown); window.__cnKeydownBound = true; }
+
 function cnSetTool(tool) {
     CN.currentTool = tool;
     document.querySelectorAll('.cn-tool-btn').forEach(b => {
         b.classList.toggle('btn-primary', b.dataset.tool === tool);
         b.classList.toggle('btn-outline', b.dataset.tool !== tool);
     });
+    cnRenderWriting(CN.currentPage);
 }
 
 function cnSetColor(c) {
@@ -603,6 +787,8 @@ function cnClearPage() {
     if (!confirm('Limpar esta página?')) return;
     pg.strokes = [];
     pg.elements = [];
+    pg.writing = [];
+    CN.writeRow = 0;
     const canvas = cnCanvasForPage(CN.currentPage);
     if (canvas) cnDrawPage(canvas);
     const elLayer = document.querySelector(`.cn-element-layer[data-element-page="${CN.currentPage}"]`);
@@ -620,6 +806,7 @@ function cnRenderToolbar() {
             <button class="btn btn-sm ${CN.currentTool === 'pen' ? 'btn-primary' : 'btn-outline'} cn-tool-btn" data-tool="pen" onclick="cnSetTool('pen')">🖊️ Caneta</button>
             <button class="btn btn-sm ${CN.currentTool === 'highlighter' ? 'btn-primary' : 'btn-outline'} cn-tool-btn" data-tool="highlighter" onclick="cnSetTool('highlighter')">🖍️ Marcador</button>
             <button class="btn btn-sm ${CN.currentTool === 'eraser' ? 'btn-primary' : 'btn-outline'} cn-tool-btn" data-tool="eraser" onclick="cnSetTool('eraser')">🧹 Borracha</button>
+            ${CN.activeNotebook && CN.activeNotebook.paper === 'lines' ? `<button class="btn btn-sm ${CN.currentTool === 'write' ? 'btn-primary' : 'btn-outline'} cn-tool-btn" data-tool="write" onclick="cnSetTool('write')">⌨️ Escrever nas linhas</button>` : ''}
             <button class="btn btn-sm btn-outline" style="padding:6px 14px;font-weight:700;" onclick="cnInsertText()">✍️ Texto</button>
             <span style="width:1px;height:22px;background:var(--border);"></span>
             <div id="cn-color-row" style="display:flex;gap:6px;flex-wrap:wrap;">

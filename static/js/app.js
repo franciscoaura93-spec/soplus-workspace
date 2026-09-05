@@ -200,7 +200,7 @@ function renderPageExtension(area, extName) {
         return;
     }
     const s = document.createElement('script');
-    s.src = `/static/js/extensions/${extName}.js?v=3.4.4`;
+    s.src = `/static/js/extensions/${extName}.js?v=3.4.5`;
     s.onload = () => { if (typeof window[fnName] === 'function') window[fnName](area); else area.innerHTML = `<div class="empty-state"><div class="icon">🚧</div><h3>Erro ao carregar</h3></div>`; };
     s.onerror = () => { area.innerHTML = `<div class="empty-state"><div class="icon">🚧</div><h3>Erro ao carregar</h3></div>`; };
     document.head.appendChild(s);
@@ -2773,7 +2773,7 @@ function renderExtPage(area, extId) {
         return;
     }
     const script = document.createElement('script');
-    script.src = `/static/js/extensions/${pageType}.js?v=3.4.4`;
+    script.src = `/static/js/extensions/${pageType}.js?v=3.4.5`;
     script.onload = () => {
         if (typeof window[renderFn] === 'function') {
             window[renderFn](area, ext);

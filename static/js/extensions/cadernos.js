@@ -339,7 +339,8 @@ function cnPageHtml(pg, idx) {
     const paperType = nb.paper === 'grid' ? 'grid' : nb.paper === 'blank' ? 'blank' : 'lines';
     const paper = cnPaperCSS(paperType);
     return `
-        <div class="cn-page cn-paper-${paperType}" data-cn-page="${idx}" data-side="${idx % 2 === 1 ? 'left' : 'right'}" style="${paper} position:relative;overflow:hidden;padding:0;box-sizing:border-box;">
+        <div class="cn-page cn-paper-${paperType}" data-cn-page="${idx}" data-side="${idx % 2 === 1 ? 'left' : 'right'}" style="position:relative;overflow:hidden;padding:0;box-sizing:border-box;background-color:#fbfaf6;">
+            <div class="cn-paper-bg" style="position:absolute;inset:0;pointer-events:none;z-index:0;${paper}"></div>
             <div class="cn-writing-layer" data-writing-page="${idx}" style="position:absolute;top:14px;left:52px;right:20px;bottom:16px;overflow:hidden;pointer-events:none;z-index:1;"></div>
             <canvas class="cn-canvas" data-canvas-page="${idx}" style="position:absolute;top:0;left:0;width:100%;height:100%;touch-action:none;z-index:2;"></canvas>
             <div class="cn-element-layer" data-element-page="${idx}" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;overflow:hidden;z-index:3;"></div>

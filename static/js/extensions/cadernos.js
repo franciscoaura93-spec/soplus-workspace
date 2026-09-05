@@ -364,7 +364,7 @@ function cnPaperGridCSS() {
 }
 
 function cnPaperLinesCSS() {
-    return `background-image:linear-gradient(90deg,transparent 39px,rgba(220,60,90,0.45) 39px,rgba(220,60,90,0.45) 40px,transparent 40px),repeating-linear-gradient(transparent,transparent 33px,rgba(80,75,150,0.5) 33px,rgba(80,75,150,0.5) 34px);background-position:0 0,0 14px;`;
+    return `background-image:linear-gradient(90deg,transparent 39px,rgba(220,38,38,0.78) 39px,rgba(220,38,38,0.78) 40px,transparent 40px),repeating-linear-gradient(transparent,transparent 32px,rgba(37,99,235,0.72) 32px,rgba(37,99,235,0.72) 34px);background-position:0 0,0 14px;`;
 }
 
 function cnInitFlip() {

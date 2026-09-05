@@ -189,8 +189,11 @@
         messagingSenderId: "714841609825",
         appId: "1:714841609825:web:9a229c4679b11fdf1cbc20"
     };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.database();
+    const isBot = /bot|spider|crawler|googlebot|bingbot|slurp|duckduckbot|baiduspider|yandex/i.test(navigator.userAgent);
+    if (!isBot) {
+        firebase.initializeApp(firebaseConfig);
+    }
+    const db = isBot ? null : firebase.database();
 
     const VERSIONS = [
         { id:'stable', label: 'v2.6 Estável', desc:'Estável e testada', url: 'https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v2.6/S.O-Workspace-Instalador.exe', color:'#3b82f6' },
@@ -203,12 +206,13 @@
          { id:'v34', label: 'v3.4', desc:'Cadernos com flip de páginas + IA', url: 'https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v3.4/S.O-Workspace-Instalador-v3.4.exe', color:'#a855f7' },
          { id:'v341', label: 'v3.4.1', desc:'Cadernos A4 realistas + tema escuro', url: 'https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v3.4.1/S.O-Workspace-Instalador-v3.4.1.exe', color:'#f472b6' },
          { id:'v342', label: 'v3.4.2', desc:'Cadernos: flip offline + linhas visíveis', url: 'https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v3.4.2/S.O-Workspace-Instalador-v3.4.2.exe', color:'#10b981' },
-         { id:'v343', label: 'v3.4.3', desc:'Cadernos: escrever nas linhas + folha vertical', url: 'https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v3.4.3/S.O-Workspace-Instalador-v3.4.3.exe', color:'#14b8a6' }
+         { id:'v343', label: 'v3.4.3', desc:'Cadernos: escrever nas linhas + folha vertical', url: 'https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v3.4.3/S.O-Workspace-Instalador-v3.4.3.exe', color:'#14b8a6' },
+         { id:'v344', label: 'v3.4.4', desc:'Cadernos: flip de páginas a funcionar', url: 'https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v3.4.4/S.O-Workspace-Instalador-v3.4.4.exe', color:'#0ea5e9' }
     ];
     let currentVersion = VERSIONS.length - 1;
 
     const DEFAULT_DATA = {
-        hero: { badge:"v3.4.3 — Cadernos: escreve nas linhas", title:"O Workspace Escolar\ndefinitivo", subtitle:"Cadernos de escrita com flip de páginas, linhas/quadriculado, tabelas, árvores de apontamentos, gráficos e resumos IA. Notas, provas, chat, videochamadas, IDE e muito mais.", ctaText:"Descarregar para Windows", ctaLink: VERSIONS[10].url, secondaryText:"Saber mais", secondaryLink:"#features-section" },
+        hero: { badge:"v3.4.4 — Cadernos com flip a funcionar", title:"O Workspace Escolar\ndefinitivo", subtitle:"Cadernos de escrita com flip de páginas, linhas/quadriculado, tabelas, árvores de apontamentos, gráficos e resumos IA. Notas, provas, chat, videochamadas, IDE e muito mais.", ctaText:"Descarregar para Windows", ctaLink: VERSIONS[11].url, secondaryText:"Saber mais", secondaryLink:"#features-section" },
         features: [
             { icon:"📊", title:"Notas e Provas", desc:"Regista notas, cria provas com questões, corrige automaticamente com IA e acompanha o teu desempenho." },
             { icon:"💬", title:"Chat e Videochamadas", desc:"Chat em tempo real com a turma e videochamadas integradas via Jitsi — sem contas extras." },
@@ -229,21 +233,21 @@
             { icon:"📊", name:"Analytics Avançado", desc:"Gráficos detalhados de desempenho por disciplina.", price:"€2.99", category:"produtividade", status:"coming" },
             { icon:"🎵", name:"Escrita Musical", desc:"Pentagrama profissional com 100+ instrumentos, mixer, playback e gravação de músicas multi-instrumento.", price:"€4.99", category:"criatividade", status:"available" }
         ],
-        footer: { title:"Feito para escolas", subtitle:"Interface moderna, escura e sem distrações", copyright:"S&O+ Ultra Workspace © 2026", showCopyright:false, downloadText:"Pronto para começar?", downloadSub:"Descarrega o instalador e tem o workspace a funcionar em menos de 1 minuto.", downloadBtn:"Descarregar v3.4.3 (~7MB)", downloadLink:"https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v3.4.3/S.O-Workspace-Instalador-v3.4.3.exe", downloadInfo:"Windows 10/11 • Python instalado automaticamente • Grátis para sempre" },
+        footer: { title:"Feito para escolas", subtitle:"Interface moderna, escura e sem distrações", copyright:"S&O+ Ultra Workspace © 2026", showCopyright:false, downloadText:"Pronto para começar?", downloadSub:"Descarrega o instalador e tem o workspace a funcionar em menos de 1 minuto.", downloadBtn:"Descarregar v3.4.4 (~7MB)", downloadLink:"https://github.com/franciscoaura93-spec/soplus-workspace/releases/download/v3.4.4/S.O-Workspace-Instalador-v3.4.4.exe", downloadInfo:"Windows 10/11 • Python instalado automaticamente • Grátis para sempre" },
         design: {}
     };
 
-    db.ref('site_content').on('value', snap => {
-        const data = snap.val() || DEFAULT_DATA;
-        renderPage(data);
-    }, () => {
-        renderPage(DEFAULT_DATA);
-    });
+    if (db) {
+        db.ref('site_content').on('value', snap => {
+            const data = snap.val() || DEFAULT_DATA;
+            renderPage(data);
+        }, () => {
+            renderPage(DEFAULT_DATA);
+        });
 
-    db.ref('admin_config/versions').on('value', snap => {
-        const v = snap.val();
-        if (v) {
-            if (v.stableUrl) VERSIONS[0].url = v.stableUrl;
+        db.ref('admin_config/versions').on('value', snap => {
+            const v = snap.val();
+            if (v) {            if (v.stableUrl) VERSIONS[0].url = v.stableUrl;
             if (v.stableBadge) VERSIONS[0].label = v.stableBadge;
             if (v.betaUrl) VERSIONS[1].url = v.betaUrl;
             if (v.betaBadge) VERSIONS[1].label = v.betaBadge;
@@ -265,8 +269,13 @@
             if (v.v342Badge) VERSIONS[9].label = v.v342Badge;
             if (v.v343Url) VERSIONS[10].url = v.v343Url;
             if (v.v343Badge) VERSIONS[10].label = v.v343Badge;
+            if (v.v344Url) VERSIONS[11].url = v.v344Url;
+            if (v.v344Badge) VERSIONS[11].label = v.v344Badge;
         }
-    });
+        });
+    } else {
+        renderPage(DEFAULT_DATA);
+    }
 
     function renderPage(d) {
         const h = d.hero || DEFAULT_DATA.hero;

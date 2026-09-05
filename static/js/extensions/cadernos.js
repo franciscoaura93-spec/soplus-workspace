@@ -1,7 +1,18 @@
 // S&O+ Extension: Cadernos — Cadernos de escrita com flip de páginas
 
+function cnFlipCtor() {
+    if (typeof window === 'undefined') return null;
+    if (typeof window.StPageFlip === 'function') return window.StPageFlip;
+    if (window.St) {
+        const c = window.St.PageFlip || window.St.StPageFlip || window.St.default;
+        if (typeof c === 'function') return c;
+        if (typeof window.St === 'function') return window.St;
+    }
+    return null;
+}
+
 (function ensurePageFlip() {
-    if (typeof StPageFlip !== 'undefined' || document.querySelector('script[data-cadernos-pageflip]')) return;
+    if (cnFlipCtor() || document.querySelector('script[data-cadernos-pageflip]')) return;
     const s = document.createElement('script');
     s.setAttribute('data-cadernos-pageflip', '1');
     s.src = '/static/js/vendor/page-flip.browser.js';
@@ -312,6 +323,9 @@ function cnNotebookNavHTML(nb) {
                 <div style="font-weight:700;font-size:18px;">${cnEscape(nb.title)}</div>
             </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <button class="btn btn-sm btn-outline" onclick="cnGoPage(-1)">← Anterior</button>
+                <span class="cn-pg-info" style="align-self:center;font-size:13px;color:var(--text-light);min-width:52px;text-align:center;">1 / 2</span>
+                <button class="btn btn-sm btn-outline" onclick="cnGoPage(1)">Seguinte →</button>
                 <button class="btn btn-sm btn-ai" onclick="cnOpenAI()">✨ Resumir IA</button>
                 <button class="btn btn-sm btn-outline" onclick="cnAddPage()">➕ Página</button>
                 <button class="btn btn-sm btn-ghost" onclick="cnDeletePage()">🗑️ Pág.</button>
@@ -355,12 +369,12 @@ function cnPaperLinesCSS() {
 function cnInitFlip() {
     const book = document.getElementById('cn-flip-book');
     if (!book) return;
-    if (typeof StPageFlip === 'undefined') {
+    if (!cnFlipCtor()) {
         console.warn('Cadernos: StPageFlip a carregar, a aguardar…');
         let tries = 0;
         (function waitFlip() {
             tries++;
-            if (typeof StPageFlip !== 'undefined') { cnStartFlip(); return; }
+            if (cnFlipCtor()) { cnStartFlip(); return; }
             if (tries > 20) {
                 console.warn('Cadernos: StPageFlip indisponível, a usar modo estático.');
                 cnStaticFlip(book);
@@ -377,9 +391,9 @@ function cnStaticFlip(book) {
     const pages = book.querySelectorAll('.cn-page');
     pages.forEach((pg, i) => {
         pg.style.position = 'relative';
-        pg.style.width = '100%';
-        pg.style.height = '600px';
-        pg.style.marginBottom = '16px';
+        pg.style.width = 'min(460px, 100%)';
+        pg.style.aspectRatio = '440/622';
+        pg.style.margin = '0 auto 16px';
         pg.style.display = i === 0 ? 'block' : 'none';
     });
     const first = pages[0];
@@ -399,9 +413,11 @@ function cnStaticFlip(book) {
 function cnStartFlip() {
     const book = document.getElementById('cn-flip-book');
     if (!book) return;
+    const PageFlipCtor = cnFlipCtor();
+    if (!PageFlipCtor) { cnStaticFlip(book); return; }
     try {
         if (CN.pageFlip) { try { CN.pageFlip.destroy(); } catch(e){} CN.pageFlip = null; }
-        CN.pageFlip = new StPageFlip(book, {
+        CN.pageFlip = new PageFlipCtor(book, {
             width: 440,
             height: 622,
             size: 'stretch',
@@ -447,10 +463,7 @@ function cnFlipStatic(dir) {
     if (!book) return;
     const pages = book.querySelectorAll('.cn-page');
     if (!pages.length) return;
-    let idx = 0;
-    for (let i = 0; i < pages.length; i++) { if (pages[i].style.display !== 'none') { idx = i; break; } }
-    if (dir === 0) idx = CN.currentPage || 0;
-    else idx = Math.max(0, Math.min(pages.length - 1, idx + dir));
+    let idx = dir === 0 ? (CN.currentPage || 0) : Math.max(0, Math.min(pages.length - 1, (CN.currentPage || 0) + dir));
     pages.forEach((pg, i) => { pg.style.display = (i === idx) ? 'block' : 'none'; });
     const lbl = document.getElementById('cn-static-page');
     if (lbl) lbl.textContent = `Página ${idx + 1} de ${pages.length}`;
@@ -475,8 +488,28 @@ function cnRestoreElements() {
 function cnRefreshPageNav() {
     const nb = CN.activeNotebook;
     if (!nb) return;
-    const info = document.getElementById('cn-page-info');
-    if (info) info.textContent = (CN.currentPage + 1) + ' / ' + nb.pages.length;
+    document.querySelectorAll('.cn-pg-info').forEach(el => {
+        el.textContent = (CN.currentPage + 1) + ' / ' + nb.pages.length;
+    });
+}
+
+function cnGoPage(dir) {
+    const nb = CN.activeNotebook;
+    if (!nb) return;
+    const t = (CN.currentPage || 0) + dir;
+    if (t < 0 || t >= nb.pages.length) return;
+    CN.currentPage = t;
+    if (CN.pageFlip && typeof CN.pageFlip.turnToPage === 'function') {
+        try {
+            CN.pageFlip.turnToPage(t);
+        } catch (e) {
+            cnFlipStatic(0);
+        }
+    } else {
+        cnFlipStatic(0);
+    }
+    cnRefreshPageNav();
+    cnRenderWritingAll();
 }
 
 function cnAddPage() {
@@ -716,10 +749,10 @@ function cnWriteGoNextPage() {
         try {
             CN.pageFlip.turnToPage(target);
         } catch (e) {
-            cnRenderNotebook();
+            cnFlipStatic(0);
         }
     } else {
-        cnRenderNotebook();
+        cnFlipStatic(0);
     }
     cnRenderWriting(CN.currentPage);
 }
@@ -756,7 +789,16 @@ function cnWriteKeydown(e) {
     }
 }
 
-if (!window.__cnKeydownBound) { document.addEventListener('keydown', cnWriteKeydown); window.__cnKeydownBound = true; }
+function cnNavKeydown(e) {
+    if (CN.currentView !== 'notebook' || !CN.activeNotebook) return;
+    const t = e.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key === 'ArrowRight') { e.preventDefault(); cnGoPage(1); }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); cnGoPage(-1); }
+}
+
+if (!window.__cnKeydownBound) { document.addEventListener('keydown', cnWriteKeydown); document.addEventListener('keydown', cnNavKeydown); window.__cnKeydownBound = true; }
 
 function cnSetTool(tool) {
     CN.currentTool = tool;
@@ -815,7 +857,7 @@ function cnRenderToolbar() {
             <input type="color" id="cn-custom-color" value="#2563EB" style="width:28px;height:28px;border:none;border-radius:50%;cursor:pointer;background:none;padding:0;" onchange="cnAddColorFromPicker()">
             <span style="width:1px;height:22px;background:var(--border);"></span>
             <input type="range" id="cn-size" min="1" max="20" value="3" style="width:90px;accent-color:var(--primary);" oninput="CN.currentWidth=parseInt(this.value)">
-            <span id="cn-page-info" style="font-size:12px;color:var(--text-light);margin-left:6px;"></span>
+            <span class="cn-pg-info" style="font-size:12px;color:var(--text-light);margin-left:6px;"></span>
             <span style="flex:1"></span>
             <button class="btn btn-sm btn-ghost" onclick="cnClearPage()">🗑️ Limpar pág.</button>
             <button class="btn btn-sm btn-ghost" onclick="cnUndoLastStroke()">↩️ Desfazer</button>
